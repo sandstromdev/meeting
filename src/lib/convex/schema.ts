@@ -54,16 +54,16 @@ export const PollOption = v.object({
 });
 
 export const Poll = v.object({
+	meetingId: v.id('meetings'),
 	title: v.string(),
 	options: v.array(PollOption),
 	isOpen: v.boolean()
 });
 
-/* export const Vote = v.object({
+export const Vote = v.object({
 	pollId: v.id('polls'),
-	option: v.number(),
-	userId: v.id('users')
-}); */
+	option: v.number()
+});
 
 export const User = v.object({
 	_id: v.id('users'),
@@ -74,14 +74,9 @@ export const User = v.object({
 	admin: v.boolean(),
 
 	isInSpeakerQueue: v.boolean(),
+	isAbsent: v.boolean(),
 
-	votes: v.array(
-		v.object({
-			pollId: v.id('polls'),
-			// voteId: v.id('votes'),
-			option: v.number()
-		})
-	)
+	votes: v.array(Vote)
 });
 
 export default defineSchema(
@@ -90,8 +85,7 @@ export default defineSchema(
 
 		meetings: defineTable(Meeting).index('by_code', ['code']),
 
-		polls: defineTable(Poll)
-		// votes: defineTable(Vote).index('by_poll', ['pollId', 'userId']).index('by_user', ['userId'])
+		polls: defineTable(Poll).index('by_meeting', ['meetingId'])
 	},
 	{ schemaValidation: false }
 );

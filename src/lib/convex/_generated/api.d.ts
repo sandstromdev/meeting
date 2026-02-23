@@ -8,9 +8,15 @@
  * @module
  */
 
-import type * as admin from "../admin.js";
+import type * as admin_helpers from "../admin/helpers.js";
+import type * as admin_meeting from "../admin/meeting.js";
+import type * as admin_poll from "../admin/poll.js";
+import type * as helpers from "../helpers.js";
 import type * as meetings from "../meetings.js";
-import type * as users from "../users.js";
+import type * as users_auth from "../users/auth.js";
+import type * as users_helpers from "../users/helpers.js";
+import type * as users_meeting from "../users/meeting.js";
+import type * as users_poll from "../users/poll.js";
 
 import type {
   ApiFromModules,
@@ -19,9 +25,15 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
-  admin: typeof admin;
+  "admin/helpers": typeof admin_helpers;
+  "admin/meeting": typeof admin_meeting;
+  "admin/poll": typeof admin_poll;
+  helpers: typeof helpers;
   meetings: typeof meetings;
-  users: typeof users;
+  "users/auth": typeof users_auth;
+  "users/helpers": typeof users_helpers;
+  "users/meeting": typeof users_meeting;
+  "users/poll": typeof users_poll;
 }>;
 
 /**

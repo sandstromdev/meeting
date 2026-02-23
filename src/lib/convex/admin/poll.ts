@@ -1,91 +1,6 @@
-import { customCtxAndArgs, customMutation } from 'convex-helpers/server/customFunctions';
 import { v } from 'convex/values';
-import type { Id } from './_generated/dataModel';
-import { mutation, type QueryCtx } from './_generated/server';
-import { authUser } from './users';
-import { PollOption } from './schema';
-
-async function authAdmin(ctx: QueryCtx, args: { meetingCode: string; userId: Id<'users'> }) {
-	const data = await authUser(ctx, args);
-
-	if (!data.user.admin) {
-		throw new Error('Unauthorized');
-	}
-
-	return data;
-}
-
-/* const adminQuery = customQuery(
-	query,
-	customCtxAndArgs({
-		args: {
-			userId: v.id('users')
-		},
-		async input(ctx, { userId }) {
-			const data = await authAdmin(ctx, userId);
-			return { ctx: { ...ctx, ...data }, args: {} };
-		}
-	})
-); */
-
-const adminMutation = customMutation(
-	mutation,
-	customCtxAndArgs({
-		args: {
-			userId: v.id('users'),
-			meetingCode: v.string()
-		},
-		async input(ctx, args) {
-			const data = await authAdmin(ctx, args);
-			return { ctx: { ...ctx, ...data }, args: {} };
-		}
-	})
-);
-
-export const nextSpeaker = adminMutation({
-	args: {},
-	async handler({ db, meeting }) {
-		const { speakerQueue } = meeting;
-
-		const queued = speakerQueue.shift();
-		const previous = meeting.currentSpeaker;
-
-		let speaker = null;
-
-		if (queued) {
-			speaker = {
-				...queued,
-				startTime: Date.now()
-			};
-		}
-
-		if (previous) {
-			await db.patch('users', previous.userId, {
-				isInSpeakerQueue: false
-			});
-		}
-
-		await db.patch('meetings', meeting._id, {
-			currentSpeaker: speaker,
-			speakerQueue
-		});
-	}
-});
-
-export const clearPointOfOrder = adminMutation({
-	args: {},
-	async handler({ db, meeting }) {
-		if (!meeting.pointOfOrder) {
-			return false;
-		}
-
-		await db.patch('meetings', meeting._id, {
-			pointOfOrder: null
-		});
-
-		return true;
-	}
-});
+import { PollOption } from '../schema';
+import { adminMutation } from './helpers';
 
 export const createPoll = adminMutation({
 	args: {
@@ -96,7 +11,8 @@ export const createPoll = adminMutation({
 	async handler(ctx, args) {
 		return await ctx.db.insert('polls', {
 			...args,
-			options: args.options.map((o) => Object.assign(o, { votes: 0 }))
+			options: args.options.map((o) => Object.assign(o, { votes: 0 })),
+			meetingId: ctx.meeting._id
 		});
 	}
 });
