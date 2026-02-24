@@ -74,6 +74,9 @@ export const User = v.object({
 	name: v.string(),
 	anonID: v.number(),
 
+	email: v.string(),
+	password: v.string(),
+
 	admin: v.boolean(),
 
 	isInSpeakerQueue: v.boolean(),
@@ -84,7 +87,7 @@ export const User = v.object({
 
 export default defineSchema(
 	{
-		users: defineTable(User).index('by_anon_id', ['anonID']),
+		users: defineTable(User).index('by_anon_id', ['anonID']).index('by_email', ['email']),
 
 		meetings: defineTable(Meeting).index('by_code', ['code']),
 

@@ -1,13 +1,39 @@
 import { v } from 'convex/values';
-import { mutation } from '../_generated/server';
+import { mutation, query } from '../_generated/server';
+import { signJWT } from '../auth.server';
 import { getMeetingByCode } from '../meetings';
 import { userQuery } from './helpers';
-import { signJWT } from '../auth.server';
 
-export const createUser = mutation({
+export const exists = query({
 	args: {
 		meetingCode: v.string(),
-		name: v.string()
+		email: v.string()
+	},
+	async handler(ctx, args) {
+		const meeting = await getMeetingByCode(ctx, args.meetingCode);
+
+		const user = await ctx.db
+			.query('users')
+			.withIndex('by_email', (q) => q.eq('email', args.email.toLowerCase()))
+			.first();
+
+		if (!user) {
+			return false;
+		}
+
+		if (user.meetingId !== meeting._id) {
+			return false;
+		}
+
+		return true;
+	}
+});
+
+export const login = mutation({
+	args: {
+		meetingCode: v.string(),
+		email: v.string(),
+		password: v.string()
 	},
 	async handler(ctx, args) {
 		const meeting = await getMeetingByCode(ctx, args.meetingCode);
