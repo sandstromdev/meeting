@@ -11,7 +11,7 @@
 import type * as admin_helpers from "../admin/helpers.js";
 import type * as admin_meeting from "../admin/meeting.js";
 import type * as admin_poll from "../admin/poll.js";
-import type * as helpers from "../helpers.js";
+import type * as error from "../error.js";
 import type * as meetings from "../meetings.js";
 import type * as users_auth from "../users/auth.js";
 import type * as users_helpers from "../users/helpers.js";
@@ -28,7 +28,7 @@ declare const fullApi: ApiFromModules<{
   "admin/helpers": typeof admin_helpers;
   "admin/meeting": typeof admin_meeting;
   "admin/poll": typeof admin_poll;
-  helpers: typeof helpers;
+  error: typeof error;
   meetings: typeof meetings;
   "users/auth": typeof users_auth;
   "users/helpers": typeof users_helpers;

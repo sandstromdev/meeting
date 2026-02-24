@@ -1,4 +1,5 @@
 import { v } from 'convex/values';
+import { getPoll } from '../helpers.server';
 import { requireNotAbsent, userMutation, userQuery } from './helpers';
 
 export const vote = userMutation({
@@ -6,20 +7,16 @@ export const vote = userMutation({
 		pollId: v.id('polls'),
 		option: v.number()
 	},
-	async handler({ db, user }, { pollId, option }) {
+	async handler(ctx, { pollId, option }) {
+		const { user } = ctx;
+
 		requireNotAbsent(user, 'Cannot vote while absent');
 
 		if (user.votes.find((v) => v.pollId === pollId) != null) {
 			return false;
 		}
 
-		const poll = await db.get('polls', pollId);
-
-		if (!poll) {
-			throw new Error('Poll not found');
-		}
-
-		await db.patch('users', user._id, {
+		await ctx.db.patch('users', user._id, {
 			votes: [
 				...user.votes,
 				{
@@ -29,13 +26,11 @@ export const vote = userMutation({
 			]
 		});
 
-		if (option < 0 || option >= poll.options.length) {
-			throw new Error('Index out of bounds');
-		}
+		const poll = await getPoll(ctx, pollId, option);
 
 		poll.options[option].votes += 1;
 
-		await db.patch('polls', pollId, {
+		await ctx.db.patch('polls', pollId, {
 			options: poll.options
 		});
 
@@ -56,11 +51,7 @@ export const removeVote = userMutation({
 			return false;
 		}
 
-		const poll = await ctx.db.get('polls', vote.pollId);
-
-		if (!poll) {
-			throw new Error('Poll not found');
-		}
+		const poll = await getPoll(ctx, vote.pollId, vote.option);
 
 		poll.options[vote.option].votes -= 1;
 

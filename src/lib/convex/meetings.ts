@@ -1,5 +1,6 @@
 import { v } from 'convex/values';
 import { query, type QueryCtx } from './_generated/server';
+import { AppError, Err } from './error';
 
 export const getMeeting = query({
 	args: {
@@ -20,7 +21,7 @@ export async function getMeetingByCode(ctx: QueryCtx, code: string) {
 	} catch {}
 
 	if (!m) {
-		throw new Error('Authentication failed');
+		throw new AppError(Err.meeting_not_found({ meetingCode: code }));
 	}
 
 	return m;

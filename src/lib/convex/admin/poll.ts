@@ -1,4 +1,5 @@
 import { v } from 'convex/values';
+import { getEditablePoll } from '../helpers.server';
 import { PollOption } from '../schema';
 import { adminMutation } from './helpers';
 
@@ -40,15 +41,7 @@ export const addPollOption = adminMutation({
 		option: PollOption.omit('votes')
 	},
 	async handler(ctx, { pollId, option }) {
-		const poll = await ctx.db.get('polls', pollId);
-
-		if (!poll) {
-			throw new Error('Poll not found');
-		}
-
-		if (poll.isOpen) {
-			throw new Error('Cannot change poll while open');
-		}
+		const poll = await getEditablePoll(ctx, pollId);
 
 		await ctx.db.patch('polls', pollId, {
 			options: [...poll.options, { ...option, votes: 0 }]
@@ -63,21 +56,9 @@ export const editPollOption = adminMutation({
 		option: PollOption.omit('votes').partial()
 	},
 	async handler(ctx, { pollId, option, optionIdx }) {
-		const poll = await ctx.db.get('polls', pollId);
+		const poll = await getEditablePoll(ctx, pollId, optionIdx);
 
-		if (!poll) {
-			throw new Error('Poll not found');
-		}
-
-		if (poll.isOpen) {
-			throw new Error('Cannot change poll while open');
-		}
-
-		const options = poll.options;
-
-		if (optionIdx < 0 || optionIdx >= options.length) {
-			throw new Error('Index out of bounds');
-		}
+		const { options } = poll;
 
 		options[optionIdx] = {
 			...options[optionIdx],
@@ -96,19 +77,7 @@ export const removePollOption = adminMutation({
 		optionIdx: v.number()
 	},
 	async handler(ctx, { pollId, optionIdx }) {
-		const poll = await ctx.db.get('polls', pollId);
-
-		if (!poll) {
-			throw new Error('Poll not found');
-		}
-
-		if (poll.isOpen) {
-			throw new Error('Cannot change poll while open');
-		}
-
-		if (optionIdx < 0 || optionIdx >= poll.options.length) {
-			throw new Error('Index out of bounds');
-		}
+		const poll = await getEditablePoll(ctx, pollId, optionIdx);
 
 		await ctx.db.patch('polls', pollId, {
 			options: [...poll.options.slice(0, optionIdx), ...poll.options.slice(optionIdx + 1)]

@@ -44,6 +44,9 @@ export const Meeting = v.object({
 		})
 	),
 
+	participating: v.number(),
+	absent: v.number(),
+
 	anonIdCounter: v.number()
 });
 

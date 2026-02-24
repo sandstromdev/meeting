@@ -1,6 +1,8 @@
 import { v } from 'convex/values';
 import { mutation } from '../_generated/server';
 import { getMeetingByCode } from '../meetings';
+import { userQuery } from './helpers';
+import { signJWT } from '../auth.server';
 
 export const createUser = mutation({
 	args: {
@@ -10,7 +12,7 @@ export const createUser = mutation({
 	async handler(ctx, args) {
 		const meeting = await getMeetingByCode(ctx, args.meetingCode);
 
-		const user = await ctx.db.insert('users', {
+		const userId = await ctx.db.insert('users', {
 			anonID: meeting.anonIdCounter,
 			meetingId: meeting._id,
 			name: args.name,
@@ -24,6 +26,24 @@ export const createUser = mutation({
 			anonIdCounter: meeting.anonIdCounter + 1
 		});
 
-		return user;
+		const token = await signJWT(userId, meeting._id);
+
+		return { token };
+	}
+});
+
+export const getUserData = userQuery({
+	args: {},
+	async handler(ctx) {
+		const { admin, anonID, isAbsent, isInSpeakerQueue, name, votes } = ctx.user;
+
+		return {
+			admin,
+			anonID,
+			isAbsent,
+			isInSpeakerQueue,
+			name,
+			votes
+		};
 	}
 });

@@ -4,17 +4,14 @@ import {
 	customQuery
 } from 'convex-helpers/server/customFunctions';
 import { mutation, query } from '../_generated/server';
-import { v } from 'convex/values';
-import { auth, authArgs } from '../helpers';
 import type { Doc } from '../_generated/dataModel';
+import { AppError, Err } from '../error';
+import { auth, authArgs } from '../auth.server';
 
 export const userQuery = customQuery(
 	query,
 	customCtxAndArgs({
-		args: {
-			userId: v.id('users'),
-			meetingCode: v.string()
-		},
+		args: authArgs,
 		async input(ctx, args) {
 			const data = await auth(ctx, args);
 			return { ctx: { ...ctx, ...data }, args: {} };
@@ -49,13 +46,11 @@ export const participantMutation = customMutation(
 
 export function requireNotAbsent<T extends Pick<Doc<'users'>, 'isAbsent'>>(
 	user: T,
-	message?: string
-): asserts user is {
-	[P in keyof T]: T[P];
-} & {
+	action?: string
+): asserts user is T & {
 	isAbsent: false;
 } {
 	if (user.isAbsent) {
-		throw new Error(message ?? 'Cannot do this while absent.');
+		throw new AppError(Err.illegal_while_absent(action));
 	}
 }
