@@ -32,6 +32,7 @@
 		"eslint": "^9.39.2",
 		"eslint-config-prettier": "^10.1.8",
 		"eslint-plugin-svelte": "^3.14.0",
+		"fluent-convex": "^0.12.3",
 		"globals": "^17.3.0",
 		"oxlint-tsgolint": "^0.14.2",
 		"prettier": "^3.8.1",
@@ -48,8 +49,11 @@
 		"vite": "^7.3.1"
 	},
 	"dependencies": {
+		"@convex-dev/better-auth": "^0.10.11",
 		"@fontsource-variable/nunito": "^5.2.7",
+		"@mmailaender/convex-better-auth-svelte": "^0.5.1",
 		"@oslojs/encoding": "^1.1.0",
+		"better-auth": "1.4.9",
 		"convex": "^1.32.0",
 		"convex-svelte": "^0.0.12",
 		"jose": "^6.1.3",

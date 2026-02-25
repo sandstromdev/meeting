@@ -5,7 +5,7 @@ import {
 } from 'convex-helpers/server/customFunctions';
 import { mutation, query } from '../_generated/server';
 import type { Doc } from '../_generated/dataModel';
-import { AppError, Err } from '../error';
+import { AppError, errors } from '../error';
 import { auth, authArgs } from '../auth.server';
 
 export const userQuery = customQuery(
@@ -51,6 +51,6 @@ export function requireNotAbsent<T extends Pick<Doc<'users'>, 'isAbsent'>>(
 	isAbsent: false;
 } {
 	if (user.isAbsent) {
-		throw new AppError(Err.illegal_while_absent(action));
+		throw new AppError(errors.illegal_while_absent(action));
 	}
 }

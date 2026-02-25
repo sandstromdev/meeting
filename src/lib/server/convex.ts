@@ -5,9 +5,7 @@ import { ConvexHttpClient } from 'convex/browser';
 export function getConvexClient() {
 	const event = getRequestEvent();
 
-	// TODO: handle auth?
-
-	const client = new ConvexHttpClient(env.PUBLIC_CONVEX_URL, {});
+	const client = new ConvexHttpClient(env.PUBLIC_CONVEX_URL, { auth: event.locals.token });
 
 	return client;
 }

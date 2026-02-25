@@ -10,6 +10,9 @@ const config = {
 
 		experimental: {
 			remoteFunctions: true
+		},
+		alias: {
+			$convex: './src/convex'
 		}
 	},
 	compilerOptions: {

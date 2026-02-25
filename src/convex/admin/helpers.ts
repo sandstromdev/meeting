@@ -4,14 +4,14 @@ import {
 	customQuery
 } from 'convex-helpers/server/customFunctions';
 import { mutation, query, type QueryCtx } from '../_generated/server';
-import { AppError, Err } from '../error';
+import { AppError, errors } from '../error';
 import { auth, authArgs, type AuthArgs } from '../auth.server';
 
 async function authAdmin(ctx: QueryCtx, args: AuthArgs) {
 	const data = await auth(ctx, args);
 
 	if (!data.user.admin) {
-		throw new AppError(Err.unauthorized);
+		throw new AppError(errors.unauthorized);
 	}
 
 	return data;

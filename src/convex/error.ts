@@ -2,7 +2,7 @@ import { ConvexError } from 'convex/values';
 import type { Id } from './_generated/dataModel';
 import { ErrorMessages } from '$lib/errors';
 
-export const Err = {
+export const errors = {
 	unauthorized: { code: 'unauthorized' },
 	forbidden: { code: 'forbidden' },
 	internal_error: { code: 'internal_error' },
@@ -18,7 +18,7 @@ export const Err = {
 	illegal_while_absent: (action?: string) => ({ code: 'illegal_while_absent', action }) as const
 } as const;
 
-type AppErr = typeof Err;
+type AppErr = typeof errors;
 type AppFlatErr = {
 	// oxlint-disable-next-line typescript/no-explicit-any
 	[P in keyof AppErr]: AppErr[P] extends (...args: any) => any ? ReturnType<AppErr[P]> : AppErr[P];

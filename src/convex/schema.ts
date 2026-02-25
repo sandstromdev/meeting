@@ -16,6 +16,8 @@ export const Meeting = v.object({
 	title: v.string(),
 	agenda: v.array(AgendaItem),
 
+	isOpen: v.boolean(),
+
 	speakerQueue: v.array(QueueEntry),
 
 	break: v.nullable(
@@ -74,8 +76,7 @@ export const User = v.object({
 	name: v.string(),
 	anonID: v.number(),
 
-	email: v.string(),
-	password: v.string(),
+	tokenIdentifier: v.string(),
 
 	admin: v.boolean(),
 
@@ -87,7 +88,10 @@ export const User = v.object({
 
 export default defineSchema(
 	{
-		users: defineTable(User).index('by_anon_id', ['anonID']).index('by_email', ['email']),
+		users: defineTable(User)
+			.index('by_anon_id', ['anonID'])
+			.index('by_token', ['tokenIdentifier'])
+			.index('by_token_meeting', ['tokenIdentifier', 'meetingId']),
 
 		meetings: defineTable(Meeting).index('by_code', ['code']),
 

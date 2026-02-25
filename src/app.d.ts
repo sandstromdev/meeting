@@ -1,12 +1,15 @@
 // See https://svelte.dev/docs/kit/types#app.d.ts
 // for information about these interfaces
-import { api } from '$lib/convex/_generated/api';
+import { api } from '$convex/_generated/api';
+import type { Id } from '$convex/_generated/dataModel';
 
 declare global {
 	namespace App {
 		// interface Error {}
 		interface Locals {
-			user?: typeof api.users.auth.getUserData._returnType;
+			token?: string;
+			meetingId?: Id<'meetings'>;
+			// user?: typeof api.users.auth.getUserData._returnType;
 		}
 		// interface PageData {}
 		// interface PageState {}
