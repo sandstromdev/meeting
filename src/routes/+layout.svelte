@@ -1,30 +1,17 @@
 <script lang="ts">
-	import './layout.css';
-	import '@fontsource-variable/nunito';
 	import favicon from '$lib/assets/favicon.svg';
-	import { createSvelteAuthClient, useAuth } from '@mmailaender/convex-better-auth-svelte/svelte';
 	import { authClient } from '$lib/auth-client';
 	import Button from '$lib/components/ui/button/button.svelte';
-	import { setupConvex, useQuery } from 'convex-svelte';
-	import { PUBLIC_CONVEX_URL } from '$env/static/public';
-	import { api } from '$convex/_generated/api';
+	import '@fontsource-variable/nunito';
+	import { createSvelteAuthClient, useAuth } from '@mmailaender/convex-better-auth-svelte/svelte';
+	import './layout.css';
+	import { devState } from '$lib/dev.svelte';
 
 	let { children, data } = $props();
 
-	setupConvex(PUBLIC_CONVEX_URL);
 	createSvelteAuthClient({ authClient, getServerState: () => data.authState });
 
 	const auth = useAuth();
-
-	// svelte-ignore state_referenced_locally
-	const meeting = useQuery(
-		api.meetings.getMeetingById,
-		() => (auth.isAuthenticated && data.meeting ? { meetingId: data.meeting._id } : 'skip'),
-		{
-			initialData: data.meeting,
-			keepPreviousData: true
-		}
-	);
 </script>
 
 <svelte:head>
@@ -33,12 +20,39 @@
 
 {@render children()}
 
-<div class="fixed bottom-4 left-4 flex flex-col gap-2">
-	<p>Authenticated: {auth.isAuthenticated}</p>
-	<p>Meeting: {meeting.data?.code}</p>
+<div class="fixed bottom-4 left-4 hidden flex-col gap-1 md:flex">
+	<table class="font-mono text-xs [&_td]:px-1">
+		<tbody>
+			<tr>
+				<td>Auth:</td>
+				<td>{auth.isAuthenticated}</td>
+			</tr>
+			<tr>
+				<td>User:</td>
+				<td>{data.currentUser?.name}</td>
+			</tr>
+			<tr>
+				<td>Admin:</td>
+				<td>{data.meeting?.me.isAdmin}</td>
+			</tr>
+			<tr>
+				<td>Meeting:</td>
+				<td>{data.meeting?.meeting.code}</td>
+			</tr>
+		</tbody>
+	</table>
+
+	<Button
+		size="sm"
+		class="h-6 text-xs"
+		onclick={() => {
+			devState.view = devState.view === 'admin' ? 'participant' : 'admin';
+		}}>Switch view</Button
+	>
+
 	{#if auth.isAuthenticated}
-		<Button onclick={() => authClient.signOut()}>Logga ut</Button>
+		<Button size="sm" class="h-6 text-xs" onclick={() => authClient.signOut()}>Logga ut</Button>
 	{:else}
-		<Button href="/sign-in">Logga in</Button>
+		<Button size="sm" class="h-6 text-xs" href="/sign-in">Logga in</Button>
 	{/if}
 </div>

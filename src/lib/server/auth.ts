@@ -1,9 +1,7 @@
 import { dev } from '$app/environment';
 import { getRequestEvent } from '$app/server';
 import { api } from '$convex/_generated/api';
-import { createAuth } from '$convex/auth.js';
-import { getToken } from '@mmailaender/convex-better-auth-svelte/sveltekit';
-import { error, redirect, type Cookies, type Handle, type RequestEvent } from '@sveltejs/kit';
+import { error, redirect, type Cookies, type RequestEvent } from '@sveltejs/kit';
 import { getConvexClient } from './convex';
 
 const cookieName = 'auth';
@@ -16,7 +14,7 @@ export async function setAuth(token: string) {
 		maxAge: 60 * 60 * 24 * 3,
 		secure: !dev,
 		httpOnly: true,
-		sameSite: 'lax'
+		sameSite: 'lax',
 	});
 }
 
@@ -26,18 +24,20 @@ function deleteCookie(cookies: Cookies) {
 		path: '/',
 		secure: !dev,
 		sameSite: 'lax',
-		maxAge: 0
+		maxAge: 0,
 	});
 }
 
-export async function getUser(event: RequestEvent) {
+export async function getMeetingParticipant() {
+	const event = getRequestEvent();
+
 	if (!event.locals.token || !event.locals.meetingId) {
 		return null;
 	}
 
 	try {
 		const user = await getConvexClient().query(api.users.auth.getUserData, {
-			meetingId: event.locals.meetingId
+			meetingId: event.locals.meetingId,
 		});
 
 		return user;
@@ -64,14 +64,10 @@ export function getAuthedRequestEvent() {
 	};
 }
 
-export const handleAuth = (async ({ event, resolve }) => {
-	event.locals.token = await getToken(createAuth, event.cookies);
-
-	return resolve(event);
-}) satisfies Handle;
-
 export function redirectIfAuthed(to: string, status: 307 | 303 = 307) {
 	const event = getRequestEvent();
+
+	console.log(event.locals);
 
 	if (event.locals.token) {
 		redirect(status, to);

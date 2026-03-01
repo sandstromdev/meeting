@@ -16,10 +16,6 @@
 	{...signUp.preflight(SignUpSchema).enhance(async ({ form, data, submit }) => {
 		try {
 			await submit();
-
-			if (signUp.result?.redirect) {
-				window.location.pathname = signUp.result.redirect;
-			}
 		} catch (e) {
 			console.error(e);
 		}

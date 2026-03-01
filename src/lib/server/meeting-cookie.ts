@@ -2,7 +2,7 @@ import { dev } from '$app/environment';
 import { getRequestEvent } from '$app/server';
 import { api } from '$convex/_generated/api';
 import type { Id } from '$convex/_generated/dataModel';
-import { redirect, type Handle } from '@sveltejs/kit';
+import { redirect } from '@sveltejs/kit';
 import { getConvexClient } from './convex';
 
 const cookieName = 'meeting-id';
@@ -15,7 +15,7 @@ export function setMeetingCookie(meetingId: Id<'meetings'>) {
 		secure: !dev,
 		httpOnly: true,
 		maxAge: 60 * 60 * 24 * 2,
-		sameSite: 'lax'
+		sameSite: 'lax',
 	});
 }
 
@@ -35,22 +35,14 @@ export function deleteMeetingCookie() {
 		secure: !dev,
 		httpOnly: true,
 		maxAge: 0,
-		sameSite: 'lax'
+		sameSite: 'lax',
 	});
 }
-
-export const handleMeetingCookie: Handle = async ({ event, resolve }) => {
-	const c = getMeetingCookie();
-
-	event.locals.meetingId = c;
-
-	return resolve(event);
-};
 
 export function redirectIfInMeeting(to: string, status: 307 | 303 = 307) {
 	const event = getRequestEvent();
 
-	if (event.locals.meetingId) {
+	if (event.locals.meeting) {
 		redirect(status, to);
 	}
 }
@@ -58,7 +50,7 @@ export function redirectIfInMeeting(to: string, status: 307 | 303 = 307) {
 export function redirectIfNotInMeeting(to: string, status: 307 | 303 = 307) {
 	const event = getRequestEvent();
 
-	if (!event.locals.meetingId) {
+	if (!event.locals.meeting) {
 		redirect(status, to);
 	}
 }
@@ -71,4 +63,16 @@ export async function getMeeting() {
 	}
 
 	return getConvexClient().query(api.meetings.getMeetingById, { meetingId });
+}
+
+export async function getMeetingData() {
+	const meetingId = getMeetingCookie();
+
+	if (!meetingId) {
+		return null;
+	}
+
+	return getConvexClient()
+		.query(api.users.meeting.getData, { meetingId })
+		.catch(() => null);
 }

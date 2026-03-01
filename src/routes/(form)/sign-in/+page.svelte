@@ -1,20 +1,18 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import * as Field from '$lib/components/ui/field';
-	import * as InputOTP from '$lib/components/ui/input-otp';
 	import Input from '$lib/components/ui/input/input.svelte';
-	import Label from '$lib/components/ui/label/label.svelte';
-	import { REGEXP_ONLY_DIGITS_AND_CHARS } from 'bits-ui';
-	import { authClient } from '$lib/auth-client';
-	import { api } from '$convex/_generated/api';
-	import { useQuery } from 'convex-svelte';
-	import { useAuth } from '@mmailaender/convex-better-auth-svelte/svelte';
 	import Separator from '$lib/components/ui/separator/separator.svelte';
-	import { resolve } from '$app/paths';
 	import { signIn } from '../data.remote';
 	import { SignInSchema } from '../schema';
 
 	let { data } = $props();
+
+	let loading = $state(false);
+	let error = $state<string>();
+
+	const errors = $derived([{ message: error }, ...(signIn.fields.issues() ?? [])]);
 
 	const { email, _password } = signIn.fields;
 </script>
@@ -22,13 +20,17 @@
 <form
 	{...signIn.preflight(SignInSchema).enhance(async ({ form, data, submit }) => {
 		try {
+			error = undefined;
+			loading = true;
 			await submit();
 
-			if (signIn.result?.redirect) {
+			/* if (signIn.result?.redirect) {
 				window.location.pathname = signIn.result?.redirect;
-			}
+			} */
 		} catch (e) {
+			loading = false;
 			console.error(e);
+			error = 'Ett fel har inträffat.';
 		}
 	})}
 >
@@ -47,9 +49,9 @@
 			<Field.Error errors={_password.issues()} />
 		</Field.Field>
 
-		<Field.Error errors={signIn.fields.issues()} />
+		<Field.Error {errors} />
 
-		<Button type="submit">Logga in</Button>
+		<Button type="submit" {loading}>Logga in</Button>
 
 		<Separator />
 

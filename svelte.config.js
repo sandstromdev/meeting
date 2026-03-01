@@ -9,17 +9,17 @@ const config = {
 		adapter: adapter(),
 
 		experimental: {
-			remoteFunctions: true
+			remoteFunctions: true,
 		},
 		alias: {
-			$convex: './src/convex'
-		}
+			$convex: './src/convex',
+		},
 	},
 	compilerOptions: {
 		experimental: {
-			async: true
-		}
-	}
+			async: true,
+		},
+	},
 };
 
 export default config;

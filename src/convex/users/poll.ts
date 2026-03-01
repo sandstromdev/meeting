@@ -1,51 +1,52 @@
-import { v } from 'convex/values';
-import { getPoll } from '../helpers.server';
-import { requireNotAbsent, userMutation, userQuery } from './helpers';
+import { withMe } from '$convex/helpers/auth';
+import { getPoll } from '$convex/helpers/poll';
+import { requireNotAbsent } from '$convex/helpers/users';
+import { zid } from 'convex-helpers/server/zod4';
+import { z } from 'zod';
 
-export const vote = userMutation({
-	args: {
-		pollId: v.id('polls'),
-		option: v.number()
-	},
-	async handler(ctx, { pollId, option }) {
-		const { user } = ctx;
+export const vote = withMe
+	.mutation()
+	.input({ pollId: zid('polls'), option: z.number() })
+	.public(async ({ ctx, args }) => {
+		const { db, me } = ctx;
+		const { pollId, option } = args;
 
-		requireNotAbsent(user, 'Cannot vote while absent');
+		requireNotAbsent(me, 'Cannot vote while absent');
 
-		if (user.votes.find((v) => v.pollId === pollId) != null) {
+		if (me.votes.find((v) => v.pollId === pollId) != null) {
 			return false;
 		}
 
-		await ctx.db.patch('users', user._id, {
+		await db.patch('meetingParticipants', me._id, {
 			votes: [
-				...user.votes,
+				...me.votes,
 				{
 					pollId,
-					option
-				}
-			]
+					option,
+				},
+			],
 		});
 
 		const poll = await getPoll(ctx, pollId, option);
 
 		poll.options[option].votes += 1;
 
-		await ctx.db.patch('polls', pollId, {
-			options: poll.options
+		await db.patch('polls', pollId, {
+			options: poll.options,
 		});
 
 		return true;
-	}
-});
+	});
 
-export const removeVote = userMutation({
-	args: {
-		pollId: v.id('polls')
-	},
-	async handler(ctx, { pollId }) {
-		const voteIdx = ctx.user.votes.findIndex((v) => v.pollId === pollId);
+export const removeVote = withMe
+	.mutation()
+	.input({ pollId: zid('polls') })
+	.public(async ({ ctx, args }) => {
+		const { db, me } = ctx;
+		const { pollId } = args;
 
-		const vote = ctx.user.votes[voteIdx];
+		const voteIdx = me.votes.findIndex((v) => v.pollId === pollId);
+		const vote = me.votes[voteIdx];
 
 		if (!vote) {
 			return false;
@@ -55,23 +56,23 @@ export const removeVote = userMutation({
 
 		poll.options[vote.option].votes -= 1;
 
-		await ctx.db.patch('polls', vote.pollId, {
-			options: poll.options
+		await db.patch('polls', vote.pollId, {
+			options: poll.options,
 		});
 
-		await ctx.db.patch('users', ctx.user._id, {
-			votes: [...ctx.user.votes.slice(0, voteIdx), ...ctx.user.votes.slice(voteIdx + 1)]
+		await db.patch('meetingParticipants', me._id, {
+			votes: [...me.votes.slice(0, voteIdx), ...me.votes.slice(voteIdx + 1)],
 		});
 
 		return true;
-	}
-});
+	});
 
-export const hasVoted = userQuery({
-	args: {
-		pollId: v.id('polls')
-	},
-	async handler(ctx, { pollId }) {
-		return ctx.user.votes.find((v) => v.pollId === pollId) != null;
-	}
-});
+export const hasVoted = withMe
+	.query()
+	.input({ pollId: zid('polls') })
+	.public(async ({ ctx, args }) => {
+		const { me } = ctx;
+		const { pollId } = args;
+
+		return me.votes.find((v) => v.pollId === pollId) != null;
+	});

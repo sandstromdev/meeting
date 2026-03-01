@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { cn, type WithElementRef } from "$lib/utils.js";
-	import type { HTMLAttributes } from "svelte/elements";
-	import type { Snippet } from "svelte";
+	import { cn, type WithElementRef } from '$lib/utils.js';
+	import type { HTMLAttributes } from 'svelte/elements';
+	import type { Snippet } from 'svelte';
 
 	let {
 		ref = $bindable(null),
@@ -16,10 +16,14 @@
 
 	const hasContent = $derived.by(() => {
 		// has slotted error
-		if (children) return true;
+		if (children) {
+			return true;
+		}
 
 		// no errors
-		if (!errors || errors.length === 0) return false;
+		if (!errors || errors.length === 0) {
+			return false;
+		}
 
 		// has an error but no message
 		if (errors.length === 1 && !errors[0]?.message) {
@@ -38,7 +42,7 @@
 		bind:this={ref}
 		role="alert"
 		data-slot="field-error"
-		class={cn("text-destructive text-sm font-normal", className)}
+		class={cn('text-sm font-normal text-destructive', className)}
 		{...restProps}
 	>
 		{#if children}

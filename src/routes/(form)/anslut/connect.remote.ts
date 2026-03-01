@@ -1,6 +1,6 @@
 import { form } from '$app/server';
 import { api } from '$convex/_generated/api';
-import { getAppError } from '$convex/error';
+import { getAppError } from '$convex/helpers/error';
 import { getConvexClient } from '$lib/server/convex';
 import { setMeetingCookie } from '$lib/server/meeting-cookie';
 import { error, invalid, redirect } from '@sveltejs/kit';
@@ -10,9 +10,9 @@ export const connectForm = form(ConnectFormSchema, async (data, issue) => {
 	const convex = getConvexClient();
 
 	try {
-		const { _id } = await convex.query(api.meetings.getMeeting, data);
+		const id = await convex.mutation(api.users.auth.connect, data);
 
-		setMeetingCookie(_id);
+		setMeetingCookie(id);
 	} catch (e) {
 		const err = getAppError(e);
 

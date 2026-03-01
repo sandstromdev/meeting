@@ -8,15 +8,20 @@
  * @module
  */
 
-import type * as admin_helpers from "../admin/helpers.js";
 import type * as admin_meeting from "../admin/meeting.js";
 import type * as admin_poll from "../admin/poll.js";
 import type * as auth from "../auth.js";
-import type * as error from "../error.js";
+import type * as helpers_auth from "../helpers/auth.js";
+import type * as helpers_builder_index from "../helpers/builder/index.js";
+import type * as helpers_builder_types from "../helpers/builder/types.js";
+import type * as helpers_error from "../helpers/error.js";
+import type * as helpers_index from "../helpers/index.js";
+import type * as helpers_meeting from "../helpers/meeting.js";
+import type * as helpers_poll from "../helpers/poll.js";
+import type * as helpers_users from "../helpers/users.js";
 import type * as http from "../http.js";
 import type * as meetings from "../meetings.js";
 import type * as users_auth from "../users/auth.js";
-import type * as users_helpers from "../users/helpers.js";
 import type * as users_meeting from "../users/meeting.js";
 import type * as users_poll from "../users/poll.js";
 
@@ -27,15 +32,20 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
-  "admin/helpers": typeof admin_helpers;
   "admin/meeting": typeof admin_meeting;
   "admin/poll": typeof admin_poll;
   auth: typeof auth;
-  error: typeof error;
+  "helpers/auth": typeof helpers_auth;
+  "helpers/builder/index": typeof helpers_builder_index;
+  "helpers/builder/types": typeof helpers_builder_types;
+  "helpers/error": typeof helpers_error;
+  "helpers/index": typeof helpers_index;
+  "helpers/meeting": typeof helpers_meeting;
+  "helpers/poll": typeof helpers_poll;
+  "helpers/users": typeof helpers_users;
   http: typeof http;
   meetings: typeof meetings;
   "users/auth": typeof users_auth;
-  "users/helpers": typeof users_helpers;
   "users/meeting": typeof users_meeting;
   "users/poll": typeof users_poll;
 }>;

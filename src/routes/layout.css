@@ -122,3 +122,21 @@
 		@apply bg-background font-sans text-foreground;
 	}
 }
+
+@utility auto-fill-* {
+	grid-template-columns: repeat(auto-fill, minmax(min(--value([*]), 100%), 1fr));
+	grid-template-columns: repeat(auto-fill, minmax(min(--value(--container-*), 100%), 1fr));
+	grid-template-columns: repeat(
+		auto-fill,
+		minmax(min(var(--spacing) * --value(integer), 100%), 1fr)
+	);
+}
+
+@utility auto-fit-* {
+	grid-template-columns: repeat(auto-fit, minmax(min(--value([*]), 100%), 1fr));
+	grid-template-columns: repeat(auto-fit, minmax(min(--value(--container-*), 100%), 1fr));
+	grid-template-columns: repeat(
+		auto-fit,
+		minmax(min(var(--spacing) * --value(integer), 100%), 1fr)
+	);
+}

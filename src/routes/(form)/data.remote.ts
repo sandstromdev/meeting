@@ -2,6 +2,7 @@ import { form, getRequestEvent } from '$app/server';
 import { authClient } from '$lib/auth-client';
 import { invalid, redirect } from '@sveltejs/kit';
 import { SignInSchema, SignUpSchema } from './schema';
+import { ErrorMessages } from '$lib/errors';
 
 export const signIn = form(SignInSchema, async ({ email, _password }) => {
 	const event = getRequestEvent();
@@ -10,16 +11,16 @@ export const signIn = form(SignInSchema, async ({ email, _password }) => {
 		email,
 		password: _password,
 		fetchOptions: { customFetchImpl: event.fetch },
-		callbackURL: '/'
+		callbackURL: '/',
 	});
 
 	if (error?.code === 'INVALID_EMAIL_OR_PASSWORD') {
-		invalid('Ogiltig e-post eller lösenord');
+		invalid(ErrorMessages.invalid_credentials());
 	} else if (error) {
 		console.error(error);
 	}
 
-	return { redirect: '/anslut' };
+	redirect(303, '/anslut');
 });
 
 export const signUp = form(SignUpSchema, async ({ email, _password, name }) => {
@@ -29,13 +30,17 @@ export const signUp = form(SignUpSchema, async ({ email, _password, name }) => {
 		name,
 		email,
 		password: _password,
-		fetchOptions: { customFetchImpl: event.fetch }
+		fetchOptions: { customFetchImpl: event.fetch },
 	});
 
 	if (error) {
+		if (error.code === 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL') {
+			invalid(ErrorMessages.email_exists());
+		}
+
 		console.error(error);
-		invalid('Internal error');
+		invalid(ErrorMessages.internal_error());
 	}
 
-	return { redirect: '/anslut' };
+	redirect(303, '/anslut');
 });

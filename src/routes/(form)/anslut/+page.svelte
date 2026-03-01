@@ -7,8 +7,12 @@
 	import { REGEXP_ONLY_DIGITS_AND_CHARS } from 'bits-ui';
 	import { connectForm } from './connect.remote';
 	import { ConnectFormSchema } from './schema';
+	import Separator from '$lib/components/ui/separator/separator.svelte';
+	import { resolve } from '$app/paths';
 
-	const { meetingCode, name } = connectForm.fields;
+	let { data } = $props();
+
+	const { meetingCode } = connectForm.fields;
 </script>
 
 <form {...connectForm.preflight(ConnectFormSchema)} class="max-w-[266px]">
@@ -39,5 +43,18 @@
 		<Field.Error errors={connectForm.fields.issues()} />
 
 		<Button type="submit">Anslut till mötet</Button>
+
+		<Separator />
+
+		{#if data.currentUser}
+			<p class="text-center text-sm text-muted-foreground">
+				Inloggad som <span class="font-semibold text-foreground">{data.currentUser.email}</span>.<br
+				/>
+				Inte du?
+				<a class="text-primary underline" href={resolve('/api/sign-out')} data-sveltekit-reload
+					>Byt konto</a
+				>.
+			</p>
+		{/if}
 	</Field.Set>
 </form>

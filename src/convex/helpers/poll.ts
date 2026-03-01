@@ -1,9 +1,6 @@
-import type { QueryCtx } from './_generated/server';
-import { AppError, errors } from './error';
-import type { Id, DataModel } from './_generated/dataModel';
-import { createBuilder } from 'fluent-convex';
-
-export const convex = createBuilder<DataModel>();
+import type { Id } from '$convex/_generated/dataModel';
+import type { QueryCtx } from '$convex/_generated/server';
+import { AppError, errors } from '$convex/helpers/error';
 
 export async function getPoll(ctx: Pick<QueryCtx, 'db'>, pollId: Id<'polls'>, option?: number) {
 	const poll = await ctx.db.get('polls', pollId);
@@ -30,7 +27,7 @@ export async function getPoll(ctx: Pick<QueryCtx, 'db'>, pollId: Id<'polls'>, op
 export async function getEditablePoll(
 	ctx: Pick<QueryCtx, 'db'>,
 	pollId: Id<'polls'>,
-	option?: number
+	option?: number,
 ) {
 	const poll = await getPoll(ctx, pollId, option);
 

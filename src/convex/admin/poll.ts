@@ -1,86 +1,92 @@
-import { v } from 'convex/values';
-import { getEditablePoll } from '../helpers.server';
-import { PollOption } from '../schema';
-import { adminMutation } from './helpers';
+import { zid } from 'convex-helpers/server/zod4';
+import { z } from 'zod';
+import { getEditablePoll } from '$convex/helpers/poll';
+import { admin } from '$convex/helpers/auth';
 
-export const createPoll = adminMutation({
-	args: {
-		title: v.string(),
-		options: v.array(PollOption.omit('votes')),
-		isOpen: v.boolean()
-	},
-	async handler(ctx, args) {
+const pollOption = z.object({
+	description: z.string().nullable(),
+	title: z.string(),
+	votes: z.number(),
+});
+
+export const createPoll = admin
+	.mutation()
+	.input({
+		title: z.string(),
+		options: z.array(pollOption),
+		isOpen: z.boolean(),
+	})
+	.public(async ({ ctx, args }) => {
 		return await ctx.db.insert('polls', {
 			...args,
 			options: args.options.map((o) => Object.assign(o, { votes: 0 })),
-			meetingId: ctx.meeting._id
+			meetingId: ctx.meeting._id,
 		});
-	}
-});
+	});
 
-export const setPollOpenState = adminMutation({
-	args: {
-		pollId: v.id('polls'),
-		isOpen: v.boolean()
-	},
-	async handler(ctx, { pollId, isOpen }) {
+export const setPollOpenState = admin
+	.mutation()
+	.input({
+		pollId: zid('polls'),
+		isOpen: z.boolean(),
+	})
+	.public(async ({ ctx, args: { pollId, isOpen } }) => {
 		try {
 			await ctx.db.patch('polls', pollId, {
-				isOpen
+				isOpen,
 			});
 			return true;
 		} catch {
 			return false;
 		}
-	}
-});
+	});
 
-export const addPollOption = adminMutation({
-	args: {
-		pollId: v.id('polls'),
-		option: PollOption.omit('votes')
-	},
-	async handler(ctx, { pollId, option }) {
+export const addPollOption = admin
+	.mutation()
+	.input({
+		pollId: zid('polls'),
+		option: pollOption,
+	})
+	.public(async ({ ctx, args: { pollId, option } }) => {
 		const poll = await getEditablePoll(ctx, pollId);
 
 		await ctx.db.patch('polls', pollId, {
-			options: [...poll.options, { ...option, votes: 0 }]
+			options: [...poll.options, { ...option, votes: 0 }],
 		});
-	}
-});
+	});
 
-export const editPollOption = adminMutation({
-	args: {
-		pollId: v.id('polls'),
-		optionIdx: v.number(),
-		option: PollOption.omit('votes').partial()
-	},
-	async handler(ctx, { pollId, option, optionIdx }) {
+export const editPollOption = admin
+	.mutation()
+	.input({
+		pollId: zid('polls'),
+		optionIdx: z.number(),
+		option: pollOption.partial(),
+	})
+	.public(async ({ ctx, args: { pollId, option, optionIdx } }) => {
 		const poll = await getEditablePoll(ctx, pollId, optionIdx);
 
 		const { options } = poll;
 
 		options[optionIdx] = {
 			...options[optionIdx],
-			...option
+			...option,
 		};
 
 		await ctx.db.patch('polls', pollId, {
-			options
+			options,
 		});
-	}
-});
+	});
 
-export const removePollOption = adminMutation({
-	args: {
-		pollId: v.id('polls'),
-		optionIdx: v.number()
-	},
-	async handler(ctx, { pollId, optionIdx }) {
+export const removePollOption = admin
+	.mutation()
+	.input({
+		pollId: zid('polls'),
+		optionIdx: z.number(),
+	})
+	.public(async ({ ctx, args: { pollId, optionIdx } }) => {
 		const poll = await getEditablePoll(ctx, pollId, optionIdx);
 
 		await ctx.db.patch('polls', pollId, {
-			options: [...poll.options.slice(0, optionIdx), ...poll.options.slice(optionIdx + 1)]
+			options: [...poll.options.slice(0, optionIdx), ...poll.options.slice(optionIdx + 1)],
 		});
-	}
-});
+	});
