@@ -10,14 +10,22 @@
 	import WarningIcon from '@lucide/svelte/icons/triangle-alert';
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import { confirm } from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
+	import { useSearchParams } from '$lib/search-params.svelte';
+	import { cn } from '$lib/utils';
 
 	const meeting = getMeetingContext();
 	const queue = meeting.speakerQueue;
+
+	const params = useSearchParams();
 
 	const nextSpeakers = $derived(queue.nextSpeakers);
 
 	const canMoveUp = (displayIndex: number) => displayIndex > 0;
 	const canMoveDown = (displayIndex: number) => displayIndex < nextSpeakers.length - 1;
+
+	const isProjector = $derived(params.view === 'projector');
+
+	const showControls = $derived(!isProjector && meeting.isAdmin);
 </script>
 
 {#snippet request(
@@ -41,20 +49,22 @@
 				<Alert.Description class="text-current/80"><p>{description}</p></Alert.Description>
 			</div>
 
-			<div class="flex gap-2">
-				{#if accept}
-					<Button variant="ghost" size="icon" onclick={accept} class="hover:bg-current/5">
-						<CheckIcon class="size-4 text-green-500" />
-					</Button>
-				{/if}
-				{#if deny}
-					<Button variant="ghost" size="icon" onclick={deny} class="hover:bg-current/5">
-						<XIcon class="size-4 text-red-500" />
-					</Button>
-				{/if}
-			</div>
-		</div></Alert.Root
-	>
+			{#if showControls}
+				<div class="flex gap-2">
+					{#if accept}
+						<Button variant="ghost" size="icon" onclick={accept} class="hover:bg-current/5">
+							<CheckIcon class="size-4 text-green-500" />
+						</Button>
+					{/if}
+					{#if deny}
+						<Button variant="ghost" size="icon" onclick={deny} class="hover:bg-current/5">
+							<XIcon class="size-4 text-red-500" />
+						</Button>
+					{/if}
+				</div>
+			{/if}
+		</div>
+	</Alert.Root>
 {/snippet}
 
 <section class="space-y-3 rounded-lg border px-4 py-3">
@@ -110,27 +120,29 @@
 	{#if nextSpeakers.length === 0}
 		<p class="text-sm text-muted-foreground">Ingen står i kön.</p>
 	{:else}
-		<ol class="space-y-2 text-sm">
+		<ol class={cn('not-last:border-b', isProjector ? 'text-xl' : 'text-sm')}>
 			{#each nextSpeakers as entry, displayIndex (entry.ordinal)}
-				<li class="flex items-center justify-between gap-2 rounded-md border px-3 py-2">
-					<div class="flex min-w-0 flex-1 items-center gap-2">
+				<li class="flex items-center justify-between gap-2 py-2">
+					<div class="flex min-w-0 flex-1 items-center gap-[0.75em]">
 						<span
-							class="grid size-5 place-items-center rounded-full bg-muted text-center text-xs font-semibold"
+							class={cn(
+								'grid size-[2.25em] place-items-center rounded-full bg-muted text-center text-[0.875em] font-semibold',
+							)}
 						>
 							{displayIndex + 1}
 						</span>
 						<p class="truncate font-medium">
 							{entry.name}
-							{#if entry.userId === meeting.me._id}
-								<span class="ml-1 text-xs text-muted-foreground">(du)</span>
+							{#if !isProjector && entry.userId === meeting.me._id}
+								<span class="ml-1 text-[0.85em] text-muted-foreground">(du)</span>
 							{/if}
 							{#if entry.isAbsent}
-								<span class="ml-1 text-xs text-muted-foreground">(frånvarande)</span>
+								<span class="ml-1 text-[0.85em] text-muted-foreground">(frånvarande)</span>
 							{/if}
 						</p>
 					</div>
 
-					{#if meeting.isAdmin}
+					{#if showControls}
 						<div class="flex shrink-0 items-center gap-0.5">
 							<Button
 								variant="ghost"
