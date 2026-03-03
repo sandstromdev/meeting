@@ -14,7 +14,7 @@ export function setParam(key: keyof Params, value: Params[keyof Params]) {
 	// eslint-disable-next-line svelte/no-navigation-without-resolve
 	goto('?' + sp.toString(), {});
 }
-export function useSearchParams() {
+export function usePageState() {
 	const params = $derived(validateSearchParams(page.url));
 
 	return {
@@ -23,6 +23,16 @@ export function useSearchParams() {
 		},
 		set view(value: View) {
 			setParam('view', value);
+		},
+
+		get isProjector() {
+			return params.view === 'projector';
+		},
+		get isQueue() {
+			return params.view === 'queue';
+		},
+		get isDefault() {
+			return params.view === 'default';
 		},
 	};
 }

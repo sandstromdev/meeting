@@ -5,7 +5,7 @@
 	import DropdownMenuRadioItem from '$lib/components/ui/dropdown-menu/dropdown-menu-radio-item.svelte';
 	import DropdownMenuTrigger from '$lib/components/ui/dropdown-menu/dropdown-menu-trigger.svelte';
 	import DropdownMenu from '$lib/components/ui/dropdown-menu/dropdown-menu.svelte';
-	import { useSearchParams } from '$lib/search-params.svelte';
+	import { usePageState } from '$lib/page-state.svelte';
 	import { cn } from '$lib/utils';
 	import ListOrderedIcon from '@lucide/svelte/icons/list-ordered';
 	import MonitorIcon from '@lucide/svelte/icons/monitor';
@@ -13,7 +13,7 @@
 
 	let { compact = false }: { compact?: boolean } = $props();
 
-	const params = useSearchParams();
+	const ps = usePageState();
 
 	const options = [
 		{ value: 'projector', label: 'Projektor', icon: MonitorIcon },
@@ -30,7 +30,7 @@
 			</Button>
 		</DropdownMenuTrigger>
 		<DropdownMenuContent>
-			<DropdownMenuRadioGroup bind:value={params.view}>
+			<DropdownMenuRadioGroup bind:value={ps.view}>
 				{#each options as { value, label, icon: Icon } (value)}
 					<DropdownMenuRadioItem variant="fill" {value}>
 						<Icon class="size-4 shrink-0" />
@@ -49,13 +49,13 @@
 			{#each options as { value, label, icon: Icon } (value)}
 				<Button
 					type="button"
-					variant={params.view === value ? 'default' : 'outline'}
-					disabled={params.view === value}
+					variant={ps.view === value ? 'default' : 'outline'}
+					disabled={ps.view === value}
 					class={cn(
 						'flex items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium transition-colors',
-						params.view === value ? 'bg-primary text-primary-foreground' : 'hover:bg-muted/50',
+						ps.view === value ? 'bg-primary text-primary-foreground' : 'hover:bg-muted/50',
 					)}
-					onclick={() => (params.view = value)}
+					onclick={() => (ps.view = value)}
 				>
 					<Icon class="size-4 shrink-0" />
 					{label}

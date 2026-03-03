@@ -1,5 +1,4 @@
 <script lang="ts">
-	import AgendaControls from '$lib/components/blocks/admin/agenda-controls.svelte';
 	import Agenda from '$lib/components/blocks/agenda.svelte';
 	import CurrentAgendaItem from '$lib/components/blocks/current-agenda-item.svelte';
 	import MeetingInfo from '$lib/components/blocks/meeting-info.svelte';
@@ -9,21 +8,14 @@
 	import QueueControls from '$lib/components/blocks/queue-controls.svelte';
 	import { cn } from '$lib/utils';
 
-	let {
-		class: className,
-		useAdminAgenda = false,
-	}: { class?: string; useAdminAgenda?: boolean } = $props();
+	let { class: className }: { class?: string } = $props();
 </script>
 
 <main class={cn('flex-1 space-y-4', className)}>
 	<MeetingInfo />
 	<CurrentAgendaItem />
-	{#if useAdminAgenda}
-		<AgendaControls />
-	{:else}
-		<Agenda />
-	{/if}
 	<Timer />
+	<Agenda />
 	<RequestView />
 	<QueueControls />
 	<SpeakerQueue />

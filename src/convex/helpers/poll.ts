@@ -14,15 +14,14 @@ export function normalizeAgendaItems(agenda: Doc<'meetings'>['agenda']) {
 			id: string;
 			number: number;
 			title: string;
-			pollId: Id<'polls'>;
-			poll: Id<'polls'>;
+			pollIds: Id<'polls'>[];
 		}>;
 
 		return {
 			id: raw.id && raw.id.length > 0 ? raw.id : createAgendaItemId(),
 			number: index + 1,
 			title: raw.title ?? `Punkt ${index + 1}`,
-			pollId: raw.pollId ?? raw.poll,
+			pollIds: Array.isArray(raw.pollIds) ? raw.pollIds : [],
 		};
 	});
 }

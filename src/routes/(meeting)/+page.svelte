@@ -1,13 +1,12 @@
 <script lang="ts">
 	import ConfirmDialog from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
 	import { getMeetingContext } from '$lib/context.svelte';
-	import { ParamsSchema, useSearchParams } from '$lib/search-params.svelte';
+	import { usePageState } from '$lib/page-state.svelte.js';
 	import AdminView from '$lib/views/admin-view.svelte';
 	import ParticipantView from '$lib/views/participant-view.svelte';
 	import ProjectorView from '$lib/views/projector-view.svelte';
 	import QueueView from '$lib/views/queue-view.svelte';
 	import { useAuth } from '@mmailaender/convex-better-auth-svelte/svelte';
-	import { useQuery } from 'convex-svelte';
 
 	let { data: propsData } = $props();
 
@@ -16,16 +15,16 @@
 
 	const isAdmin = $derived(ctx.me?.isAdmin ?? false);
 
-	const params = useSearchParams();
+	const ps = usePageState();
 </script>
 
 <ConfirmDialog />
 
 <div class="mx-auto p-4 lg:py-12">
 	{#if isAdmin}
-		{#if params.view === 'projector'}
+		{#if ps.isProjector}
 			<ProjectorView />
-		{:else if params.view === 'queue'}
+		{:else if ps.isQueue}
 			<QueueView />
 		{:else}
 			<AdminView />

@@ -10,22 +10,20 @@
 	import WarningIcon from '@lucide/svelte/icons/triangle-alert';
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import { confirm } from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
-	import { useSearchParams } from '$lib/search-params.svelte';
+	import { usePageState } from '$lib/page-state.svelte';
 	import { cn } from '$lib/utils';
 
 	const meeting = getMeetingContext();
 	const queue = meeting.speakerQueue;
 
-	const params = useSearchParams();
+	const ps = usePageState();
 
 	const nextSpeakers = $derived(queue.nextSpeakers);
 
 	const canMoveUp = (displayIndex: number) => displayIndex > 0;
 	const canMoveDown = (displayIndex: number) => displayIndex < nextSpeakers.length - 1;
 
-	const isProjector = $derived(params.view === 'projector');
-
-	const showControls = $derived(!isProjector && meeting.isAdmin);
+	const showControls = $derived(!ps.isProjector && meeting.isAdmin);
 </script>
 
 {#snippet request(
@@ -120,7 +118,7 @@
 	{#if nextSpeakers.length === 0}
 		<p class="text-sm text-muted-foreground">Ingen står i kön.</p>
 	{:else}
-		<ol class={cn('not-last:border-b', isProjector ? 'text-xl' : 'text-sm')}>
+		<ol class={cn('not-last:border-b', ps.isProjector ? 'text-xl' : 'text-sm')}>
 			{#each nextSpeakers as entry, displayIndex (entry.ordinal)}
 				<li class="flex items-center justify-between gap-2 py-2">
 					<div class="flex min-w-0 flex-1 items-center gap-[0.75em]">
@@ -133,7 +131,7 @@
 						</span>
 						<p class="truncate font-medium">
 							{entry.name}
-							{#if !isProjector && entry.userId === meeting.me._id}
+							{#if !ps.isProjector && entry.userId === meeting.me._id}
 								<span class="ml-1 text-[0.85em] text-muted-foreground">(du)</span>
 							{/if}
 							{#if entry.isAbsent}

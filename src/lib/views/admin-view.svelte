@@ -16,7 +16,7 @@
 		<ViewSelector compact />
 	</div>
 
-	<ParticipantView class="col-span-2" useAdminAgenda />
+	<ParticipantView class="col-span-2" />
 
 	<aside class="col-span-1 flex flex-col rounded-lg border">
 		<div class="px-4 py-3 text-lg font-medium">Admin-vy</div>

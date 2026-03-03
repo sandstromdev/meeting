@@ -17,8 +17,8 @@
 	</div>
 	<div class="grid grid-cols-5 gap-4">
 		<div class="col-span-3 flex flex-col justify-center gap-4">
-			<Timer size="large" />
 			<CurrentAgendaItem />
+			<Timer />
 		</div>
 
 		<div class="col-span-2 flex flex-col">

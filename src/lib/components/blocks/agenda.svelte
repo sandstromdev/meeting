@@ -1,20 +1,62 @@
 <script lang="ts">
-	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
+	import { api } from '$convex/_generated/api';
+	import EditAgendaItem from '$lib/components/blocks/admin/agenda/edit-agenda-item.svelte';
+	import { Button } from '$lib/components/ui/button';
 	import {
 		Collapsible,
 		CollapsibleContent,
 		CollapsibleTrigger,
 	} from '$lib/components/ui/collapsible';
+	import { confirm } from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
+	import { Input } from '$lib/components/ui/input';
 	import { getMeetingContext } from '$lib/context.svelte';
+	import { usePageState } from '$lib/page-state.svelte';
+	import { cn } from '$lib/utils';
+	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
+	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
+	import ChevronUpIcon from '@lucide/svelte/icons/chevron-up';
+	import PencilIcon from '@lucide/svelte/icons/pencil';
+	import SaveIcon from '@lucide/svelte/icons/save';
+	import XIcon from '@lucide/svelte/icons/x';
 
 	const meeting = getMeetingContext();
+	const ps = usePageState();
+
 	const agenda = $derived(meeting.meeting.agenda ?? []);
 	const currentAgendaItemId = $derived(
 		meeting.meeting.currentAgendaItemId ?? (agenda.length > 0 ? agenda[0].id : undefined),
 	);
+
+	const currentAgendaItemIndex = $derived(
+		agenda.findIndex((item) => item.id === currentAgendaItemId),
+	);
+	const currentAgendaItem = $derived(agenda[currentAgendaItemIndex]);
+
+	function hasBeenCompleted(number: number) {
+		return currentAgendaItem?.number && currentAgendaItem.number > number;
+	}
+
+	const mainStart = $derived(Math.max(0, currentAgendaItemIndex - 1));
+	const mainEnd = $derived(
+		currentAgendaItemIndex < 0
+			? agenda.length
+			: Math.min(agenda.length, currentAgendaItemIndex + 3),
+	);
+	const parts = $derived({
+		previous: agenda.slice(0, mainStart),
+		main: agenda.slice(mainStart, mainEnd),
+		upcoming: agenda.slice(mainEnd),
+	});
+
+	type AgendaDraft = {
+		id: string;
+		title: string;
+	};
+
+	let editingItemId = $state<string | undefined>(undefined);
 </script>
 
-<Collapsible class="rounded-lg border">
+<Collapsible class="rounded-lg border" open={ps.isDefault}>
 	<CollapsibleTrigger
 		class="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-muted/50 data-[state=open]:[&>svg]:rotate-180"
 	>
@@ -23,32 +65,156 @@
 	</CollapsibleTrigger>
 
 	<CollapsibleContent>
-		<div class="space-y-2 border-t p-3">
+		<div class="border-t">
 			{#if agenda.length === 0}
 				<p class="text-sm text-muted-foreground">Inga agendapunkter ännu.</p>
 			{:else}
-				{#each agenda as item}
-					<article class="rounded-md border p-3">
-						<div class="flex items-center justify-between gap-2">
-							<h3 class="font-medium">{item.number}. {item.title}</h3>
-							{#if item.id === currentAgendaItemId}
-								<span class="rounded bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
-									Aktuell
-								</span>
-							{/if}
-						</div>
+				{#if parts.previous.length > 0}
+					<Collapsible class="">
+						<CollapsibleTrigger
+							class="flex w-full items-center justify-between border-b p-4 text-left text-sm hover:bg-muted/50 data-[state=open]:[&>svg]:rotate-180"
+						>
+							<span class="text-muted-foreground">Tidigare punkter ({parts.previous.length})</span>
+							<ChevronDownIcon class="size-4 shrink-0 transition-transform" />
+						</CollapsibleTrigger>
+						<CollapsibleContent>
+							<ol>
+								{#each parts.previous as item (item.id)}
+									{@render itemRow(item)}
+								{/each}
+							</ol>
+						</CollapsibleContent>
+					</Collapsible>
+				{/if}
 
-						{#if item.poll}
-							<div class="mt-2 text-xs text-muted-foreground">
-								<p>
-									{item.poll.isOpen ? 'Omröstning öppen' : 'Omröstning stängd'} - Röster:
-									{item.poll.votesCount}/{item.poll.eligibleVoters}
-								</p>
-							</div>
-						{/if}
-					</article>
-				{/each}
+				<ol>
+					{#each parts.main as item (item.id)}
+						{@render itemRow(item)}
+					{/each}
+				</ol>
+
+				{#if parts.upcoming.length > 0}
+					<Collapsible class="border-t">
+						<CollapsibleTrigger
+							class="flex w-full items-center justify-between  p-4 text-left text-sm hover:bg-muted/50 data-[state=open]:[&>svg]:rotate-180"
+						>
+							<span class="text-muted-foreground">Kommande punkter ({parts.upcoming.length})</span>
+							<ChevronDownIcon class="size-4 shrink-0 transition-transform" />
+						</CollapsibleTrigger>
+						<CollapsibleContent>
+							<ol class="border-t">
+								{#each parts.upcoming as item (item.id)}
+									{@render itemRow(item)}
+								{/each}
+							</ol>
+						</CollapsibleContent>
+					</Collapsible>
+				{/if}
+			{/if}
+
+			{#if meeting.isAdmin}
+				<div class="border-t p-4">
+					<EditAgendaItem />
+				</div>
 			{/if}
 		</div>
 	</CollapsibleContent>
 </Collapsible>
+
+{#snippet itemRow(item: (typeof agenda)[number])}
+	<li
+		class={cn(
+			'flex gap-2 px-2 py-2 text-sm not-last:border-b',
+			hasBeenCompleted(item.number) && 'bg-muted/50 text-muted-foreground',
+		)}
+	>
+		{#if meeting.isAdmin}
+			<Button
+				size="icon"
+				variant="ghost"
+				disabled={item.id === currentAgendaItemId}
+				type="button"
+				onClickPromise={() =>
+					meeting.adminMutate(api.admin.agenda.setCurrentAgendaItem, {
+						agendaItemId: item.id,
+					})}
+			>
+				<ChevronRightIcon class="size-4" />
+			</Button>
+		{/if}
+
+		{#if editingItemId === item.id}
+			<EditAgendaItem agendaItemId={item.id} />
+		{:else}
+			<div class="w-[4ch] shrink-0 text-right text-muted-foreground">
+				{item.number}.
+			</div>
+			<span class={cn('text-sm font-medium', hasBeenCompleted(item.number) && 'line-through')}>
+				{item.title}
+			</span>
+		{/if}
+
+		{#if meeting.isAdmin}
+			<div class="ml-auto flex gap-0.5">
+				{#if editingItemId !== item.id}
+					<Button
+						size="icon"
+						variant="ghost"
+						type="button"
+						onClickPromise={() =>
+							meeting.adminMutate(api.admin.agenda.moveAgendaItem, {
+								agendaItemId: item.id,
+								direction: 'up',
+							})}
+						disabled={item.number <= 1}
+					>
+						<ChevronUpIcon class="size-4" />
+					</Button>
+
+					<Button
+						size="icon"
+						variant="ghost"
+						type="button"
+						onClickPromise={() =>
+							meeting.adminMutate(api.admin.agenda.moveAgendaItem, {
+								agendaItemId: item.id,
+								direction: 'down',
+							})}
+						disabled={item.number >= agenda.length}
+					>
+						<ChevronDownIcon class="size-4" />
+					</Button>
+				{/if}
+
+				{#if editingItemId === item.id}
+					<Button
+						size="icon"
+						variant="ghost"
+						class="text-destructive hover:bg-destructive/10 hover:text-destructive"
+						type="button"
+						onclick={() =>
+							confirm({
+								title: 'Ta bort punkt?',
+								description: 'Är du säker på att du vill ta bort denna punkt?',
+								onConfirm: () =>
+									meeting.adminMutate(api.admin.agenda.removeAgendaItem, {
+										agendaItemId: item.id,
+									}),
+							})}
+					>
+						<XIcon class="size-4" />
+					</Button>
+				{:else}
+					<Button
+						size="icon"
+						variant="ghost"
+						type="button"
+						onclick={() => (editingItemId = item.id)}
+					>
+						<PencilIcon class="size-4" />
+					</Button>
+				{/if}
+			</div>
+		{/if}
+	</li>
+{/snippet}

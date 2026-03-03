@@ -5,7 +5,7 @@ export const AgendaItem = v.object({
 	id: v.string(),
 	number: v.number(),
 	title: v.string(),
-	pollId: v.optional(v.id('polls')),
+	pollIds: v.array(v.id('polls')),
 });
 
 export const QueueEntry = v.object({
@@ -97,6 +97,8 @@ export const Poll = v.object({
 	title: v.string(),
 	options: v.array(v.string()),
 	isOpen: v.boolean(),
+	/** If true, everyone can see results when poll is closed; if false, only admins can. */
+	resultsPublic: v.optional(v.boolean()),
 	openedAt: v.optional(v.number()),
 	closedAt: v.optional(v.number()),
 	closedBy: v.optional(v.id('meetingParticipants')),

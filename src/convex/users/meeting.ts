@@ -36,50 +36,49 @@ export const getData = withMe.query().public(async ({ ctx }) => {
 
 	const agendaWithPolls = await Promise.all(
 		agenda.map(async (item) => {
-			if (!item.pollId) {
-				return {
-					...item,
-					poll: null,
-				};
-			}
+			const polls = await Promise.all(
+				item.pollIds.map(async (pollId) => {
+					const poll = await ctx.db.get('polls', pollId);
+					if (!poll || poll.meetingId !== meeting._id) {
+						return null;
+					}
 
-			const poll = await ctx.db.get('polls', item.pollId);
-			if (!poll || poll.meetingId !== meeting._id) {
-				return {
-					...item,
-					poll: null,
-				};
-			}
+					const votes = await ctx.db
+						.query('pollVotes')
+						.withIndex('by_poll', (q) => q.eq('pollId', poll._id))
+						.collect();
+					const votesCount = votes.length;
+					const hasVoted = !!(await getVoteByAnonId(ctx.db, poll._id, me.anonID));
 
-			const votes = await ctx.db
-				.query('pollVotes')
-				.withIndex('by_poll', (q) => q.eq('pollId', poll._id))
-				.collect();
-			const votesCount = votes.length;
-			const hasVoted = !!(await getVoteByAnonId(ctx.db, poll._id, me.anonID));
+					const maySeeResults = poll.resultsPublic === true || me.isAdmin;
+					const optionTotals =
+						poll.isOpen || !maySeeResults
+							? undefined
+							: poll.options.map((option, optionIndex) => ({
+									optionIndex,
+									option,
+									votes: votes.filter((vote) => vote.optionIndex === optionIndex).length,
+								}));
 
-			const optionTotals = poll.isOpen
-				? undefined
-				: poll.options.map((option, optionIndex) => ({
-						optionIndex,
-						option,
-						votes: votes.filter((vote) => vote.optionIndex === optionIndex).length,
-					}));
+					return {
+						id: poll._id,
+						title: poll.title,
+						options: poll.options,
+						resultsPublic: poll.resultsPublic ?? false,
+						isOpen: poll.isOpen,
+						openedAt: poll.openedAt,
+						closedAt: poll.closedAt,
+						votesCount,
+						eligibleVoters,
+						hasVoted,
+						optionTotals,
+					};
+				}),
+			);
 
 			return {
 				...item,
-				poll: {
-					id: poll._id,
-					title: poll.title,
-					options: poll.options,
-					isOpen: poll.isOpen,
-					openedAt: poll.openedAt,
-					closedAt: poll.closedAt,
-					votesCount,
-					eligibleVoters,
-					hasVoted,
-					optionTotals,
-				},
+				polls: polls.filter((p): p is NonNullable<typeof p> => p !== null),
 			};
 		}),
 	);

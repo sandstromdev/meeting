@@ -1,3 +1,4 @@
+import type { Id } from '$convex/_generated/dataModel';
 import { admin } from '$convex/helpers/auth';
 import { AppError, errors } from '$convex/helpers/error';
 import {
@@ -23,6 +24,7 @@ export const createAgendaItem = admin
 			id: createAgendaItemId(),
 			number: agenda.length + 1,
 			title: args.title,
+			pollIds: [] as Id<'polls'>[],
 		};
 		const nextAgenda = [...agenda, newItem];
 		await ctx.db.patch('meetings', ctx.meeting._id, {
@@ -53,6 +55,23 @@ export const updateAgendaItem = admin
 		return agenda[itemIndex];
 	});
 
+export const setAgendaItemPollIds = admin
+	.mutation()
+	.input({
+		agendaItemId: z.string().min(1),
+		pollIds: z.array(zid('polls')),
+	})
+	.public(async ({ ctx, args }) => {
+		const agenda = normalizeAgendaItems(ctx.meeting.agenda);
+		const itemIndex = findAgendaItemIndex(agenda, args.agendaItemId);
+		if (itemIndex === -1) {
+			throw new AppError(errors.agenda_item_not_found(args.agendaItemId));
+		}
+		agenda[itemIndex] = { ...agenda[itemIndex], pollIds: args.pollIds };
+		await ctx.db.patch('meetings', ctx.meeting._id, { agenda });
+		return true;
+	});
+
 export const removeAgendaItem = admin
 	.mutation()
 	.input({
@@ -70,13 +89,13 @@ export const removeAgendaItem = admin
 			.filter((_, index) => index !== itemIndex)
 			.map((agendaItem, index) => ({ ...agendaItem, number: index + 1 }));
 
-		if (item.pollId) {
+		for (const pollId of item.pollIds) {
 			const votes = await ctx.db
 				.query('pollVotes')
-				.withIndex('by_poll', (q) => q.eq('pollId', item.pollId!))
+				.withIndex('by_poll', (q) => q.eq('pollId', pollId))
 				.collect();
 			await Promise.all(votes.map((vote) => ctx.db.delete('pollVotes', vote._id)));
-			await ctx.db.delete('polls', item.pollId);
+			await ctx.db.delete('polls', pollId);
 		}
 
 		const currentAgendaItemId =
@@ -147,6 +166,7 @@ export const createPoll = admin
 		agendaItemId: z.string().min(1),
 		title: z.string().trim().min(1),
 		options: z.array(z.string().trim().min(1)).min(2),
+		resultsPublic: z.boolean().optional(),
 	})
 	.public(async ({ ctx, args }) => {
 		const agenda = normalizeAgendaItems(ctx.meeting.agenda);
@@ -156,9 +176,6 @@ export const createPoll = admin
 		}
 
 		const item = agenda[itemIndex];
-		if (item.pollId) {
-			throw new AppError(errors.illegal_poll_action('agenda_has_poll'));
-		}
 
 		const now = Date.now();
 		const pollId = await ctx.db.insert('polls', {
@@ -167,13 +184,14 @@ export const createPoll = admin
 			title: args.title,
 			options: args.options,
 			isOpen: false,
+			resultsPublic: args.resultsPublic ?? false,
 			createdBy: ctx.me._id,
 			updatedAt: now,
 		});
 
 		agenda[itemIndex] = {
 			...item,
-			pollId,
+			pollIds: [...item.pollIds, pollId],
 		};
 
 		await ctx.db.patch('meetings', ctx.meeting._id, {
@@ -189,6 +207,7 @@ export const editPoll = admin
 		pollId: zid('polls'),
 		title: z.string().trim().min(1).optional(),
 		options: z.array(z.string().trim().min(1)).min(2).optional(),
+		resultsPublic: z.boolean().optional(),
 	})
 	.public(async ({ ctx, args }) => {
 		const poll = await getPollOrThrow(ctx.db, args.pollId);
@@ -198,6 +217,7 @@ export const editPoll = admin
 		await ctx.db.patch('polls', args.pollId, {
 			title: args.title ?? poll.title,
 			options: args.options ?? poll.options,
+			resultsPublic: args.resultsPublic ?? poll.resultsPublic,
 			updatedAt: Date.now(),
 		});
 		return true;
@@ -243,5 +263,36 @@ export const closePollByAdmin = admin
 		await closePoll(ctx.db, args.pollId, {
 			closedBy: ctx.me._id,
 		});
+		return true;
+	});
+
+export const removePoll = admin
+	.mutation()
+	.input({
+		pollId: zid('polls'),
+	})
+	.public(async ({ ctx, args }) => {
+		const poll = await getPollOrThrow(ctx.db, args.pollId);
+		assertPollInMeeting(poll, ctx.meeting._id);
+		assertPollEditable(poll);
+
+		const agenda = normalizeAgendaItems(ctx.meeting.agenda);
+		const itemIndex = findAgendaItemIndex(agenda, poll.agendaItemId);
+		if (itemIndex === -1) {
+			throw new AppError(errors.agenda_item_not_found(poll.agendaItemId));
+		}
+
+		const item = agenda[itemIndex];
+		const pollIds = item.pollIds.filter((id) => id !== args.pollId);
+		agenda[itemIndex] = { ...item, pollIds };
+
+		const votes = await ctx.db
+			.query('pollVotes')
+			.withIndex('by_poll', (q) => q.eq('pollId', args.pollId))
+			.collect();
+		await Promise.all(votes.map((vote) => ctx.db.delete('pollVotes', vote._id)));
+		await ctx.db.delete('polls', args.pollId);
+
+		await ctx.db.patch('meetings', ctx.meeting._id, { agenda });
 		return true;
 	});
