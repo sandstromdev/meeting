@@ -1,0 +1,248 @@
+import { api } from '$convex/_generated/api';
+import type { Id } from '$convex/_generated/dataModel';
+import { useConvexClient, useQuery } from 'convex-svelte';
+import type { ConvexClient } from 'convex/browser';
+import type { Getter } from 'runed';
+import { createContext } from 'svelte';
+import { SpeakerQueue } from './speaker-queue.svelte';
+import type { DefaultFunctionArgs, FunctionReference } from 'convex/server';
+import type { UseQueryOptions, UseQueryReturn } from '$lib/types';
+
+export type MeetingData = typeof api.users.meeting.getData._returnType;
+
+const [getContext, setContext] = createContext<MeetingState>();
+
+type CurrentSpeaker =
+	| {
+			type: 'point_of_order' | 'reply' | 'speaker';
+			startTime: number;
+			name: string;
+			userId: Id<'meetingParticipants'>;
+	  }
+	| {
+			type: 'empty';
+			name?: never;
+			startTime?: never;
+	  };
+
+export class MeetingState {
+	#data: MeetingData;
+
+	readonly convex: ConvexClient;
+	readonly speakerQueue: SpeakerQueue;
+
+	readonly q = this.query.bind(this);
+	readonly aq = this.adminQuery.bind(this);
+	readonly m = this.mutate.bind(this);
+	readonly am = this.adminMutate.bind(this);
+
+	constructor(data: Getter<MeetingData>) {
+		this.#data = $state(data());
+		this.convex = useConvexClient();
+
+		this.query = this.query.bind(this);
+		this.adminQuery = this.adminQuery.bind(this);
+		this.mutate = this.mutate.bind(this);
+		this.adminMutate = this.adminMutate.bind(this);
+
+		this.speakerQueue = new SpeakerQueue(this);
+
+		$effect(() => {
+			this.#data = data();
+		});
+	}
+
+	async mutate<
+		T extends FunctionReference<'mutation', 'public', { meetingId: Id<'meetings'> }, unknown>,
+	>(fn: T): Promise<T['_returnType']>;
+	async mutate<
+		T extends FunctionReference<
+			'mutation',
+			'public',
+			{ meetingId: Id<'meetings'> } & DefaultFunctionArgs,
+			unknown
+		>,
+	>(fn: T, args: Omit<T['_args'], 'meetingId'>): Promise<T['_returnType']>;
+	async mutate<
+		T extends FunctionReference<
+			'mutation',
+			'public',
+			{ meetingId: Id<'meetings'> } & DefaultFunctionArgs,
+			unknown
+		>,
+	>(fn: T, args: Omit<T['_args'], 'meetingId'> = {} as Omit<T['_args'], 'meetingId'>) {
+		return this.convex.mutation(fn, {
+			meetingId: this.id,
+			...args,
+		} as T['_args']);
+	}
+
+	async adminMutate<
+		T extends FunctionReference<'mutation', 'public', { meetingId: Id<'meetings'> }, unknown>,
+	>(fn: T): Promise<T['_returnType']>;
+	async adminMutate<
+		T extends FunctionReference<
+			'mutation',
+			'public',
+			{ meetingId: Id<'meetings'> } & DefaultFunctionArgs,
+			unknown
+		>,
+	>(fn: T, args: Omit<T['_args'], 'meetingId'>): Promise<T['_returnType']>;
+	async adminMutate<
+		T extends FunctionReference<'mutation', 'public', { meetingId: Id<'meetings'> }, unknown>,
+	>(fn: T, args: Omit<T['_args'], 'meetingId'> = {} as Omit<T['_args'], 'meetingId'>) {
+		if (!this.isAdmin) {
+			return;
+		}
+		return this.mutate(fn, args);
+	}
+
+	query<T extends FunctionReference<'query', 'public', { meetingId: Id<'meetings'> }, unknown>>(
+		fn: T,
+	): UseQueryReturn<T>;
+	query<T extends FunctionReference<'query', 'public', { meetingId: Id<'meetings'> }, unknown>>(
+		fn: T,
+		args?: Getter<Omit<T['_args'], 'meetingId'>>,
+	): UseQueryReturn<T>;
+	query<T extends FunctionReference<'query', 'public', { meetingId: Id<'meetings'> }, unknown>>(
+		fn: T,
+		args?: Getter<Omit<T['_args'], 'meetingId'>>,
+		opts?: UseQueryOptions<T>,
+	): UseQueryReturn<T>;
+	query<
+		T extends FunctionReference<
+			'query',
+			'public',
+			{ meetingId: Id<'meetings'> } & DefaultFunctionArgs,
+			unknown
+		>,
+	>(fn: T, args?: Getter<Omit<T['_args'], 'meetingId'>>, opts?: UseQueryOptions<T>) {
+		const getter = () => ({
+			meetingId: this.id,
+			...args?.(),
+		});
+
+		return useQuery(fn, getter, opts);
+	}
+
+	adminQuery<
+		T extends FunctionReference<'query', 'public', { meetingId: Id<'meetings'> }, unknown>,
+	>(fn: T): UseQueryReturn<T>;
+	adminQuery<
+		T extends FunctionReference<'query', 'public', { meetingId: Id<'meetings'> }, unknown>,
+	>(fn: T, args?: Getter<Omit<T['_args'], 'meetingId'>>): UseQueryReturn<T>;
+	adminQuery<
+		T extends FunctionReference<'query', 'public', { meetingId: Id<'meetings'> }, unknown>,
+	>(
+		fn: T,
+		args?: Getter<Omit<T['_args'], 'meetingId'>>,
+		opts?: UseQueryOptions<T>,
+	): UseQueryReturn<T>;
+	adminQuery<
+		T extends FunctionReference<
+			'query',
+			'public',
+			{ meetingId: Id<'meetings'> } & DefaultFunctionArgs,
+			unknown
+		>,
+	>(fn: T, args?: Getter<Omit<T['_args'], 'meetingId'>>, opts?: UseQueryOptions<T>) {
+		const getter = () =>
+			this.isAdmin
+				? {
+						meetingId: this.id,
+						...args?.(),
+					}
+				: 'skip';
+
+		return useQuery(fn, getter, opts);
+	}
+
+	get data() {
+		return this.#data;
+	}
+
+	get meeting() {
+		return this.data.meeting;
+	}
+
+	get me() {
+		return this.data.me;
+	}
+
+	get id() {
+		return this.meeting?._id;
+	}
+
+	get hasPendingReturnRequest() {
+		return this.me.absentSince > 0 && this.me.returnRequestedAt > 0;
+	}
+
+	get currentSpeaker(): CurrentSpeaker {
+		if (!this.meeting) {
+			return {
+				type: 'empty',
+			};
+		}
+
+		const po = this.meeting.pointOfOrder;
+
+		if (po?.type === 'accepted') {
+			const startTime = po.startTime ?? Date.now();
+			return {
+				type: 'point_of_order',
+				userId: po.by.userId,
+				name: po.by.name,
+				startTime,
+			};
+		}
+
+		const reply = this.meeting.reply;
+
+		if (reply?.type === 'accepted') {
+			const startTime = reply.startTime ?? Date.now();
+			return {
+				type: 'reply',
+				userId: reply.by.userId,
+				name: reply.by.name,
+				startTime,
+			};
+		}
+
+		if (this.meeting.currentSpeaker) {
+			return {
+				type: 'speaker',
+				...this.meeting.currentSpeaker,
+			};
+		}
+
+		return {
+			type: 'empty',
+		};
+	}
+
+	get isAdmin() {
+		return this.data?.me.isAdmin;
+	}
+
+	get isCurrentSpeaker() {
+		return this.currentSpeaker.type === 'empty'
+			? false
+			: this.currentSpeaker.userId === this.me?._id;
+	}
+}
+
+export function setMeetingContext(data: Getter<MeetingData>) {
+	const ctx = new MeetingState(data);
+	setContext(ctx);
+	return ctx;
+}
+
+export function getMeetingContext() {
+	const ctx = getContext();
+
+	if (!ctx) {
+		throw new Error('getMeetingContext must be used under setMeetingContext');
+	}
+
+	return ctx;
+}

@@ -1,9 +1,11 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import { authClient } from '$lib/auth-client';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import * as Field from '$lib/components/ui/field';
 	import Input from '$lib/components/ui/input/input.svelte';
 	import Separator from '$lib/components/ui/separator/separator.svelte';
+	import { ErrorMessages } from '$lib/errors';
 	import { signIn } from '../data.remote';
 	import { SignInSchema } from '../schema';
 
@@ -22,11 +24,10 @@
 		try {
 			error = undefined;
 			loading = true;
+
 			await submit();
 
-			/* if (signIn.result?.redirect) {
-				window.location.pathname = signIn.result?.redirect;
-			} */
+			window.location.pathname = '/anslut';
 		} catch (e) {
 			loading = false;
 			console.error(e);

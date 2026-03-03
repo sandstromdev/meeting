@@ -7,7 +7,6 @@ export const load: LayoutServerLoad = async ({ cookies, locals }) => {
 
 	return {
 		authState,
-		currentUser: locals.currentUser,
-		meeting: locals.meeting,
+		meetingId: locals.meetingId,
 	};
 };

@@ -5,7 +5,6 @@ import {
 	completeReturnToMeeting,
 	findNextPresentSpeaker,
 	findPrevPresentSpeaker,
-	getReturnRequest,
 	getSpeakerQueueEntryByOrdinal,
 	logSpeakerSlot,
 	setCurrentSpeaker,
@@ -50,6 +49,20 @@ export const getPreviousSpeakers = admin
 			isAbsent: absentByUser.get(e.userId) ?? false,
 		}));
 	});
+
+export const getPreviousSpeaker = admin.query().public(async ({ ctx: { db, meeting } }) => {
+	const speakerIndex = meeting.speakerIndex ?? -1;
+
+	const entry = await db
+		.query('speakerQueueEntries')
+		.withIndex('by_meeting_ordinal', (q) =>
+			q.eq('meetingId', meeting._id).lt('ordinal', speakerIndex),
+		)
+		.order('desc')
+		.first();
+
+	return entry;
+});
 
 export const getPointOfOrderEntries = admin.query().public(async ({ ctx }) => {
 	const entries = await ctx.db
@@ -98,15 +111,17 @@ export const getAbsenceEntries = admin.query().public(async ({ ctx }) => {
 });
 
 export const getReturnRequests = admin.query().public(async ({ ctx }) => {
-	const entries = await ctx.db
-		.query('returnRequests')
-		.withIndex('by_meeting', (q) => q.eq('meetingId', ctx.meeting._id))
+	const participants = await ctx.db
+		.query('meetingParticipants')
+		.withIndex('by_meeting_absent', (q) => q.eq('meetingId', ctx.meeting._id).gt('absentSince', 0))
 		.collect();
-	return entries.map((e) => ({
-		userId: e.userId,
-		name: e.name,
-		requestedAt: e.requestedAt,
-	}));
+	return participants
+		.filter((p) => p.returnRequestedAt)
+		.map((p) => ({
+			userId: p._id,
+			name: p.name,
+			requestedAt: p.returnRequestedAt!,
+		}));
 });
 
 export const approveReturnRequest = admin
@@ -115,13 +130,12 @@ export const approveReturnRequest = admin
 	.public(async ({ ctx, args }) => {
 		const { db, meeting } = ctx;
 
-		const req = await getReturnRequest(db, meeting._id, args.userId);
-		if (!req) {
+		const p = await db.get('meetingParticipants', args.userId);
+		if (!p?.returnRequestedAt) {
 			return false;
 		}
 
-		await completeReturnToMeeting(db, meeting, req.userId);
-		await db.delete('returnRequests', req._id);
+		await completeReturnToMeeting(db, meeting, args.userId);
 		return true;
 	});
 
@@ -129,12 +143,12 @@ export const denyReturnRequest = admin
 	.mutation()
 	.input({ userId: zid('meetingParticipants') })
 	.public(async ({ ctx, args }) => {
-		const req = await getReturnRequest(ctx.db, ctx.meeting._id, args.userId);
-		if (!req) {
+		const p = await ctx.db.get('meetingParticipants', args.userId);
+		if (!p?.returnRequestedAt) {
 			return false;
 		}
 
-		await ctx.db.delete('returnRequests', req._id);
+		await ctx.db.patch('meetingParticipants', args.userId, { returnRequestedAt: 0 });
 		return true;
 	});
 

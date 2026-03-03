@@ -9,6 +9,7 @@ export const authMw = c.$context<QueryCtx>().createMiddleware(async ({ ctx, next
 	const user = await ctx.auth.getUserIdentity();
 
 	if (!user) {
+		console.log('unauthorized:', user);
 		throw new AppError(errors.unauthorized);
 	}
 

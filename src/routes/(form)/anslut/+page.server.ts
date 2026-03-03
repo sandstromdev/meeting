@@ -1,8 +1,11 @@
-import { redirectIfInMeeting } from '$lib/server/meeting-cookie';
+import { getCurrentUser } from '$lib/server/auth';
+import { redirectIfInMeeting } from '$lib/server/guards';
 import type { PageServerLoad } from './$types';
 
 export const load = (async () => {
 	redirectIfInMeeting('/');
 
-	return {};
+	return {
+		currentUser: await getCurrentUser(),
+	};
 }) satisfies PageServerLoad;

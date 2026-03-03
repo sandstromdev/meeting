@@ -42,7 +42,7 @@
 			e: MouseEvent & {
 				currentTarget: EventTarget & HTMLButtonElement;
 			},
-		) => Promise<void>;
+		) => Promise<unknown>;
 	}>;
 
 	export type AnchorElementProps = ButtonPropsWithoutHTML &
@@ -111,7 +111,7 @@
 		}
 	}}
 >
-	{#if type !== undefined && loading}
+	{#if type !== undefined && loading && size !== 'icon'}
 		<div class="flex animate-spin place-items-center justify-center">
 			<LoaderCircleIcon class="size-4" />
 		</div>

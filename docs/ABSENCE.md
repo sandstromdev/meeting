@@ -27,13 +27,13 @@ Du kan inte markera frånvaro om du håller på att tala (talarkö, punkt, repli
 
 En rad per fråvaroperiod:
 
-| Fält       | Beskrivning |
-| ---------- | ----------- |
-| meetingId  | Möte        |
-| userId     | Deltagare   |
-| name       | Namn vid frånvarotillfället |
-| startTime  | När frånvaron började (epoch ms) |
-| endTime    | När perioden avslutades (admin godkände återkomst). Saknas = pågående period. |
+| Fält      | Beskrivning                                                                   |
+| --------- | ----------------------------------------------------------------------------- |
+| meetingId | Möte                                                                          |
+| userId    | Deltagare                                                                     |
+| name      | Namn vid frånvarotillfället                                                   |
+| startTime | När frånvaron började (epoch ms)                                              |
+| endTime   | När perioden avslutades (admin godkände återkomst). Saknas = pågående period. |
 
 Index: `by_meeting`, `by_meeting_user`, `by_meeting_startTime`.
 
@@ -41,12 +41,12 @@ Index: `by_meeting`, `by_meeting_user`, `by_meeting_startTime`.
 
 Återkomstanmälan innan admin godkänner/avslår:
 
-| Fält       | Beskrivning |
-| ---------- | ----------- |
-| meetingId  | Möte        |
-| userId     | Deltagare   |
-| name       | Namn       |
-| requestedAt| När begäran skickades (epoch ms) |
+| Fält        | Beskrivning                      |
+| ----------- | -------------------------------- |
+| meetingId   | Möte                             |
+| userId      | Deltagare                        |
+| name        | Namn                             |
+| requestedAt | När begäran skickades (epoch ms) |
 
 Index: `by_meeting`, `by_meeting_user`.
 

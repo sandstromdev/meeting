@@ -1,0 +1,40 @@
+import { browser } from '$app/environment';
+import { goto } from '$app/navigation';
+import { page } from '$app/state';
+import { z } from 'zod';
+
+export function setParam(key: keyof Params, value: Params[keyof Params]) {
+	if (!browser) {
+		return;
+	}
+
+	const sp = page.url.searchParams;
+	sp.set(key, value);
+
+	// eslint-disable-next-line svelte/no-navigation-without-resolve
+	goto('?' + sp.toString(), {});
+}
+export function useSearchParams() {
+	const params = $derived(validateSearchParams(page.url));
+
+	return {
+		get view() {
+			return params.view;
+		},
+		set view(value: View) {
+			setParam('view', value);
+		},
+	};
+}
+
+export function validateSearchParams(url: URL) {
+	const parsed = ParamsSchema.safeParse(Object.fromEntries(url.searchParams.entries()));
+	return parsed.success ? parsed.data : ParamsSchema.parse({});
+}
+
+export const ParamsSchema = z.object({
+	view: z.enum(['projector', 'queue', 'default']).catch('default'),
+});
+
+export type Params = z.infer<typeof ParamsSchema>;
+export type View = Params['view'];

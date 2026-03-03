@@ -2,7 +2,6 @@ import { dev } from '$app/environment';
 import { getRequestEvent } from '$app/server';
 import { api } from '$convex/_generated/api';
 import type { Id } from '$convex/_generated/dataModel';
-import { redirect } from '@sveltejs/kit';
 import { getConvexClient } from './convex';
 
 const cookieName = 'meeting-id';
@@ -39,22 +38,6 @@ export function deleteMeetingCookie() {
 	});
 }
 
-export function redirectIfInMeeting(to: string, status: 307 | 303 = 307) {
-	const event = getRequestEvent();
-
-	if (event.locals.meeting) {
-		redirect(status, to);
-	}
-}
-
-export function redirectIfNotInMeeting(to: string, status: 307 | 303 = 307) {
-	const event = getRequestEvent();
-
-	if (!event.locals.meeting) {
-		redirect(status, to);
-	}
-}
-
 export async function getMeeting() {
 	const meetingId = getMeetingCookie();
 
@@ -65,14 +48,14 @@ export async function getMeeting() {
 	return getConvexClient().query(api.meetings.getMeetingById, { meetingId });
 }
 
-export async function getMeetingData() {
+export async function getMeetingData(token: string) {
 	const meetingId = getMeetingCookie();
 
 	if (!meetingId) {
 		return null;
 	}
 
-	return getConvexClient()
+	return getConvexClient(token)
 		.query(api.users.meeting.getData, { meetingId })
 		.catch(() => null);
 }

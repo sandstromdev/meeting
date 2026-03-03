@@ -21,7 +21,7 @@ export const SpeakerQueueEntry = v.object({
 	ordinal: v.number(),
 	userId: v.id('meetingParticipants'),
 	name: v.string(),
-	sessions: v.optional(v.array(SpeakingSession)),
+	sessions: v.array(SpeakingSession),
 });
 
 export const Meeting = v.object({
@@ -131,13 +131,6 @@ export const AbsenceEntry = v.object({
 	endTime: v.optional(v.number()),
 });
 
-export const ReturnRequest = v.object({
-	meetingId: v.id('meetings'),
-	userId: v.id('meetingParticipants'),
-	name: v.string(),
-	requestedAt: v.number(),
-});
-
 export const MeetingParticipant = v.object({
 	_id: v.id('meetingParticipants'),
 	meetingId: v.id('meetings'),
@@ -150,8 +143,8 @@ export const MeetingParticipant = v.object({
 
 	isInSpeakerQueue: v.boolean(),
 
-	/** 0 = not absent; >0 = timestamp when marked absent */
 	absentSince: v.number(),
+	returnRequestedAt: v.number(),
 
 	votes: v.array(Vote),
 });
@@ -185,10 +178,6 @@ export default defineSchema(
 			.index('by_meeting', ['meetingId'])
 			.index('by_meeting_user', ['meetingId', 'userId'])
 			.index('by_meeting_startTime', ['meetingId', 'startTime']),
-
-		returnRequests: defineTable(ReturnRequest)
-			.index('by_meeting', ['meetingId'])
-			.index('by_meeting_user', ['meetingId', 'userId']),
 	},
 	{ schemaValidation: false },
 );

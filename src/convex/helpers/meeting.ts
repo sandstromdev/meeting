@@ -133,21 +133,10 @@ export async function completeReturnToMeeting(
 	if (toClose) {
 		await db.patch('absenceEntries', toClose._id, { endTime: now });
 	}
-	await db.patch('meetingParticipants', userId, { absentSince: 0 });
+	await db.patch('meetingParticipants', userId, { absentSince: 0, returnRequestedAt: 0 });
 	await db.patch('meetings', meeting._id, {
 		absent: Math.max(0, (meeting.absent ?? 0) - 1),
 	});
-}
-
-export async function getReturnRequest(
-	db: Db,
-	meetingId: Id<'meetings'>,
-	userId: Id<'meetingParticipants'>,
-) {
-	return db
-		.query('returnRequests')
-		.withIndex('by_meeting_user', (q) => q.eq('meetingId', meetingId).eq('userId', userId))
-		.first();
 }
 
 export async function getMeetingParticipant(

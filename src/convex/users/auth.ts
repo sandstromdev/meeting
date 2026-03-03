@@ -38,6 +38,7 @@ export const connect = authed
 				isInSpeakerQueue: false,
 
 				absentSince: 0,
+				returnRequestedAt: 0,
 
 				votes: [],
 			});

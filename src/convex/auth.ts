@@ -16,14 +16,21 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
 		baseURL: siteUrl,
 		database: authComponent.adapter(ctx),
 
+		// session: {
+		// 	cookieCache: {
+		// 		enabled: true,
+		// 		maxAge: 60 * 5
+		// 	}
+		// },
+
 		emailAndPassword: {
 			enabled: true,
 			requireEmailVerification: false,
+			minPasswordLength: 4,
 		},
 		plugins: [betterAuthConvex({ authConfig })],
 	});
 };
-
 export const getCurrentUser = query({
 	args: {},
 	handler: async (ctx) => {

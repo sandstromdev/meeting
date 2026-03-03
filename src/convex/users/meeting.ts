@@ -1,19 +1,40 @@
-import { withMe } from '$convex/helpers/auth';
+import { authed, withMe, withMeeting } from '$convex/helpers/auth';
 import { AppError, errors } from '$convex/helpers/error';
 import {
 	closeSpeakerSessionIfOpen,
 	completeReturnToMeeting,
 	findNextPresentSpeaker,
-	getReturnRequest,
+	getMeetingParticipant,
 	getSpeakerQueueEntryByOrdinal,
 	logSpeakerSlot,
 	setCurrentSpeaker,
 	setNotInSpeakerQueue,
 } from '$convex/helpers/meeting';
+import { zid } from 'convex-helpers/server/zod4';
+
+export const getMeeting = withMeeting.query().public(async ({ ctx }) => {
+	const { meeting } = ctx;
+	return meeting;
+});
+
+export const getMe = authed
+	.input({ meetingId: zid('meetings') })
+	.query()
+	.public(async ({ ctx, args }) => {
+		return getMeetingParticipant(ctx, args.meetingId);
+	});
 
 export const getData = withMe.query().public(async ({ ctx }) => {
 	const { me, meeting } = ctx;
+	return {
+		meeting,
+		me,
+		hasPendingReturnRequest: !!(me.absentSince && me.returnRequestedAt),
+	};
+});
 
+export const getNextSpeakers = withMe.query().public(async ({ ctx }) => {
+	const { meeting } = ctx;
 	const speakerIndex = meeting.speakerIndex ?? -1;
 
 	const nextSpeakersRaw = await ctx.db
@@ -30,19 +51,12 @@ export const getData = withMe.query().public(async ({ ctx }) => {
 	);
 	const absentByUser = new Map(participantIds.map((id, i) => [id, !!participants[i]?.absentSince]));
 
-	const pendingReturn = await getReturnRequest(ctx.db, meeting._id, me._id);
-
-	return {
-		meeting,
-		me,
-		nextSpeakers: nextSpeakersRaw.map((e) => ({
-			userId: e.userId,
-			name: e.name,
-			ordinal: e.ordinal,
-			isAbsent: absentByUser.get(e.userId) ?? false,
-		})),
-		hasPendingReturnRequest: !!pendingReturn,
-	};
+	return nextSpeakersRaw.map((e) => ({
+		userId: e.userId,
+		name: e.name,
+		ordinal: e.ordinal,
+		isAbsent: absentByUser.get(e.userId) ?? false,
+	}));
 });
 
 export const placeInSpeakerQueue = withMe.mutation().public(async ({ ctx }) => {
@@ -270,6 +284,20 @@ export const leaveMeeting = withMe.mutation().public(async ({ ctx }) => {
 
 	const now = Date.now();
 
+	if (me.isInSpeakerQueue) {
+		const speakerIndex = meeting.speakerIndex ?? -1;
+		const entries = await db
+			.query('speakerQueueEntries')
+			.withIndex('by_meeting_user_ordinal', (q) =>
+				q.eq('meetingId', meeting._id).eq('userId', me._id).gt('ordinal', speakerIndex),
+			)
+			.collect();
+		for (const entry of entries) {
+			await db.delete('speakerQueueEntries', entry._id);
+		}
+		await setNotInSpeakerQueue(db, me._id);
+	}
+
 	await db.insert('absenceEntries', {
 		meetingId: meeting._id,
 		userId: me._id,
@@ -298,31 +326,22 @@ export const requestReturnToMeeting = withMe.mutation().public(async ({ ctx }) =
 		return true;
 	}
 
-	const existing = await getReturnRequest(db, meeting._id, me._id);
-	if (existing) {
+	if (me.returnRequestedAt) {
 		return false;
 	}
 
 	const now = Date.now();
-
-	await db.insert('returnRequests', {
-		meetingId: meeting._id,
-		userId: me._id,
-		name: me.name,
-		requestedAt: now,
-	});
-
+	await db.patch('meetingParticipants', me._id, { returnRequestedAt: now });
 	return true;
 });
 
 export const recallReturnRequest = withMe.mutation().public(async ({ ctx }) => {
-	const { db, me, meeting } = ctx;
+	const { db, me } = ctx;
 
-	const existing = await getReturnRequest(db, meeting._id, me._id);
-	if (!existing) {
+	if (!me.returnRequestedAt) {
 		return false;
 	}
 
-	await db.delete('returnRequests', existing._id);
+	await db.patch('meetingParticipants', me._id, { returnRequestedAt: 0 });
 	return true;
 });

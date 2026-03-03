@@ -6,12 +6,19 @@
 	import { createSvelteAuthClient, useAuth } from '@mmailaender/convex-better-auth-svelte/svelte';
 	import './layout.css';
 	import { devState } from '$lib/dev.svelte';
+	import { useQuery } from 'convex-svelte';
+	import { api } from '$convex/_generated/api';
 
 	let { children, data } = $props();
 
 	createSvelteAuthClient({ authClient, getServerState: () => data.authState });
 
 	const auth = useAuth();
+
+	const meetingDataResult = useQuery(api.users.meeting.getData, () =>
+		data.meetingId ? { meetingId: data.meetingId } : 'skip',
+	);
+	const meeting = $derived(meetingDataResult.data);
 </script>
 
 <svelte:head>
@@ -29,29 +36,25 @@
 			</tr>
 			<tr>
 				<td>User:</td>
-				<td>{data.currentUser?.name}</td>
+				<td>{meeting?.me.name}</td>
 			</tr>
 			<tr>
 				<td>Admin:</td>
-				<td>{data.meeting?.me.isAdmin}</td>
+				<td>{meeting?.me.isAdmin}</td>
 			</tr>
 			<tr>
 				<td>Meeting:</td>
-				<td>{data.meeting?.meeting.code}</td>
+				<td>{meeting?.meeting.code}</td>
 			</tr>
 		</tbody>
 	</table>
 
-	<Button
-		size="sm"
-		class="h-6 text-xs"
-		onclick={() => {
-			devState.view = devState.view === 'admin' ? 'participant' : 'admin';
-		}}>Switch view</Button
-	>
-
 	{#if auth.isAuthenticated}
-		<Button size="sm" class="h-6 text-xs" onclick={() => authClient.signOut()}>Logga ut</Button>
+		<Button
+			size="sm"
+			class="h-6 text-xs"
+			onClickPromise={() => authClient.signOut().then(() => location.reload())}>Logga ut</Button
+		>
 	{:else}
 		<Button size="sm" class="h-6 text-xs" href="/sign-in">Logga in</Button>
 	{/if}

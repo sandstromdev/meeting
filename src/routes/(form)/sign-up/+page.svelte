@@ -9,15 +9,27 @@
 
 	let { data } = $props();
 
+	let loading = $state(false);
+	let error = $state<string>();
+
+	const errors = $derived([{ message: error }, ...(signUp.fields.issues() ?? [])]);
+
 	const { name, email, _password } = signUp.fields;
 </script>
 
 <form
 	{...signUp.preflight(SignUpSchema).enhance(async ({ form, data, submit }) => {
 		try {
+			error = undefined;
+			loading = true;
+
 			await submit();
+
+			window.location.pathname = '/';
 		} catch (e) {
+			loading = false;
 			console.error(e);
+			error = 'Ett fel har inträffat.';
 		}
 	})}
 >
@@ -42,7 +54,7 @@
 			<Field.Error errors={_password.issues()} />
 		</Field.Field>
 
-		<Field.Error errors={signUp.fields.issues()} />
+		<Field.Error {errors} />
 
 		<Button type="submit">Skapa konto</Button>
 
