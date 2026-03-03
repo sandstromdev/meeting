@@ -10,6 +10,7 @@ import {
 	setCurrentSpeaker,
 	setNotInSpeakerQueue,
 } from '$convex/helpers/meeting';
+import { getEligibleVoterCount, getVoteByAnonId, normalizeAgendaItems } from '$convex/helpers/poll';
 import { zid } from 'convex-helpers/server/zod4';
 
 export const getMeeting = withMeeting.query().public(async ({ ctx }) => {
@@ -26,8 +27,69 @@ export const getMe = authed
 
 export const getData = withMe.query().public(async ({ ctx }) => {
 	const { me, meeting } = ctx;
+	const agenda = normalizeAgendaItems(meeting.agenda);
+	const hasValidCurrentAgendaItem = agenda.some((item) => item.id === meeting.currentAgendaItemId);
+	const currentAgendaItemId = hasValidCurrentAgendaItem
+		? meeting.currentAgendaItemId
+		: agenda[0]?.id;
+	const eligibleVoters = getEligibleVoterCount(meeting);
+
+	const agendaWithPolls = await Promise.all(
+		agenda.map(async (item) => {
+			if (!item.pollId) {
+				return {
+					...item,
+					poll: null,
+				};
+			}
+
+			const poll = await ctx.db.get('polls', item.pollId);
+			if (!poll || poll.meetingId !== meeting._id) {
+				return {
+					...item,
+					poll: null,
+				};
+			}
+
+			const votes = await ctx.db
+				.query('pollVotes')
+				.withIndex('by_poll', (q) => q.eq('pollId', poll._id))
+				.collect();
+			const votesCount = votes.length;
+			const hasVoted = !!(await getVoteByAnonId(ctx.db, poll._id, me.anonID));
+
+			const optionTotals = poll.isOpen
+				? undefined
+				: poll.options.map((option, optionIndex) => ({
+						optionIndex,
+						option,
+						votes: votes.filter((vote) => vote.optionIndex === optionIndex).length,
+					}));
+
+			return {
+				...item,
+				poll: {
+					id: poll._id,
+					title: poll.title,
+					options: poll.options,
+					isOpen: poll.isOpen,
+					openedAt: poll.openedAt,
+					closedAt: poll.closedAt,
+					votesCount,
+					eligibleVoters,
+					hasVoted,
+					optionTotals,
+				},
+			};
+		}),
+	);
+
 	return {
-		meeting,
+		meeting: {
+			...meeting,
+			agenda: agendaWithPolls,
+			currentAgendaItemId,
+		},
 		me,
 		hasPendingReturnRequest: !!(me.absentSince && me.returnRequestedAt),
 	};
@@ -241,13 +303,11 @@ export const requestBreak = withMe.mutation().public(async ({ ctx }) => {
 		return;
 	}
 
+	const by = { userId: me._id, name: me.name };
 	await db.patch('meetings', meeting._id, {
 		break: {
-			type: 'requested',
-			by: {
-				userId: me._id,
-				name: me.name,
-			},
+			type: me.isAdmin ? 'accepted' : 'requested',
+			by,
 		},
 	});
 });

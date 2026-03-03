@@ -14,10 +14,14 @@ export const errors = {
 	meeting_participant_not_found: (meetingId: Id<'meetings'>) =>
 		({ code: 'meeting_participant_not_found', meetingId }) as const,
 
+	agenda_item_not_found: (agendaItemId: string) =>
+		({ code: 'agenda_item_not_found', agendaItemId }) as const,
+
 	poll_not_found: (pollId: Id<'polls'>) => ({ code: 'poll_not_found', pollId }) as const,
 	invalid_poll_option: (option: number) => ({ code: 'invalid_poll_option', option }) as const,
-	illegal_poll_action: (action: 'edit_while_open') =>
-		({ code: 'illegal_poll_action', action }) as const,
+	illegal_poll_action: (
+		action: 'edit_while_open' | 'vote_while_closed' | 'already_voted' | 'agenda_has_poll',
+	) => ({ code: 'illegal_poll_action', action }) as const,
 
 	illegal_while_absent: (action?: string) => ({ code: 'illegal_while_absent', action }) as const,
 

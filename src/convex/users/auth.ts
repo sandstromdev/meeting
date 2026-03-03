@@ -39,8 +39,6 @@ export const connect = authed
 
 				absentSince: 0,
 				returnRequestedAt: 0,
-
-				votes: [],
 			});
 
 			await ctx.db.patch('meetings', meeting._id, {

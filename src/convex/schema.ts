@@ -2,8 +2,10 @@ import { defineSchema, defineTable } from 'convex/server';
 import { v } from 'convex/values';
 
 export const AgendaItem = v.object({
+	id: v.string(),
+	number: v.number(),
 	title: v.string(),
-	poll: v.optional(v.id('polls')),
+	pollId: v.optional(v.id('polls')),
 });
 
 export const QueueEntry = v.object({
@@ -34,6 +36,7 @@ export const Meeting = v.object({
 	/** When the meeting was started (for duration). */
 	startedAt: v.optional(v.number()),
 	agenda: v.array(AgendaItem),
+	currentAgendaItemId: v.optional(v.string()),
 
 	isOpen: v.boolean(),
 
@@ -88,22 +91,25 @@ export const Meeting = v.object({
 	anonIdCounter: v.number(),
 });
 
-export const PollOption = v.object({
-	title: v.string(),
-	description: v.nullable(v.string()),
-	votes: v.number(),
-});
-
 export const Poll = v.object({
 	meetingId: v.id('meetings'),
+	agendaItemId: v.string(),
 	title: v.string(),
-	options: v.array(PollOption),
+	options: v.array(v.string()),
 	isOpen: v.boolean(),
+	openedAt: v.optional(v.number()),
+	closedAt: v.optional(v.number()),
+	closedBy: v.optional(v.id('meetingParticipants')),
+	createdBy: v.id('meetingParticipants'),
+	updatedAt: v.number(),
 });
 
-export const Vote = v.object({
+export const PollVote = v.object({
+	meetingId: v.id('meetings'),
 	pollId: v.id('polls'),
-	option: v.number(),
+	anonID: v.number(),
+	optionIndex: v.number(),
+	createdAt: v.number(),
 });
 
 export const PointOfOrderEntry = v.object({
@@ -145,16 +151,14 @@ export const MeetingParticipant = v.object({
 
 	absentSince: v.number(),
 	returnRequestedAt: v.number(),
-
-	votes: v.array(Vote),
 });
 
 export default defineSchema(
 	{
 		meetingParticipants: defineTable(MeetingParticipant)
-			.index('by_anon_id', ['anonID'])
 			.index('by_token', ['tokenIdentifier'])
 			.index('by_token_meeting', ['tokenIdentifier', 'meetingId'])
+			.index('by_meeting_anon', ['meetingId', 'anonID'])
 			.index('by_meeting_absent', ['meetingId', 'absentSince']),
 
 		meetings: defineTable(Meeting).index('by_code', ['code']),
@@ -163,8 +167,6 @@ export default defineSchema(
 			.index('by_meeting_ordinal', ['meetingId', 'ordinal'])
 			.index('by_meeting_user', ['meetingId', 'userId'])
 			.index('by_meeting_user_ordinal', ['meetingId', 'userId', 'ordinal']),
-
-		polls: defineTable(Poll).index('by_meeting', ['meetingId']),
 
 		pointOfOrderEntries: defineTable(PointOfOrderEntry)
 			.index('by_meeting', ['meetingId'])
@@ -178,6 +180,14 @@ export default defineSchema(
 			.index('by_meeting', ['meetingId'])
 			.index('by_meeting_user', ['meetingId', 'userId'])
 			.index('by_meeting_startTime', ['meetingId', 'startTime']),
+
+		polls: defineTable(Poll)
+			.index('by_meeting', ['meetingId'])
+			.index('by_meeting_agendaItem', ['meetingId', 'agendaItemId']),
+
+		pollVotes: defineTable(PollVote)
+			.index('by_poll', ['pollId'])
+			.index('by_poll_anon', ['pollId', 'anonID']),
 	},
 	{ schemaValidation: false },
 );

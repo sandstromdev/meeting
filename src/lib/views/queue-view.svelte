@@ -1,5 +1,7 @@
 <script lang="ts">
+	import Agenda from '$lib/components/blocks/agenda.svelte';
 	import ViewSelector from '$lib/components/blocks/admin/view-selector.svelte';
+	import CurrentAgendaItem from '$lib/components/blocks/current-agenda-item.svelte';
 	import MeetingInfo from '$lib/components/blocks/meeting-info.svelte';
 	import QueueControls from '$lib/components/blocks/queue-controls.svelte';
 	import RequestView from '$lib/components/blocks/request-view.svelte';
@@ -14,6 +16,8 @@
 	</div>
 	<main class="space-y-4">
 		<MeetingInfo />
+		<CurrentAgendaItem />
+		<Agenda />
 		<Timer />
 		<QueueAdminControls />
 		<RequestView />

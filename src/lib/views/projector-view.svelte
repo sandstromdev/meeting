@@ -1,4 +1,6 @@
 <script lang="ts">
+	import Agenda from '$lib/components/blocks/agenda.svelte';
+	import CurrentAgendaItem from '$lib/components/blocks/current-agenda-item.svelte';
 	import ViewSelector from '$lib/components/blocks/admin/view-selector.svelte';
 	import Timer from '$lib/components/blocks/timer.svelte';
 	import SpeakerQueue from '$lib/components/blocks/speaker-queue.svelte';
@@ -14,8 +16,9 @@
 		<ViewSelector compact />
 	</div>
 	<div class="grid grid-cols-5 gap-4">
-		<div class="col-span-3 flex flex-col justify-center">
+		<div class="col-span-3 flex flex-col justify-center gap-4">
 			<Timer size="large" />
+			<CurrentAgendaItem />
 		</div>
 
 		<div class="col-span-2 flex flex-col">
