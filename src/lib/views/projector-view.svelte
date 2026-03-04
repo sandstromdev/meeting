@@ -11,18 +11,13 @@
 	const cs = $derived(queue.current);
 </script>
 
-<div class="mx-auto max-w-6xl">
-	<div class="mb-4 flex justify-end">
-		<ViewSelector compact />
+<main class="mx-auto grid max-w-6xl grid-cols-5 gap-4">
+	<div class="col-span-3 flex flex-col justify-center gap-4">
+		<CurrentAgendaItem />
+		<Timer />
 	</div>
-	<div class="grid grid-cols-5 gap-4">
-		<div class="col-span-3 flex flex-col justify-center gap-4">
-			<CurrentAgendaItem />
-			<Timer />
-		</div>
 
-		<div class="col-span-2 flex flex-col">
-			<SpeakerQueue />
-		</div>
+	<div class="col-span-2 flex flex-col">
+		<SpeakerQueue />
 	</div>
-</div>
+</main>

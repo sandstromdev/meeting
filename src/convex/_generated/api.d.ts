@@ -23,6 +23,7 @@ import type * as helpers_poll from "../helpers/poll.js";
 import type * as helpers_users from "../helpers/users.js";
 import type * as http from "../http.js";
 import type * as meetings from "../meetings.js";
+import type * as moderator_meeting from "../moderator/meeting.js";
 import type * as users_auth from "../users/auth.js";
 import type * as users_meeting from "../users/meeting.js";
 import type * as users_poll from "../users/poll.js";
@@ -49,6 +50,7 @@ declare const fullApi: ApiFromModules<{
   "helpers/users": typeof helpers_users;
   http: typeof http;
   meetings: typeof meetings;
+  "moderator/meeting": typeof moderator_meeting;
   "users/auth": typeof users_auth;
   "users/meeting": typeof users_meeting;
   "users/poll": typeof users_poll;

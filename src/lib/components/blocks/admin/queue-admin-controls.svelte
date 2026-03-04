@@ -13,7 +13,7 @@
 	const hasBreak = $derived(queue.hasBreak);
 	const hasPointOfOrder = $derived(queue.hasPointOfOrder);
 
-	const previousSpeakerResult = useQuery(api.admin.meeting.getPreviousSpeaker, () => ({
+	const previousSpeakerResult = useQuery(api.moderator.meeting.getPreviousSpeaker, () => ({
 		meetingId: meeting.meeting._id,
 	}));
 
@@ -21,11 +21,11 @@
 </script>
 
 <div class="space-y-2 px-4 py-3">
-	<h2 class="text-lg font-semibold">Talarlista</h2>
+	<h2 class="text-lg font-semibold">Kökontroll</h2>
 
 	<div class="grid grid-cols-3 gap-2">
 		<Button
-			onClickPromise={() => meeting.adminMutate(api.admin.meeting.previousSpeaker)}
+			onClickPromise={() => meeting.moderatorMutate(api.moderator.meeting.previousSpeaker)}
 			disabled={hasPointOfOrder || !canGoBack}
 			type="button"
 			variant="outline"
@@ -53,15 +53,22 @@
 				Återkalla
 			</Button>
 		{:else if queue.break.type === 'accepted'}
-			<Button
-				onClickPromise={() => meeting.adminMutate(api.admin.meeting.clearBreak)}
-				class="px-3"
-				type="button"
-				variant="outline"
-			>
-				<PlayIcon class="size-4" />
-				Återuppta
-			</Button>
+			{#if meeting.isAdmin}
+				<Button
+					onClickPromise={() => meeting.adminMutate(api.admin.meeting.clearBreak)}
+					class="px-3"
+					type="button"
+					variant="outline"
+				>
+					<PlayIcon class="size-4" />
+					Återuppta
+				</Button>
+			{:else}
+				<Button disabled type="button" variant="outline">
+					<PauseIcon class="size-4" />
+					Streck
+				</Button>
+			{/if}
 		{:else}
 			<Button
 				onClickPromise={() => meeting.mutate(api.users.meeting.requestBreak)}
@@ -73,7 +80,7 @@
 			</Button>
 		{/if}
 		<Button
-			onClickPromise={() => meeting.adminMutate(api.admin.meeting.nextSpeaker)}
+			onClickPromise={() => meeting.moderatorMutate(api.moderator.meeting.nextSpeaker)}
 			disabled={hasPointOfOrder || !queue.canAdvance}
 			type="button"
 			variant="outline"
@@ -83,7 +90,7 @@
 		</Button>
 	</div>
 
-	{#if hasPointOfOrder}
+	{#if meeting.isAdmin && hasPointOfOrder}
 		<Button
 			onClickPromise={() => meeting.adminMutate(api.admin.meeting.clearPointOfOrder)}
 			class="px-3"
@@ -93,7 +100,7 @@
 		</Button>
 	{/if}
 
-	{#if hasBreak}
+	{#if meeting.isAdmin && hasBreak}
 		<Button
 			onClickPromise={() => meeting.adminMutate(api.admin.meeting.clearBreak)}
 			class="px-3"

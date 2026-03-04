@@ -2,21 +2,36 @@
 	import Absentees from '$lib/components/blocks/admin/absentees.svelte';
 	import AdminInfo from '$lib/components/blocks/admin/admin-info.svelte';
 	import Notifications from '$lib/components/blocks/admin/notifications.svelte';
-	import Requests from '$lib/components/blocks/admin/requests.svelte';
-	import Separator from '$lib/components/ui/separator/separator.svelte';
 	import PreviousSpeaker from '$lib/components/blocks/admin/previous-speaker.svelte';
-	import ParticipantView from '$lib/views/participant-view.svelte';
-	import SpeakerLog from '$lib/components/blocks/admin/speaker-log.svelte';
-	import ViewSelector from '$lib/components/blocks/admin/view-selector.svelte';
 	import QueueAdminControls from '$lib/components/blocks/admin/queue-admin-controls.svelte';
+	import Requests from '$lib/components/blocks/admin/requests.svelte';
+	import SpeakerLog from '$lib/components/blocks/admin/speaker-log.svelte';
+	import Agenda from '$lib/components/blocks/agenda.svelte';
+	import CurrentAgendaItem from '$lib/components/blocks/current-agenda-item.svelte';
+	import MeetingInfo from '$lib/components/blocks/meeting-info.svelte';
+	import QueueControls from '$lib/components/blocks/queue-controls.svelte';
+	import RequestView from '$lib/components/blocks/request-view.svelte';
+	import SpeakerQueue from '$lib/components/blocks/speaker-queue.svelte';
+	import Timer from '$lib/components/blocks/timer.svelte';
+	import Separator from '$lib/components/ui/separator/separator.svelte';
 </script>
 
-<div class="mx-auto flex h-full max-w-2xl grid-cols-3 flex-col gap-4 lg:grid lg:max-w-6xl">
-	<div class="col-start-3 flex justify-end">
-		<ViewSelector compact />
-	</div>
+<div class="mx-auto flex h-full max-w-[90vw] grid-cols-4 flex-col gap-4 lg:grid">
+	<aside class="col-span-1 flex flex-col rounded-lg border">
+		<QueueAdminControls />
+		<Separator />
+		<SpeakerQueue noBorder />
+		<Separator />
+	</aside>
 
-	<ParticipantView class="col-span-2" />
+	<main class="col-span-2 flex flex-col gap-4">
+		<MeetingInfo />
+		<CurrentAgendaItem />
+		<Timer />
+		<Agenda />
+		<RequestView />
+		<QueueControls />
+	</main>
 
 	<aside class="col-span-1 flex flex-col rounded-lg border">
 		<div class="px-4 py-3 text-lg font-medium">Admin-vy</div>
@@ -24,10 +39,6 @@
 		<Separator />
 
 		<AdminInfo />
-
-		<Separator />
-
-		<QueueAdminControls />
 
 		<Separator />
 

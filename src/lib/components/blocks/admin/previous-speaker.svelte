@@ -14,7 +14,7 @@
 
 	const meeting = getMeetingContext();
 
-	const previousSpeakerResult = useQuery(api.admin.meeting.getPreviousSpeaker, () => ({
+	const previousSpeakerResult = useQuery(api.moderator.meeting.getPreviousSpeaker, () => ({
 		meetingId: meeting.meeting._id,
 	}));
 

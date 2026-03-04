@@ -13,6 +13,8 @@
 	import { usePageState } from '$lib/page-state.svelte';
 	import { cn } from '$lib/utils';
 
+	let { noBorder = true }: { noBorder?: boolean } = $props();
+
 	const meeting = getMeetingContext();
 	const queue = meeting.speakerQueue;
 
@@ -23,7 +25,8 @@
 	const canMoveUp = (displayIndex: number) => displayIndex > 0;
 	const canMoveDown = (displayIndex: number) => displayIndex < nextSpeakers.length - 1;
 
-	const showControls = $derived(!ps.isProjector && meeting.isAdmin);
+	const showQueueControls = $derived(!ps.isProjector && meeting.isModerator);
+	const showFlowControls = $derived(!ps.isProjector && meeting.isAdmin);
 </script>
 
 {#snippet request(
@@ -33,7 +36,7 @@
 	accept?: () => void,
 	deny?: () => void,
 )}
-	<Alert.Root {variant} class="">
+	<Alert.Root {variant}>
 		{#if variant === 'warning'}
 			<WarningIcon class="size-4" />
 		{:else if variant === 'default'}
@@ -47,7 +50,7 @@
 				<Alert.Description class="text-current/80"><p>{description}</p></Alert.Description>
 			</div>
 
-			{#if showControls}
+			{#if showFlowControls}
 				<div class="flex gap-2">
 					{#if accept}
 						<Button variant="ghost" size="icon" onclick={accept} class="hover:bg-current/5">
@@ -65,7 +68,7 @@
 	</Alert.Root>
 {/snippet}
 
-<section class="space-y-3 rounded-lg border px-4 py-3">
+<section class={cn('space-y-3  px-4 py-3', !noBorder && 'rounded-lg border')}>
 	<div class="flex items-center justify-between">
 		<h2 class="text-lg font-semibold">Talarlista</h2>
 		<p class="text-xs text-muted-foreground">
@@ -140,7 +143,7 @@
 						</p>
 					</div>
 
-					{#if showControls}
+					{#if showQueueControls}
 						<div class="flex shrink-0 items-center gap-0.5">
 							<Button
 								variant="ghost"
@@ -153,7 +156,7 @@
 										description:
 											'Är du säker på att du vill flytta upp denna person i talarlistan?',
 										onConfirm: () =>
-											meeting.am(api.admin.meeting.moveSpeakerInQueue, {
+											meeting.mm(api.moderator.meeting.moveSpeakerInQueue, {
 												ordinal: entry.ordinal,
 												direction: 'up',
 											}),
@@ -173,7 +176,7 @@
 										description:
 											'Är du säker på att du vill flytta ner denna person i talarlistan?',
 										onConfirm: () =>
-											meeting.am(api.admin.meeting.moveSpeakerInQueue, {
+											meeting.mm(api.moderator.meeting.moveSpeakerInQueue, {
 												ordinal: entry.ordinal,
 												direction: 'down',
 											}),
@@ -192,7 +195,7 @@
 										description:
 											'Är du säker på att du vill ta bort denna person från talarlistan?',
 										onConfirm: () =>
-											meeting.am(api.admin.meeting.removeFromSpeakerQueue, {
+											meeting.mm(api.moderator.meeting.removeFromSpeakerQueue, {
 												ordinal: entry.ordinal,
 											}),
 									})}

@@ -6,12 +6,9 @@
 	import Timer from '$lib/components/blocks/timer.svelte';
 	import SpeakerQueue from '$lib/components/blocks/speaker-queue.svelte';
 	import QueueControls from '$lib/components/blocks/queue-controls.svelte';
-	import { cn } from '$lib/utils';
-
-	let { class: className }: { class?: string } = $props();
 </script>
 
-<main class={cn('flex-1 space-y-4', className)}>
+<main class="mx-auto max-w-2xl space-y-4">
 	<MeetingInfo />
 	<CurrentAgendaItem />
 	<Timer />

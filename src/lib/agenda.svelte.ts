@@ -43,7 +43,7 @@ export class AgendaState {
 	}
 
 	selectedForPoll(pollId: string) {
-		return this.#selectedOptionIndexesByPoll.getOrInsert(pollId, []);
+		return this.#selectedOptionIndexesByPoll.get(pollId) ?? [];
 	}
 
 	isOptionSelected(pollId: string, optionIndex: number) {

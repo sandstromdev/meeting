@@ -45,8 +45,16 @@ export const withMe = withMeeting.use(async ({ ctx, args, next }) => {
 	return next({ ...ctx, me });
 });
 
+export const moderator = withMe.use(({ ctx, next }) => {
+	if (ctx.me.role === 'participant') {
+		throw new AppError(errors.forbidden);
+	}
+
+	return next(ctx);
+});
+
 export const admin = withMe.use(({ ctx, next }) => {
-	if (!ctx.me.isAdmin) {
+	if (ctx.me.role !== 'admin') {
 		throw new AppError(errors.forbidden);
 	}
 

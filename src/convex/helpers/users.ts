@@ -3,7 +3,7 @@ import type { Doc } from '../_generated/dataModel';
 import { AppError, errors } from './error';
 
 export function pickParticipantData(doc: Doc<'meetingParticipants'>) {
-	return pick(doc, ['_id', 'isAdmin', 'anonID', 'absentSince', 'isInSpeakerQueue', 'name']);
+	return pick(doc, ['_id', 'role', 'anonID', 'absentSince', 'isInSpeakerQueue', 'name']);
 }
 
 export type StrippedMeetingParticipant = ReturnType<typeof pickParticipantData>;

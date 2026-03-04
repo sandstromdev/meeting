@@ -60,7 +60,7 @@ export const getData = withMe.query().public(async ({ ctx }) => {
 					const hasVoted = myVoteOptionIndexes.length > 0;
 					const maxVotesPerVoter = getPollMaxVotesPerVoter(poll);
 
-					const maySeeResults = poll.resultsPublic === true || me.isAdmin;
+					const maySeeResults = poll.resultsPublic === true || me.role === 'admin';
 					const optionTotals =
 						poll.isOpen || !maySeeResults
 							? undefined
@@ -318,7 +318,7 @@ export const requestBreak = withMe.mutation().public(async ({ ctx }) => {
 	const by = { userId: me._id, name: me.name };
 	await db.patch('meetings', meeting._id, {
 		break: {
-			type: me.isAdmin ? 'accepted' : 'requested',
+			type: me.role === 'admin' ? 'accepted' : 'requested',
 			by,
 		},
 	});
@@ -393,7 +393,7 @@ export const requestReturnToMeeting = withMe.mutation().public(async ({ ctx }) =
 		return false;
 	}
 
-	if (me.isAdmin) {
+	if (me.role === 'admin') {
 		await completeReturnToMeeting(db, meeting, me._id);
 		return true;
 	}

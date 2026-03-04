@@ -21,7 +21,9 @@
 
 <section
 	class={cn(
-		'flex justify-between gap-4 rounded-lg border px-4 py-3 text-foreground md:flex-col md:items-stretch',
+		'flex justify-between gap-4 rounded-lg border px-4 py-3 text-foreground',
+
+		ps.isProjector && 'flex-col items-stretch',
 
 		!meeting.isCurrentSpeaker &&
 			cs.type === 'point_of_order' &&

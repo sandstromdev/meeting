@@ -5,6 +5,7 @@
 	import DropdownMenuRadioItem from '$lib/components/ui/dropdown-menu/dropdown-menu-radio-item.svelte';
 	import DropdownMenuTrigger from '$lib/components/ui/dropdown-menu/dropdown-menu-trigger.svelte';
 	import DropdownMenu from '$lib/components/ui/dropdown-menu/dropdown-menu.svelte';
+	import { getMeetingContext } from '$lib/context.svelte';
 	import { usePageState } from '$lib/page-state.svelte';
 	import { cn } from '$lib/utils';
 	import ListOrderedIcon from '@lucide/svelte/icons/list-ordered';
@@ -15,6 +16,8 @@
 
 	const ps = usePageState();
 
+	const ctx = getMeetingContext();
+
 	const options = [
 		{ value: 'projector', label: 'Projektor', icon: MonitorIcon },
 		{ value: 'queue', label: 'Talarkö', icon: ListOrderedIcon },
@@ -24,10 +27,12 @@
 
 {#if compact}
 	<DropdownMenu>
-		<DropdownMenuTrigger>
-			<Button variant="outline" size="icon">
-				<MonitorIcon class="size-4" />
-			</Button>
+		<DropdownMenuTrigger class="absolute top-8 right-8">
+			{#snippet child({ props })}
+				<Button variant="outline" size="icon" {...props}>
+					<MonitorIcon class="size-4" />
+				</Button>
+			{/snippet}
 		</DropdownMenuTrigger>
 		<DropdownMenuContent>
 			<DropdownMenuRadioGroup bind:value={ps.view}>

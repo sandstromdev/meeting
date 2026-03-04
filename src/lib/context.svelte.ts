@@ -35,8 +35,10 @@ export class MeetingState {
 
 	readonly q = this.query.bind(this);
 	readonly aq = this.adminQuery.bind(this);
+	readonly mq = this.moderatorQuery.bind(this);
 	readonly m = this.mutate.bind(this);
 	readonly am = this.adminMutate.bind(this);
+	readonly mm = this.moderatorMutate.bind(this);
 
 	constructor(data: Getter<MeetingData>) {
 		this.#data = $state(data());
@@ -44,8 +46,10 @@ export class MeetingState {
 
 		this.query = this.query.bind(this);
 		this.adminQuery = this.adminQuery.bind(this);
+		this.moderatorQuery = this.moderatorQuery.bind(this);
 		this.mutate = this.mutate.bind(this);
 		this.adminMutate = this.adminMutate.bind(this);
+		this.moderatorMutate = this.moderatorMutate.bind(this);
 
 		this.agenda = new AgendaState(this);
 		this.speakerQueue = new SpeakerQueue(this);
@@ -95,6 +99,26 @@ export class MeetingState {
 		T extends FunctionReference<'mutation', 'public', { meetingId: Id<'meetings'> }, unknown>,
 	>(fn: T, args: Omit<T['_args'], 'meetingId'> = {} as Omit<T['_args'], 'meetingId'>) {
 		if (!this.isAdmin) {
+			return;
+		}
+		return this.mutate(fn, args);
+	}
+
+	async moderatorMutate<
+		T extends FunctionReference<'mutation', 'public', { meetingId: Id<'meetings'> }, unknown>,
+	>(fn: T): Promise<T['_returnType']>;
+	async moderatorMutate<
+		T extends FunctionReference<
+			'mutation',
+			'public',
+			{ meetingId: Id<'meetings'> } & DefaultFunctionArgs,
+			unknown
+		>,
+	>(fn: T, args: Omit<T['_args'], 'meetingId'>): Promise<T['_returnType']>;
+	async moderatorMutate<
+		T extends FunctionReference<'mutation', 'public', { meetingId: Id<'meetings'> }, unknown>,
+	>(fn: T, args: Omit<T['_args'], 'meetingId'> = {} as Omit<T['_args'], 'meetingId'>) {
+		if (!this.isModerator) {
 			return;
 		}
 		return this.mutate(fn, args);
@@ -151,6 +175,38 @@ export class MeetingState {
 	>(fn: T, args?: Getter<Omit<T['_args'], 'meetingId'>>, opts?: UseQueryOptions<T>) {
 		const getter = () =>
 			this.isAdmin
+				? {
+						meetingId: this.id,
+						...args?.(),
+					}
+				: 'skip';
+
+		return useQuery(fn, getter, opts);
+	}
+
+	moderatorQuery<
+		T extends FunctionReference<'query', 'public', { meetingId: Id<'meetings'> }, unknown>,
+	>(fn: T): UseQueryReturn<T>;
+	moderatorQuery<
+		T extends FunctionReference<'query', 'public', { meetingId: Id<'meetings'> }, unknown>,
+	>(fn: T, args?: Getter<Omit<T['_args'], 'meetingId'>>): UseQueryReturn<T>;
+	moderatorQuery<
+		T extends FunctionReference<'query', 'public', { meetingId: Id<'meetings'> }, unknown>,
+	>(
+		fn: T,
+		args?: Getter<Omit<T['_args'], 'meetingId'>>,
+		opts?: UseQueryOptions<T>,
+	): UseQueryReturn<T>;
+	moderatorQuery<
+		T extends FunctionReference<
+			'query',
+			'public',
+			{ meetingId: Id<'meetings'> } & DefaultFunctionArgs,
+			unknown
+		>,
+	>(fn: T, args?: Getter<Omit<T['_args'], 'meetingId'>>, opts?: UseQueryOptions<T>) {
+		const getter = () =>
+			this.isModerator
 				? {
 						meetingId: this.id,
 						...args?.(),
@@ -223,8 +279,16 @@ export class MeetingState {
 		};
 	}
 
+	get role() {
+		return this.data?.me.role;
+	}
+
 	get isAdmin() {
-		return this.data?.me.isAdmin;
+		return this.role === 'admin';
+	}
+
+	get isModerator() {
+		return this.role === 'admin' || this.role === 'moderator';
 	}
 
 	get isCurrentSpeaker() {

@@ -147,7 +147,7 @@ export const MeetingParticipant = v.object({
 
 	tokenIdentifier: v.string(),
 
-	isAdmin: v.boolean(),
+	role: v.union(v.literal('admin'), v.literal('moderator'), v.literal('participant')),
 
 	isInSpeakerQueue: v.boolean(),
 

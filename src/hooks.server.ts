@@ -20,10 +20,6 @@ const auth: Handle = async ({ event, resolve }) => {
 	event.locals.token = await getToken(createAuth, event.cookies);
 	event.locals.meetingId = getMeetingCookie();
 
-	if (event.locals.token == null) {
-		return resolve(event);
-	}
-
 	// const client = getConvexClient(event.locals.token);
 
 	// event.locals.currentUser = await client.query(api.auth.getCurrentUser, {}).catch(() => undefined);
@@ -74,6 +70,9 @@ export const getToken = async <DataModel extends GenericDataModel>(
 
 		if (log) {
 			console.log({
+				isSecure,
+				insecureCookieName,
+				secureCookieName,
 				insecureValue,
 				secureValue,
 			});

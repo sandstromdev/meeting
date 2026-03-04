@@ -10,18 +10,13 @@
 	import QueueAdminControls from '$lib/components/blocks/admin/queue-admin-controls.svelte';
 </script>
 
-<div class="mx-auto max-w-2xl">
-	<div class="mb-4 flex justify-end">
-		<ViewSelector compact />
-	</div>
-	<main class="space-y-4">
-		<MeetingInfo />
-		<CurrentAgendaItem />
-		<Agenda />
-		<Timer />
-		<QueueAdminControls />
-		<RequestView />
-		<QueueControls />
-		<SpeakerQueue />
-	</main>
-</div>
+<main class="mx-auto max-w-2xl space-y-4">
+	<MeetingInfo />
+	<CurrentAgendaItem />
+	<Agenda />
+	<Timer />
+	<QueueAdminControls />
+	<RequestView />
+	<QueueControls />
+	<SpeakerQueue />
+</main>

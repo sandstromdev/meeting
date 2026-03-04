@@ -34,7 +34,7 @@ export const connect = authed
 
 				name: ctx.user.name,
 
-				isAdmin: false,
+				role: 'participant' as const,
 				isInSpeakerQueue: false,
 
 				absentSince: 0,
