@@ -1,5 +1,6 @@
 import { defineSchema, defineTable } from 'convex/server';
 import { v } from 'convex/values';
+import type { Id } from './_generated/dataModel';
 
 export const AgendaItem = v.object({
 	id: v.string(),
@@ -155,6 +156,12 @@ export const MeetingParticipant = v.object({
 	returnRequestedAt: v.number(),
 });
 
+/** Tracks participant activity by tokenIdentifier (separate from meetingParticipants). */
+export const Heartbeat = v.object({
+	tokenIdentifier: v.string(),
+	lastSeenAt: v.number(),
+});
+
 export default defineSchema(
 	{
 		meetingParticipants: defineTable(MeetingParticipant)
@@ -190,6 +197,10 @@ export default defineSchema(
 		pollVotes: defineTable(PollVote)
 			.index('by_poll', ['pollId'])
 			.index('by_poll_anon', ['pollId', 'anonID']),
+
+		heartbeats: defineTable(Heartbeat)
+			.index('by_token', ['tokenIdentifier'])
+			.index('by_lastSeenAt', ['lastSeenAt']),
 	},
 	{ schemaValidation: false },
 );

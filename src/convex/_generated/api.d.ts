@@ -12,6 +12,8 @@ import type * as admin_agenda from "../admin/agenda.js";
 import type * as admin_meeting from "../admin/meeting.js";
 import type * as admin_poll from "../admin/poll.js";
 import type * as auth from "../auth.js";
+import type * as crons from "../crons.js";
+import type * as heartbeat from "../heartbeat.js";
 import type * as helpers_agenda from "../helpers/agenda.js";
 import type * as helpers_auth from "../helpers/auth.js";
 import type * as helpers_builder_index from "../helpers/builder/index.js";
@@ -39,6 +41,8 @@ declare const fullApi: ApiFromModules<{
   "admin/meeting": typeof admin_meeting;
   "admin/poll": typeof admin_poll;
   auth: typeof auth;
+  crons: typeof crons;
+  heartbeat: typeof heartbeat;
   "helpers/agenda": typeof helpers_agenda;
   "helpers/auth": typeof helpers_auth;
   "helpers/builder/index": typeof helpers_builder_index;
