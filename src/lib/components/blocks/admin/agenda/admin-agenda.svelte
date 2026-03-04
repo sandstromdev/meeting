@@ -32,8 +32,8 @@
 	);
 	const currentAgendaItem = $derived(agenda[currentAgendaItemIndex]);
 
-	function hasBeenCompleted(number: number) {
-		return currentAgendaItem?.number && currentAgendaItem.number > number;
+	function hasBeenCompleted(index: number) {
+		return currentAgendaItemIndex >= 0 && currentAgendaItemIndex > index;
 	}
 
 	type AgendaDraft = {
@@ -70,19 +70,19 @@
 				<p class="text-sm text-muted-foreground">Inga agendapunkter ännu.</p>
 			{:else}
 				<ol>
-					{#each agenda as item (item.id)}
+					{#each agenda as item, index (item.id)}
 						<li
 							class={cn(
 								'flex items-baseline gap-2 py-2 pr-2 text-sm not-last:border-b',
-								hasBeenCompleted(item.number) && 'bg-muted/50 text-muted-foreground',
+								hasBeenCompleted(index) && 'bg-muted/50 text-muted-foreground',
 							)}
 						>
 							<div class="w-[4ch] shrink-0 text-right text-muted-foreground">
-								{item.number}.
+								{index + 1}.
 							</div>
 							{#if editingItem?.id !== item.id}
 								<span
-									class={cn('text-sm font-medium', hasBeenCompleted(item.number) && 'line-through')}
+									class={cn('text-sm font-medium', hasBeenCompleted(index) && 'line-through')}
 								>
 									{item.title}
 								</span>
@@ -101,7 +101,7 @@
 												agendaItemId: item.id,
 												direction: 'up',
 											})}
-										disabled={item.number <= 1}
+										disabled={index <= 0}
 									>
 										<ChevronUpIcon class="size-4" />
 									</Button>
@@ -115,7 +115,7 @@
 												agendaItemId: item.id,
 												direction: 'down',
 											})}
-										disabled={item.number >= agenda.length}
+										disabled={index >= agenda.length - 1}
 									>
 										<ChevronDownIcon class="size-4" />
 									</Button>

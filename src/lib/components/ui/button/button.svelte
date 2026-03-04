@@ -22,6 +22,9 @@
 				lg: 'h-12 rounded-md px-6 text-base md:text-sm has-[>svg]:px-4',
 				icon: 'size-9',
 			},
+			loading: {
+				true: '[&_svg]:not-data-[loading=true]:hidden',
+			},
 		},
 		defaultVariants: {
 			variant: 'default',
@@ -95,7 +98,7 @@
 	aria-disabled={href ? disabled : undefined}
 	role={href && disabled ? 'link' : undefined}
 	tabindex={href && disabled ? -1 : tabindex}
-	class={cn(buttonVariants({ variant, size }), className)}
+	class={cn(buttonVariants({ variant, size, loading }), className)}
 	bind:this={ref}
 	onclick={async (e: any) => {
 		onclick?.(e);
@@ -111,9 +114,9 @@
 		}
 	}}
 >
-	{#if type !== undefined && loading && size !== 'icon'}
+	{#if type !== undefined && loading}
 		<div class="flex animate-spin place-items-center justify-center">
-			<LoaderCircleIcon class="size-4" />
+			<LoaderCircleIcon data-loading class="size-4" />
 		</div>
 		<span class="sr-only">Loading</span>
 	{/if}

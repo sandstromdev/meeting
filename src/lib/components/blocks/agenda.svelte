@@ -8,7 +8,6 @@
 		CollapsibleTrigger,
 	} from '$lib/components/ui/collapsible';
 	import { confirm } from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
-	import { Input } from '$lib/components/ui/input';
 	import { getMeetingContext } from '$lib/context.svelte';
 	import { usePageState } from '$lib/page-state.svelte';
 	import { cn } from '$lib/utils';
@@ -16,8 +15,7 @@
 	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
 	import ChevronUpIcon from '@lucide/svelte/icons/chevron-up';
 	import PencilIcon from '@lucide/svelte/icons/pencil';
-	import SaveIcon from '@lucide/svelte/icons/save';
-	import XIcon from '@lucide/svelte/icons/x';
+	import Trash2Icon from '@lucide/svelte/icons/trash-2';
 
 	const meeting = getMeetingContext();
 	const ps = usePageState();
@@ -32,8 +30,8 @@
 	);
 	const currentAgendaItem = $derived(agenda[currentAgendaItemIndex]);
 
-	function hasBeenCompleted(number: number) {
-		return currentAgendaItem?.number && currentAgendaItem.number > number;
+	function hasBeenCompleted(index: number) {
+		return currentAgendaItemIndex >= 0 && currentAgendaItemIndex > index;
 	}
 
 	const mainStart = $derived(Math.max(0, currentAgendaItemIndex - 1));
@@ -79,8 +77,8 @@
 						</CollapsibleTrigger>
 						<CollapsibleContent>
 							<ol>
-								{#each parts.previous as item (item.id)}
-									{@render itemRow(item)}
+								{#each parts.previous as item, i (item.id)}
+									{@render itemRow(item, i)}
 								{/each}
 							</ol>
 						</CollapsibleContent>
@@ -88,8 +86,8 @@
 				{/if}
 
 				<ol>
-					{#each parts.main as item (item.id)}
-						{@render itemRow(item)}
+					{#each parts.main as item, i (item.id)}
+						{@render itemRow(item, mainStart + i)}
 					{/each}
 				</ol>
 
@@ -103,8 +101,8 @@
 						</CollapsibleTrigger>
 						<CollapsibleContent>
 							<ol class="border-t">
-								{#each parts.upcoming as item (item.id)}
-									{@render itemRow(item)}
+								{#each parts.upcoming as item, i (item.id)}
+									{@render itemRow(item, mainEnd + i)}
 								{/each}
 							</ol>
 						</CollapsibleContent>
@@ -121,11 +119,11 @@
 	</CollapsibleContent>
 </Collapsible>
 
-{#snippet itemRow(item: (typeof agenda)[number])}
+{#snippet itemRow(item: (typeof agenda)[number], index: number)}
 	<li
 		class={cn(
 			'flex gap-2 px-2 py-2 text-sm not-last:border-b',
-			hasBeenCompleted(item.number) && 'bg-muted/50 text-muted-foreground',
+			hasBeenCompleted(index) && 'bg-muted/50 text-muted-foreground',
 		)}
 	>
 		{#if meeting.isAdmin}
@@ -144,12 +142,12 @@
 		{/if}
 
 		{#if editingItemId === item.id}
-			<EditAgendaItem agendaItemId={item.id} />
+			<EditAgendaItem agendaItemId={item.id} onClose={() => (editingItemId = undefined)} />
 		{:else}
 			<div class="w-[4ch] shrink-0 text-right text-muted-foreground">
-				{item.number}.
+				{index + 1}.
 			</div>
-			<span class={cn('text-sm font-medium', hasBeenCompleted(item.number) && 'line-through')}>
+			<span class={cn('text-sm font-medium', hasBeenCompleted(index) && 'line-through')}>
 				{item.title}
 			</span>
 		{/if}
@@ -166,7 +164,7 @@
 								agendaItemId: item.id,
 								direction: 'up',
 							})}
-						disabled={item.number <= 1}
+						disabled={index <= 0}
 					>
 						<ChevronUpIcon class="size-4" />
 					</Button>
@@ -180,13 +178,18 @@
 								agendaItemId: item.id,
 								direction: 'down',
 							})}
-						disabled={item.number >= agenda.length}
+						disabled={index >= agenda.length - 1}
 					>
 						<ChevronDownIcon class="size-4" />
 					</Button>
-				{/if}
-
-				{#if editingItemId === item.id}
+					<Button
+						size="icon"
+						variant="ghost"
+						type="button"
+						onclick={() => (editingItemId = item.id)}
+					>
+						<PencilIcon class="size-4" />
+					</Button>
 					<Button
 						size="icon"
 						variant="ghost"
@@ -202,16 +205,7 @@
 									}),
 							})}
 					>
-						<XIcon class="size-4" />
-					</Button>
-				{:else}
-					<Button
-						size="icon"
-						variant="ghost"
-						type="button"
-						onclick={() => (editingItemId = item.id)}
-					>
-						<PencilIcon class="size-4" />
+						<Trash2Icon class="size-4" />
 					</Button>
 				{/if}
 			</div>

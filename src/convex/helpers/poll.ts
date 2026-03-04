@@ -4,32 +4,6 @@ import { AppError, errors } from './error';
 
 type Db = QueryCtx['db'];
 
-export function createAgendaItemId() {
-	return `agenda_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-}
-
-export function normalizeAgendaItems(agenda: Doc<'meetings'>['agenda']) {
-	return agenda.map((item, index) => {
-		const raw = item as Partial<{
-			id: string;
-			number: number;
-			title: string;
-			pollIds: Id<'polls'>[];
-		}>;
-
-		return {
-			id: raw.id && raw.id.length > 0 ? raw.id : createAgendaItemId(),
-			number: index + 1,
-			title: raw.title ?? `Punkt ${index + 1}`,
-			pollIds: Array.isArray(raw.pollIds) ? raw.pollIds : [],
-		};
-	});
-}
-
-export function findAgendaItemIndex(agenda: Doc<'meetings'>['agenda'], agendaItemId: string) {
-	return agenda.findIndex((item) => item.id === agendaItemId);
-}
-
 export async function getPollOrThrow(db: Db, pollId: Id<'polls'>) {
 	const poll = await db.get('polls', pollId);
 	if (!poll) {
@@ -59,6 +33,22 @@ export function assertPollEditable(poll: Pick<Doc<'polls'>, 'isOpen'>) {
 	}
 }
 
+export function assertPollVoteLimit(options: string[], maxVotesPerVoter: number) {
+	if (maxVotesPerVoter < 1 || maxVotesPerVoter > options.length) {
+		throw new AppError(
+			errors.invalid_poll_vote_limit({
+				maxVotesPerVoter,
+				optionsCount: options.length,
+			}),
+		);
+	}
+}
+
+export function getPollMaxVotesPerVoter(poll: Pick<Doc<'polls'>, 'options' | 'maxVotesPerVoter'>) {
+	const configured = Math.floor(poll.maxVotesPerVoter ?? 1);
+	return Math.max(1, Math.min(configured, poll.options.length));
+}
+
 export function getEligibleVoterCount(meeting: Pick<Doc<'meetings'>, 'participants' | 'absent'>) {
 	return Math.max(0, (meeting.participants ?? 0) - (meeting.absent ?? 0));
 }
@@ -69,6 +59,14 @@ export async function countVotesForPoll(db: Db, pollId: Id<'polls'>) {
 		.withIndex('by_poll', (q) => q.eq('pollId', pollId))
 		.collect();
 	return votes.length;
+}
+
+export async function countVotersForPoll(db: Db, pollId: Id<'polls'>) {
+	const votes = await db
+		.query('pollVotes')
+		.withIndex('by_poll', (q) => q.eq('pollId', pollId))
+		.collect();
+	return new Set(votes.map((vote) => vote.anonID)).size;
 }
 
 export async function getVoteByAnonId(db: Db, pollId: Id<'polls'>, anonID: number) {
@@ -97,9 +95,9 @@ export async function closePollIfAllEligibleHaveVoted(
 	pollId: Id<'polls'>,
 ) {
 	const eligibleVoters = getEligibleVoterCount(meeting);
-	const votesCount = await countVotesForPoll(db, pollId);
+	const votersCount = await countVotersForPoll(db, pollId);
 
-	if (eligibleVoters > 0 && votesCount >= eligibleVoters) {
+	if (eligibleVoters > 0 && votersCount >= eligibleVoters) {
 		await closePoll(db, pollId);
 		return true;
 	}

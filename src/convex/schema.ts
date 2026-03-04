@@ -3,7 +3,6 @@ import { v } from 'convex/values';
 
 export const AgendaItem = v.object({
 	id: v.string(),
-	number: v.number(),
 	title: v.string(),
 	pollIds: v.array(v.id('polls')),
 });
@@ -96,6 +95,7 @@ export const Poll = v.object({
 	agendaItemId: v.string(),
 	title: v.string(),
 	options: v.array(v.string()),
+	maxVotesPerVoter: v.optional(v.number()),
 	isOpen: v.boolean(),
 	/** If true, everyone can see results when poll is closed; if false, only admins can. */
 	resultsPublic: v.optional(v.boolean()),

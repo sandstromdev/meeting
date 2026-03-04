@@ -1,5 +1,6 @@
 import { authed, withMe, withMeeting } from '$convex/helpers/auth';
 import { AppError, errors } from '$convex/helpers/error';
+import { normalizeAgendaItems } from '$convex/helpers/agenda';
 import {
 	closeSpeakerSessionIfOpen,
 	completeReturnToMeeting,
@@ -10,7 +11,10 @@ import {
 	setCurrentSpeaker,
 	setNotInSpeakerQueue,
 } from '$convex/helpers/meeting';
-import { getEligibleVoterCount, getVoteByAnonId, normalizeAgendaItems } from '$convex/helpers/poll';
+import {
+	getEligibleVoterCount,
+	getPollMaxVotesPerVoter,
+} from '$convex/helpers/poll';
 import { zid } from 'convex-helpers/server/zod4';
 
 export const getMeeting = withMeeting.query().public(async ({ ctx }) => {
@@ -48,7 +52,13 @@ export const getData = withMe.query().public(async ({ ctx }) => {
 						.withIndex('by_poll', (q) => q.eq('pollId', poll._id))
 						.collect();
 					const votesCount = votes.length;
-					const hasVoted = !!(await getVoteByAnonId(ctx.db, poll._id, me.anonID));
+					const votersCount = new Set(votes.map((vote) => vote.anonID)).size;
+					const myVoteOptionIndexes = votes
+						.filter((vote) => vote.anonID === me.anonID)
+						.map((vote) => vote.optionIndex)
+						.sort((a, b) => a - b);
+					const hasVoted = myVoteOptionIndexes.length > 0;
+					const maxVotesPerVoter = getPollMaxVotesPerVoter(poll);
 
 					const maySeeResults = poll.resultsPublic === true || me.isAdmin;
 					const optionTotals =
@@ -64,13 +74,16 @@ export const getData = withMe.query().public(async ({ ctx }) => {
 						id: poll._id,
 						title: poll.title,
 						options: poll.options,
+						maxVotesPerVoter,
 						resultsPublic: poll.resultsPublic ?? false,
 						isOpen: poll.isOpen,
 						openedAt: poll.openedAt,
 						closedAt: poll.closedAt,
 						votesCount,
+						votersCount,
 						eligibleVoters,
 						hasVoted,
+						myVoteOptionIndexes,
 						optionTotals,
 					};
 				}),

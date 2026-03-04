@@ -4,6 +4,7 @@ import {
 	assertPollInMeeting,
 	assertPollOptionIndex,
 	closePollIfAllEligibleHaveVoted,
+	getPollMaxVotesPerVoter,
 	getPollOrThrow,
 	getVoteByAnonId,
 } from '$convex/helpers/poll';
@@ -15,13 +16,12 @@ export const vote = withMe
 	.mutation()
 	.input({
 		pollId: zid('polls'),
-		optionIndex: z.number().int().nonnegative(),
+		optionIndexes: z.array(z.number().int().nonnegative()).min(1),
 	})
 	.public(async ({ ctx, args }) => {
 		const poll = await getPollOrThrow(ctx.db, args.pollId);
 
 		assertPollInMeeting(poll, ctx.meeting._id);
-		assertPollOptionIndex(poll, args.optionIndex);
 		requireNotAbsent(ctx.me, 'vote');
 
 		if (!poll.isOpen) {
@@ -33,13 +33,31 @@ export const vote = withMe
 			throw new AppError(errors.illegal_poll_action('already_voted'));
 		}
 
-		await ctx.db.insert('pollVotes', {
-			meetingId: ctx.meeting._id,
-			pollId: args.pollId,
-			anonID: ctx.me.anonID,
-			optionIndex: args.optionIndex,
-			createdAt: Date.now(),
-		});
+		const uniqueOptionIndexes = [...new Set(args.optionIndexes)];
+		if (uniqueOptionIndexes.length !== args.optionIndexes.length) {
+			throw new AppError(errors.illegal_poll_action('duplicate_vote_option'));
+		}
+		const maxVotesPerVoter = getPollMaxVotesPerVoter(poll);
+		if (uniqueOptionIndexes.length > maxVotesPerVoter) {
+			throw new AppError(errors.illegal_poll_action('too_many_votes'));
+		}
+
+		for (const optionIndex of uniqueOptionIndexes) {
+			assertPollOptionIndex(poll, optionIndex);
+		}
+
+		const now = Date.now();
+		await Promise.all(
+			uniqueOptionIndexes.map((optionIndex) =>
+				ctx.db.insert('pollVotes', {
+					meetingId: ctx.meeting._id,
+					pollId: args.pollId,
+					anonID: ctx.me.anonID,
+					optionIndex,
+					createdAt: now,
+				}),
+			),
+		);
 
 		await closePollIfAllEligibleHaveVoted(ctx.db, ctx.meeting, args.pollId);
 		return true;

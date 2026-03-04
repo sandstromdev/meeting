@@ -11,6 +11,7 @@
 	import SaveIcon from '@lucide/svelte/icons/save';
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
 	import EditPoll from './edit-poll.svelte';
+	import { SvelteMap } from 'svelte/reactivity';
 
 	const meeting = getMeetingContext();
 
@@ -19,33 +20,28 @@
 		title: string;
 		options: string[];
 		resultsPublic: boolean;
+	maxVotesPerVoter: number;
 	};
 
 	let {
-		/** When set, edit this agenda item's title and polls instead of creating a new item. */
-		agendaItemId = undefined as string | undefined,
+		agendaItemId,
+		onClose = () => {},
+	}: {
+		agendaItemId?: string;
+		onClose?: () => unknown;
 	} = $props();
 
 	const agenda = $derived(meeting.meeting.agenda ?? []);
 	const item = $derived(agendaItemId ? agenda.find((a) => a.id === agendaItemId) : null);
 	const isEditMode = $derived(!!agendaItemId);
 
-	function newPollDraft(): PollDraft {
-		return { title: '', options: ['', ''], resultsPublic: false };
-	}
-
-	function draftFromPoll(p: {
-		id: string;
-		title: string;
-		options: string[];
-		resultsPublic?: boolean;
-	}): PollDraft {
+	function newPollDraft() {
 		return {
-			id: p.id as Id<'polls'>,
-			title: p.title,
-			options: [...p.options],
-			resultsPublic: p.resultsPublic ?? false,
-		};
+			title: '',
+			options: ['', ''],
+			resultsPublic: false,
+			maxVotesPerVoter: 1,
+		} satisfies PollDraft;
 	}
 
 	let newTitle = $state('');
@@ -53,32 +49,47 @@
 	let isLoading = $state(false);
 	let lastSyncedId = $state<string | null>(null);
 	let initialPollIds = $state<Id<'polls'>[]>([]);
-	let originalPolls = $state<
-		Map<Id<'polls'>, { title: string; options: string[]; resultsPublic: boolean }>
-	>(new Map());
+	let originalPolls = new SvelteMap<Id<'polls'>, PollDraft>();
 
 	$effect(() => {
 		if (isEditMode && item && item.id !== lastSyncedId) {
 			lastSyncedId = item.id;
 			newTitle = item.title;
-			polls = item.polls.map((p) => draftFromPoll(p));
+			polls = item.polls.map((p) => ({
+				id: p.id,
+				title: p.title,
+				options: [...p.options],
+				resultsPublic: p.resultsPublic,
+				maxVotesPerVoter: p.maxVotesPerVoter ?? 1,
+			}));
 			initialPollIds = item.polls.map((p) => p.id as Id<'polls'>);
-			originalPolls = new Map(
-				item.polls.map((p) => [
-					p.id as Id<'polls'>,
-					{ title: p.title, options: [...p.options], resultsPublic: p.resultsPublic ?? false },
-				]),
-			);
+			originalPolls.clear();
+
+			for (const p of item.polls) {
+				originalPolls.set(p.id, {
+					title: p.title,
+					options: [...p.options],
+					resultsPublic: p.resultsPublic,
+					maxVotesPerVoter: p.maxVotesPerVoter ?? 1,
+				});
+			}
 		}
+
 		if (!isEditMode) {
 			lastSyncedId = null;
 		}
 	});
 
 	const pollsValid = $derived(
-		polls.every(
-			(p) => !!p.title.trim() && p.options.map((o) => o.trim()).filter(Boolean).length >= 2,
-		),
+		polls.every((p) => {
+			const options = p.options.map((o) => o.trim()).filter(Boolean);
+			return (
+				!!p.title.trim() &&
+				options.length >= 2 &&
+				p.maxVotesPerVoter >= 1 &&
+				p.maxVotesPerVoter <= options.length
+			);
+		}),
 	);
 	const canSubmit = $derived(!!newTitle.trim() && (polls.length === 0 || pollsValid));
 
@@ -126,7 +137,8 @@
 		return (
 			orig.title !== draft.title.trim() ||
 			!optionsEqual(orig.options, draft.options) ||
-			orig.resultsPublic !== draft.resultsPublic
+			orig.resultsPublic !== draft.resultsPublic ||
+			orig.maxVotesPerVoter !== draft.maxVotesPerVoter
 		);
 	}
 
@@ -134,17 +146,20 @@
 		const created = await meeting.adminMutate(api.admin.agenda.createAgendaItem, {
 			title: newTitle.trim(),
 		});
+
 		for (const poll of polls) {
 			const options = poll.options.map((o) => o.trim()).filter(Boolean);
 			if (poll.title.trim() && options.length >= 2) {
-				await meeting.adminMutate(api.admin.agenda.createPoll, {
+				await meeting.adminMutate(api.admin.poll.createPoll, {
 					agendaItemId: created.id,
 					title: poll.title.trim(),
 					options,
 					resultsPublic: poll.resultsPublic,
+					maxVotesPerVoter: Math.min(poll.maxVotesPerVoter, options.length),
 				});
 			}
 		}
+
 		newTitle = '';
 		polls = [];
 	}
@@ -153,14 +168,18 @@
 		if (!agendaItemId) {
 			return;
 		}
+
 		await meeting.adminMutate(api.admin.agenda.updateAgendaItem, {
 			agendaItemId,
 			title: newTitle.trim(),
 		});
+
 		const removedIds = initialPollIds.filter((id) => !polls.some((d) => d.id === id));
+
 		for (const id of removedIds) {
-			await meeting.adminMutate(api.admin.agenda.removePoll, { pollId: id });
+			await meeting.adminMutate(api.admin.poll.removePoll, { pollId: id });
 		}
+
 		const orderedIds: Id<'polls'>[] = [];
 
 		for (const draft of polls) {
@@ -169,11 +188,12 @@
 			} else {
 				const options = draft.options.map((o) => o.trim()).filter(Boolean);
 				if (draft.title.trim() && options.length >= 2) {
-					const pollId = await meeting.adminMutate(api.admin.agenda.createPoll, {
+					const pollId = await meeting.adminMutate(api.admin.poll.createPoll, {
 						agendaItemId,
 						title: draft.title.trim(),
 						options,
 						resultsPublic: draft.resultsPublic,
+						maxVotesPerVoter: Math.min(draft.maxVotesPerVoter, options.length),
 					});
 					orderedIds.push(pollId);
 				}
@@ -189,11 +209,12 @@
 			if (draft.id && draftChanged(draft)) {
 				const options = draft.options.map((o) => o.trim()).filter(Boolean);
 				if (options.length >= 2) {
-					await meeting.adminMutate(api.admin.agenda.editPoll, {
+					await meeting.adminMutate(api.admin.poll.editPoll, {
 						pollId: draft.id,
 						title: draft.title.trim(),
 						options,
 						resultsPublic: draft.resultsPublic,
+						maxVotesPerVoter: Math.min(draft.maxVotesPerVoter, options.length),
 					});
 				}
 			}
@@ -206,15 +227,16 @@
 			return;
 		}
 		isLoading = true;
-		try {
-			if (isEditMode) {
-				await submitEdit();
-			} else {
-				await submitCreate();
-			}
-		} finally {
-			isLoading = false;
+
+		if (isEditMode) {
+			await submitEdit();
+		} else {
+			await submitCreate();
 		}
+
+		onClose?.();
+
+		isLoading = false;
 	}
 </script>
 
@@ -270,9 +292,10 @@
 						</div>
 						<div class="min-w-0 flex-1">
 							<EditPoll
-								bind:pollTitle={pollDraft.title}
-								bind:pollOptions={pollDraft.options}
-								bind:resultsPublic={pollDraft.resultsPublic}
+								bind:pollTitle={polls[i].title}
+								bind:pollOptions={polls[i].options}
+								bind:resultsPublic={polls[i].resultsPublic}
+								bind:pollMaxVotesPerVoter={polls[i].maxVotesPerVoter}
 							/>
 						</div>
 					</div>

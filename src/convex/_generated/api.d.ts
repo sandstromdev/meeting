@@ -10,7 +10,9 @@
 
 import type * as admin_agenda from "../admin/agenda.js";
 import type * as admin_meeting from "../admin/meeting.js";
+import type * as admin_poll from "../admin/poll.js";
 import type * as auth from "../auth.js";
+import type * as helpers_agenda from "../helpers/agenda.js";
 import type * as helpers_auth from "../helpers/auth.js";
 import type * as helpers_builder_index from "../helpers/builder/index.js";
 import type * as helpers_builder_types from "../helpers/builder/types.js";
@@ -34,7 +36,9 @@ import type {
 declare const fullApi: ApiFromModules<{
   "admin/agenda": typeof admin_agenda;
   "admin/meeting": typeof admin_meeting;
+  "admin/poll": typeof admin_poll;
   auth: typeof auth;
+  "helpers/agenda": typeof helpers_agenda;
   "helpers/auth": typeof helpers_auth;
   "helpers/builder/index": typeof helpers_builder_index;
   "helpers/builder/types": typeof helpers_builder_types;

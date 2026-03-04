@@ -10,11 +10,18 @@
 		pollTitle = $bindable(''),
 		pollOptions = $bindable(['', '']),
 		resultsPublic = $bindable(false),
+		pollMaxVotesPerVoter = $bindable(1),
 	}: {
 		pollTitle?: string;
 		pollOptions?: string[];
 		resultsPublic?: boolean;
+		pollMaxVotesPerVoter?: number;
 	} = $props();
+
+	$effect(() => {
+		const maxAllowed = Math.max(1, pollOptions.map((option) => option.trim()).filter(Boolean).length);
+		pollMaxVotesPerVoter = Math.min(Math.max(1, Math.floor(pollMaxVotesPerVoter)), maxAllowed);
+	});
 
 	function addPollOption() {
 		pollOptions = [...pollOptions, ''];
@@ -30,6 +37,16 @@
 
 <div class="space-y-2 rounded-md border bg-muted/30 p-3">
 	<Input bind:value={pollTitle} placeholder="Omröstningens rubrik" class="w-full" />
+	<div class="flex items-center gap-2">
+		<Label class="text-sm">Max röster per deltagare</Label>
+		<Input
+			type="number"
+			min={1}
+			max={Math.max(1, pollOptions.map((option) => option.trim()).filter(Boolean).length)}
+			bind:value={pollMaxVotesPerVoter}
+			class="w-24"
+		/>
+	</div>
 	<Label class="flex items-center gap-2 text-sm">
 		<Checkbox bind:checked={resultsPublic} />
 		Visa resultat för alla (annars endast admin)

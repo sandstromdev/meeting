@@ -4,6 +4,7 @@ import type { QueryCtx } from '$convex/_generated/server';
 import { AppError, errors } from './error';
 import { c } from './index';
 import { getMeetingParticipant } from './meeting';
+import { normalizeAgendaItems } from './agenda';
 
 export const authMw = c.$context<QueryCtx>().createMiddleware(async ({ ctx, next }) => {
 	const user = await ctx.auth.getUserIdentity();
@@ -28,6 +29,8 @@ export const withMeeting = authed
 		if (!meeting) {
 			throw new AppError(errors.meeting_not_found(args));
 		}
+
+		meeting.agenda = normalizeAgendaItems(meeting.agenda);
 
 		return next({ ...ctx, meeting });
 	});

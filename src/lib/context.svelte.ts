@@ -4,6 +4,7 @@ import { useConvexClient, useQuery } from 'convex-svelte';
 import type { ConvexClient } from 'convex/browser';
 import type { Getter } from 'runed';
 import { createContext } from 'svelte';
+import { AgendaState } from './agenda.svelte';
 import { SpeakerQueue } from './speaker-queue.svelte';
 import type { DefaultFunctionArgs, FunctionReference } from 'convex/server';
 import type { UseQueryOptions, UseQueryReturn } from '$lib/types';
@@ -29,6 +30,7 @@ export class MeetingState {
 	#data: MeetingData;
 
 	readonly convex: ConvexClient;
+	readonly agenda: AgendaState;
 	readonly speakerQueue: SpeakerQueue;
 
 	readonly q = this.query.bind(this);
@@ -45,6 +47,7 @@ export class MeetingState {
 		this.mutate = this.mutate.bind(this);
 		this.adminMutate = this.adminMutate.bind(this);
 
+		this.agenda = new AgendaState(this);
 		this.speakerQueue = new SpeakerQueue(this);
 
 		$effect(() => {

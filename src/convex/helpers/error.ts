@@ -19,8 +19,16 @@ export const errors = {
 
 	poll_not_found: (pollId: Id<'polls'>) => ({ code: 'poll_not_found', pollId }) as const,
 	invalid_poll_option: (option: number) => ({ code: 'invalid_poll_option', option }) as const,
+	invalid_poll_vote_limit: (args: { maxVotesPerVoter: number; optionsCount: number }) =>
+		({ code: 'invalid_poll_vote_limit', ...args }) as const,
 	illegal_poll_action: (
-		action: 'edit_while_open' | 'vote_while_closed' | 'already_voted' | 'agenda_has_poll',
+		action:
+			| 'edit_while_open'
+			| 'vote_while_closed'
+			| 'already_voted'
+			| 'agenda_has_poll'
+			| 'too_many_votes'
+			| 'duplicate_vote_option',
 	) => ({ code: 'illegal_poll_action', action }) as const,
 
 	illegal_while_absent: (action?: string) => ({ code: 'illegal_while_absent', action }) as const,

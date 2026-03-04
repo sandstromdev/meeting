@@ -18,6 +18,10 @@ export const ErrorMessages = {
 				return 'Du har redan röstat i denna omröstning.';
 			case 'agenda_has_poll':
 				return 'Denna agendapunkt har redan en omröstning.';
+			case 'too_many_votes':
+				return 'Du kan inte rösta på fler alternativ än tillåtet i denna omröstning.';
+			case 'duplicate_vote_option':
+				return 'Du kan inte rösta flera gånger på samma alternativ.';
 			default:
 				return 'Du kan inte ändra i pollen just nu.';
 		}
@@ -27,6 +31,8 @@ export const ErrorMessages = {
 	cannot_leave_while_speaking: () =>
 		'Du kan inte markera dig som frånvarande medan du är aktuell talare.',
 	invalid_poll_option: ({ option }) => `'${option}' är inte ett möjligt alternativ i pollen.`,
+	invalid_poll_vote_limit: ({ maxVotesPerVoter, optionsCount }) =>
+		`Maxröster per deltagare (${maxVotesPerVoter}) måste vara mellan 1 och antal alternativ (${optionsCount}).`,
 	poll_not_found: ({ pollId }) => `Pollen med id '${pollId}' hittades inte.`,
 	meeting_not_found: ({ meetingCode, meetingId }) =>
 		`Mötet med ${meetingCode ? 'möteskoden' : 'id'} '${meetingCode ?? meetingId}' hittades inte.`,
