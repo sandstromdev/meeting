@@ -8,6 +8,7 @@
 		CollapsibleTrigger,
 	} from '$lib/components/ui/collapsible';
 	import { confirm } from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
+	import { flattenAgenda } from '$lib/agenda.svelte';
 	import { getMeetingContext } from '$lib/context.svelte';
 	import { usePageState } from '$lib/page-state.svelte';
 	import { cn } from '$lib/utils';
@@ -21,14 +22,15 @@
 	const ps = usePageState();
 
 	const agenda = $derived(meeting.meeting.agenda ?? []);
+	const flatAgenda = $derived(flattenAgenda(agenda));
 	const currentAgendaItemId = $derived(
-		meeting.meeting.currentAgendaItemId ?? (agenda.length > 0 ? agenda[0].id : undefined),
+		meeting.meeting.currentAgendaItemId ?? (flatAgenda.length > 0 ? flatAgenda[0].id : undefined),
 	);
 
 	const currentAgendaItemIndex = $derived(
-		agenda.findIndex((item) => item.id === currentAgendaItemId),
+		flatAgenda.findIndex((item) => item.id === currentAgendaItemId),
 	);
-	const currentAgendaItem = $derived(agenda[currentAgendaItemIndex]);
+	const currentAgendaItem = $derived(flatAgenda[currentAgendaItemIndex]);
 
 	function hasBeenCompleted(index: number) {
 		return currentAgendaItemIndex >= 0 && currentAgendaItemIndex > index;
@@ -37,13 +39,13 @@
 	const mainStart = $derived(Math.max(0, currentAgendaItemIndex - 1));
 	const mainEnd = $derived(
 		currentAgendaItemIndex < 0
-			? agenda.length
-			: Math.min(agenda.length, currentAgendaItemIndex + 3),
+			? flatAgenda.length
+			: Math.min(flatAgenda.length, currentAgendaItemIndex + 3),
 	);
 	const parts = $derived({
-		previous: agenda.slice(0, mainStart),
-		main: agenda.slice(mainStart, mainEnd),
-		upcoming: agenda.slice(mainEnd),
+		previous: flatAgenda.slice(0, mainStart),
+		main: flatAgenda.slice(mainStart, mainEnd),
+		upcoming: flatAgenda.slice(mainEnd),
 	});
 
 	type AgendaDraft = {
@@ -64,7 +66,7 @@
 
 	<CollapsibleContent>
 		<div class="border-t">
-			{#if agenda.length === 0}
+			{#if flatAgenda.length === 0}
 				<p class="text-sm text-muted-foreground">Inga agendapunkter ännu.</p>
 			{:else}
 				{#if parts.previous.length > 0}
@@ -119,7 +121,7 @@
 	</CollapsibleContent>
 </Collapsible>
 
-{#snippet itemRow(item: (typeof agenda)[number], index: number)}
+{#snippet itemRow(item: (typeof flatAgenda)[number], index: number)}
 	<li
 		class={cn(
 			'flex gap-2 px-2 py-2 text-sm not-last:border-b',
@@ -178,7 +180,7 @@
 								agendaItemId: item.id,
 								direction: 'down',
 							})}
-						disabled={index >= agenda.length - 1}
+						disabled={index >= flatAgenda.length - 1}
 					>
 						<ChevronDownIcon class="size-4" />
 					</Button>

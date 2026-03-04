@@ -9,6 +9,7 @@
 	} from '$lib/components/ui/collapsible';
 	import { confirm } from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
 	import { Input } from '$lib/components/ui/input';
+	import { flattenAgenda } from '$lib/agenda.svelte';
 	import { getMeetingContext } from '$lib/context.svelte';
 	import { usePageState } from '$lib/page-state.svelte';
 	import { cn } from '$lib/utils';
@@ -23,14 +24,15 @@
 	const ps = usePageState();
 
 	const agenda = $derived(meeting.meeting.agenda ?? []);
+	const flatAgenda = $derived(flattenAgenda(agenda));
 	const currentAgendaItemId = $derived(
-		meeting.meeting.currentAgendaItemId ?? (agenda.length > 0 ? agenda[0].id : undefined),
+		meeting.meeting.currentAgendaItemId ?? (flatAgenda.length > 0 ? flatAgenda[0].id : undefined),
 	);
 
 	const currentAgendaItemIndex = $derived(
-		agenda.findIndex((item) => item.id === currentAgendaItemId),
+		flatAgenda.findIndex((item) => item.id === currentAgendaItemId),
 	);
-	const currentAgendaItem = $derived(agenda[currentAgendaItemIndex]);
+	const currentAgendaItem = $derived(flatAgenda[currentAgendaItemIndex]);
 
 	function hasBeenCompleted(index: number) {
 		return currentAgendaItemIndex >= 0 && currentAgendaItemIndex > index;
@@ -66,11 +68,11 @@
 
 	<CollapsibleContent>
 		<div class="border-t">
-			{#if agenda.length === 0}
+			{#if flatAgenda.length === 0}
 				<p class="text-sm text-muted-foreground">Inga agendapunkter ännu.</p>
 			{:else}
 				<ol>
-					{#each agenda as item, index (item.id)}
+					{#each flatAgenda as item, index (item.id)}
 						<li
 							class={cn(
 								'flex items-baseline gap-2 py-2 pr-2 text-sm not-last:border-b',
@@ -115,7 +117,7 @@
 												agendaItemId: item.id,
 												direction: 'down',
 											})}
-										disabled={index >= agenda.length - 1}
+										disabled={index >= flatAgenda.length - 1}
 									>
 										<ChevronDownIcon class="size-4" />
 									</Button>

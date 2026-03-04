@@ -21,6 +21,11 @@ export const errors = {
 	invalid_poll_option: (option: number) => ({ code: 'invalid_poll_option', option }) as const,
 	invalid_poll_vote_limit: (args: { maxVotesPerVoter: number; optionsCount: number }) =>
 		({ code: 'invalid_poll_vote_limit', ...args }) as const,
+	invalid_poll_type_config: (
+		args:
+			| { kind: 'winningCount'; value: number; optionsCount: number }
+			| { kind: 'majorityRule_required' },
+	) => ({ code: 'invalid_poll_type_config', ...args }) as const,
 	illegal_poll_action: (
 		action:
 			| 'edit_while_open'

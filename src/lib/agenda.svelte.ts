@@ -5,6 +5,21 @@ import { SvelteMap } from 'svelte/reactivity';
 type AgendaItem = MeetingData['meeting']['agenda'][number];
 type Poll = AgendaItem['polls'][number];
 
+/** Pre-order flatten of nested agenda (matches backend order). */
+export function flattenAgenda(agenda: AgendaItem[]): AgendaItem[] {
+	const out: AgendaItem[] = [];
+	function walk(items: AgendaItem[]) {
+		for (const item of items) {
+			out.push(item);
+			if (item.items?.length) {
+				walk(item.items);
+			}
+		}
+	}
+	walk(agenda);
+	return out;
+}
+
 export class AgendaState {
 	#meeting: MeetingState;
 	#selectedOptionIndexesByPoll = new SvelteMap<string, number[]>();
@@ -17,29 +32,37 @@ export class AgendaState {
 		return this.#meeting.meeting.agenda ?? [];
 	}
 
+	/** Flattened agenda (pre-order) for navigation. */
+	get flatAgenda() {
+		return flattenAgenda(this.agenda);
+	}
+
 	get currentAgendaItemId() {
+		const flat = this.flatAgenda;
 		return (
 			this.#meeting.meeting.currentAgendaItemId ??
-			(this.agenda.length > 0 ? this.agenda[0].id : undefined)
+			(flat.length > 0 ? flat[0].id : undefined)
 		);
 	}
 
 	get currentIndex() {
-		return this.agenda.findIndex((item) => item.id === this.currentAgendaItemId);
+		return this.flatAgenda.findIndex((item) => item.id === this.currentAgendaItemId);
 	}
 
 	get currentItem() {
-		return this.agenda[this.currentIndex];
+		return this.flatAgenda[this.currentIndex];
 	}
 
 	get nextItem() {
+		const flat = this.flatAgenda;
 		const idx = this.currentIndex;
-		return idx >= 0 && idx < this.agenda.length - 1 ? this.agenda[idx + 1] : undefined;
+		return idx >= 0 && idx < flat.length - 1 ? flat[idx + 1] : undefined;
 	}
 
 	get previousItem() {
+		const flat = this.flatAgenda;
 		const idx = this.currentIndex;
-		return idx > 0 ? this.agenda[idx - 1] : undefined;
+		return idx > 0 ? flat[idx - 1] : undefined;
 	}
 
 	selectedForPoll(pollId: string) {
@@ -64,6 +87,9 @@ export class AgendaState {
 			return;
 		}
 		if (current.length >= poll.maxVotesPerVoter) {
+			if (poll.maxVotesPerVoter === 1) {
+				this.#selectedOptionIndexesByPoll.set(poll.id, [optionIndex]);
+			}
 			return;
 		}
 

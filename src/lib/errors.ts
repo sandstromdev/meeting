@@ -33,6 +33,12 @@ export const ErrorMessages = {
 	invalid_poll_option: ({ option }) => `'${option}' är inte ett möjligt alternativ i pollen.`,
 	invalid_poll_vote_limit: ({ maxVotesPerVoter, optionsCount }) =>
 		`Maxröster per deltagare (${maxVotesPerVoter}) måste vara mellan 1 och antal alternativ (${optionsCount}).`,
+	invalid_poll_type_config: (args) => {
+		if ('value' in args && 'optionsCount' in args) {
+			return `Antal vinnare (${args.value}) måste vara mellan 1 och antal alternativ (${args.optionsCount}).`;
+		}
+		return 'Enkel-vinnare omröstning kräver att en majoritetsregel väljs.';
+	},
 	poll_not_found: ({ pollId }) => `Pollen med id '${pollId}' hittades inte.`,
 	meeting_not_found: ({ meetingCode, meetingId }) =>
 		`Mötet med ${meetingCode ? 'möteskoden' : 'id'} '${meetingCode ?? meetingId}' hittades inte.`,

@@ -2,10 +2,13 @@ import { defineSchema, defineTable } from 'convex/server';
 import { v } from 'convex/values';
 import type { Id } from './_generated/dataModel';
 
+/** Recursive agenda item: each item can have nested items (any depth). */
 export const AgendaItem = v.object({
 	id: v.string(),
 	title: v.string(),
 	pollIds: v.array(v.id('polls')),
+	/** Nested items (same shape recursively). Stored as array; runtime enforces shape. */
+	items: v.optional(v.array(v.any())),
 });
 
 export const QueueEntry = v.object({
@@ -91,12 +94,30 @@ export const Meeting = v.object({
 	anonIdCounter: v.number(),
 });
 
+export const pollType = v.union(v.literal('multi_winner'), v.literal('single_winner'));
+export const majorityRule = v.union(
+	v.literal('simple'),
+	v.literal('two_thirds'),
+	v.literal('three_quarters'),
+	v.literal('unanimous'),
+);
+
+export type PollType = typeof pollType.type;
+export type MajorityRule = typeof majorityRule.type;
+
 export const Poll = v.object({
 	meetingId: v.id('meetings'),
 	agendaItemId: v.string(),
 	title: v.string(),
 	options: v.array(v.string()),
-	maxVotesPerVoter: v.optional(v.number()),
+	maxVotesPerVoter: v.number(),
+	type: pollType,
+	/** For multi_winner: how many top options win. */
+	winningCount: v.optional(v.number()),
+	/** For single_winner: what counts as majority (of votes cast). */
+	majorityRule: v.optional(majorityRule),
+	/** If true, an "Avstår" (abstain) option is included for voters. Default true. */
+	allowsAbstain: v.boolean(),
 	isOpen: v.boolean(),
 	/** If true, everyone can see results when poll is closed; if false, only admins can. */
 	resultsPublic: v.optional(v.boolean()),

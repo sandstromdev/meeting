@@ -1,6 +1,6 @@
 import { authed, withMe, withMeeting } from '$convex/helpers/auth';
 import { AppError, errors } from '$convex/helpers/error';
-import { normalizeAgendaItems } from '$convex/helpers/agenda';
+import { flattenAgenda, normalizeAgendaItems } from '$convex/helpers/agenda';
 import {
 	closeSpeakerSessionIfOpen,
 	completeReturnToMeeting,
@@ -12,9 +12,11 @@ import {
 	setNotInSpeakerQueue,
 } from '$convex/helpers/meeting';
 import {
+	computeWinners,
 	getEligibleVoterCount,
 	getPollMaxVotesPerVoter,
 } from '$convex/helpers/poll';
+import type { Id } from '$convex/_generated/dataModel';
 import { zid } from 'convex-helpers/server/zod4';
 
 export const getMeeting = withMeeting.query().public(async ({ ctx }) => {
@@ -31,70 +33,126 @@ export const getMe = authed
 
 export const getData = withMe.query().public(async ({ ctx }) => {
 	const { me, meeting } = ctx;
+
+	if (me.role === 'participant' && meeting.startedAt && meeting.startedAt > Date.now()) {
+		return {
+			meeting: {
+				...meeting,
+				agenda: [],
+			},
+			me,
+			hasPendingReturnRequest: false,
+		};
+	}
+
 	const agenda = normalizeAgendaItems(meeting.agenda);
-	const hasValidCurrentAgendaItem = agenda.some((item) => item.id === meeting.currentAgendaItemId);
+	const flat = flattenAgenda(agenda);
+	const hasValidCurrentAgendaItem = flat.some((item) => item.id === meeting.currentAgendaItemId);
 	const currentAgendaItemId = hasValidCurrentAgendaItem
 		? meeting.currentAgendaItemId
-		: agenda[0]?.id;
+		: flat[0]?.id;
 	const eligibleVoters = getEligibleVoterCount(meeting);
 
-	const agendaWithPolls = await Promise.all(
-		agenda.map(async (item) => {
-			const polls = await Promise.all(
-				item.pollIds.map(async (pollId) => {
-					const poll = await ctx.db.get('polls', pollId);
-					if (!poll || poll.meetingId !== meeting._id) {
-						return null;
-					}
+	type HydratedPoll = {
+		id: Id<'polls'>;
+		title: string;
+		options: string[];
+		type: string;
+		winningCount: number;
+		majorityRule?: string;
+		allowsAbstain: boolean;
+		maxVotesPerVoter: number;
+		resultsPublic: boolean;
+		isOpen: boolean;
+		openedAt?: number;
+		closedAt?: number;
+		votesCount: number;
+		votersCount: number;
+		eligibleVoters: number;
+		hasVoted: boolean;
+		myVoteOptionIndexes: number[];
+		optionTotals?: { optionIndex: number; option: string; votes: number }[];
+		winnerOptionIndexes: number[];
+		isTie: boolean;
+	};
 
-					const votes = await ctx.db
-						.query('pollVotes')
-						.withIndex('by_poll', (q) => q.eq('pollId', poll._id))
-						.collect();
-					const votesCount = votes.length;
-					const votersCount = new Set(votes.map((vote) => vote.anonID)).size;
-					const myVoteOptionIndexes = votes
-						.filter((vote) => vote.anonID === me.anonID)
-						.map((vote) => vote.optionIndex)
-						.sort((a, b) => a - b);
-					const hasVoted = myVoteOptionIndexes.length > 0;
-					const maxVotesPerVoter = getPollMaxVotesPerVoter(poll);
+	type AgendaItemWithPolls = (typeof agenda)[number] & {
+		polls: HydratedPoll[];
+		items: AgendaItemWithPolls[];
+	};
 
-					const maySeeResults = poll.resultsPublic === true || me.role === 'admin';
-					const optionTotals =
-						poll.isOpen || !maySeeResults
-							? undefined
-							: poll.options.map((option, optionIndex) => ({
-									optionIndex,
-									option,
-									votes: votes.filter((vote) => vote.optionIndex === optionIndex).length,
-								}));
+	async function hydratePollsForItem(item: (typeof agenda)[number]): Promise<AgendaItemWithPolls> {
+		const polls = await Promise.all(
+			item.pollIds.map(async (pollId) => {
+				const poll = await ctx.db.get('polls', pollId);
+				if (!poll || poll.meetingId !== meeting._id) {
+					return null;
+				}
 
-					return {
-						id: poll._id,
-						title: poll.title,
-						options: poll.options,
-						maxVotesPerVoter,
-						resultsPublic: poll.resultsPublic ?? false,
-						isOpen: poll.isOpen,
-						openedAt: poll.openedAt,
-						closedAt: poll.closedAt,
-						votesCount,
-						votersCount,
-						eligibleVoters,
-						hasVoted,
-						myVoteOptionIndexes,
-						optionTotals,
-					};
-				}),
-			);
+				const votes = await ctx.db
+					.query('pollVotes')
+					.withIndex('by_poll', (q) => q.eq('pollId', poll._id))
+					.collect();
+				const votesCount = votes.length;
+				const votersCount = new Set(votes.map((vote) => vote.anonID)).size;
+				const myVoteOptionIndexes = votes
+					.filter((vote) => vote.anonID === me.anonID)
+					.map((vote) => vote.optionIndex)
+					.sort((a, b) => a - b);
+				const hasVoted = myVoteOptionIndexes.length > 0;
+				const maxVotesPerVoter = getPollMaxVotesPerVoter(poll);
 
-			return {
-				...item,
-				polls: polls.filter((p): p is NonNullable<typeof p> => p !== null),
-			};
-		}),
-	);
+				const maySeeResults = poll.resultsPublic === true || me.role === 'admin';
+				const optionTotals =
+					poll.isOpen || !maySeeResults
+						? undefined
+						: poll.options.map((option, optionIndex) => ({
+								optionIndex,
+								option,
+								votes: votes.filter((vote) => vote.optionIndex === optionIndex).length,
+							}));
+				const { winnerOptionIndexes, isTie } =
+					optionTotals != null
+						? computeWinners(poll, optionTotals, votesCount)
+						: { winnerOptionIndexes: [], isTie: false };
+
+				return {
+					id: poll._id,
+					title: poll.title,
+					options: poll.options,
+					type: poll.type ?? 'single_winner',
+					winningCount: poll.winningCount ?? 1,
+					majorityRule: poll.majorityRule ?? undefined,
+					allowsAbstain: poll.allowsAbstain,
+					maxVotesPerVoter,
+					resultsPublic: poll.resultsPublic ?? false,
+					isOpen: poll.isOpen,
+					openedAt: poll.openedAt,
+					closedAt: poll.closedAt,
+					votesCount,
+					votersCount,
+					eligibleVoters,
+					hasVoted,
+					myVoteOptionIndexes,
+					optionTotals,
+					winnerOptionIndexes,
+					isTie,
+				};
+			}),
+		);
+
+		const items: AgendaItemWithPolls[] = await Promise.all(
+			item.items.map((child) => hydratePollsForItem(child)),
+		);
+
+		return {
+			...item,
+			polls: polls.filter((p): p is NonNullable<typeof p> => p !== null),
+			items,
+		};
+	}
+
+	const agendaWithPolls = await Promise.all(agenda.map((item) => hydratePollsForItem(item)));
 
 	return {
 		meeting: {

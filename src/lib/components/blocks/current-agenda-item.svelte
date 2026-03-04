@@ -76,6 +76,23 @@
 										{/if}
 									{/if}
 								{:else if poll.optionTotals && !ps.isProjector}
+									{#if poll.winnerOptionIndexes?.length !== undefined}
+										<p class="mt-1 text-xs font-medium text-foreground">
+											{#if poll.winnerOptionIndexes.length === 0}
+												Ingen vinnare (ingen nådde majoriteten).
+											{:else if poll.isTie}
+												Oavgjort: {poll.winnerOptionIndexes
+													.map((i) => poll.options[i])
+													.join(', ')}
+											{:else if poll.winnerOptionIndexes.length === 1}
+												Vinnare: {poll.options[poll.winnerOptionIndexes[0]]}
+											{:else}
+												Vinnare: {poll.winnerOptionIndexes
+													.map((i) => poll.options[i])
+													.join(', ')}
+											{/if}
+										</p>
+									{/if}
 									<ul class="mt-1 space-y-1 text-xs text-muted-foreground">
 										{#each poll.optionTotals as option (option.optionIndex)}
 											<li>
