@@ -33,13 +33,6 @@ export class MeetingState {
 	readonly agenda: AgendaState;
 	readonly speakerQueue: SpeakerQueue;
 
-	readonly q = this.query.bind(this);
-	readonly aq = this.adminQuery.bind(this);
-	readonly mq = this.moderatorQuery.bind(this);
-	readonly m = this.mutate.bind(this);
-	readonly am = this.adminMutate.bind(this);
-	readonly mm = this.moderatorMutate.bind(this);
-
 	constructor(data: Getter<MeetingData>) {
 		this.#data = $state(data());
 		this.convex = useConvexClient();

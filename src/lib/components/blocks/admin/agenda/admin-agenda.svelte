@@ -79,8 +79,8 @@
 								hasBeenCompleted(index) && 'bg-muted/50 text-muted-foreground',
 							)}
 						>
-							<div class="w-[4ch] shrink-0 text-right text-muted-foreground">
-								{index + 1}.
+							<div class="w-[6ch] shrink-0 text-right text-muted-foreground">
+								{item.number}.
 							</div>
 							{#if editingItem?.id !== item.id}
 								<span

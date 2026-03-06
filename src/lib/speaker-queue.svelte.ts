@@ -17,7 +17,7 @@ export class SpeakerQueue {
 	constructor(meeting: MeetingState) {
 		this.#meeting = meeting;
 
-		const q = meeting.q(api.users.meeting.getNextSpeakers, undefined, {
+		const q = meeting.query(api.users.meeting.getNextSpeakers, undefined, {
 			keepPreviousData: true,
 		});
 

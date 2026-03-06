@@ -99,15 +99,4 @@
 			Avsluta ordningsfråga
 		</Button>
 	{/if}
-
-	{#if meeting.isAdmin && hasBreak}
-		<Button
-			onClickPromise={() => meeting.adminMutate(api.admin.meeting.clearBreak)}
-			class="px-3"
-			disabled={!hasBreak}
-			type="button"
-		>
-			Avsluta streck
-		</Button>
-	{/if}
 </div>

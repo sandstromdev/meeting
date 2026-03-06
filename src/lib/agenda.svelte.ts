@@ -5,62 +5,67 @@ import { SvelteMap } from 'svelte/reactivity';
 type AgendaItem = MeetingData['meeting']['agenda'][number];
 type Poll = AgendaItem['polls'][number];
 
-/** Pre-order flatten of nested agenda (matches backend order). */
-export function flattenAgenda(agenda: AgendaItem[]): AgendaItem[] {
-	const out: AgendaItem[] = [];
-	function walk(items: AgendaItem[]) {
-		for (const item of items) {
-			out.push(item);
-			if (item.items?.length) {
-				walk(item.items);
-			}
+function walk(items: AgendaItem[], parent = '') {
+	const out: (AgendaItem & { number: string })[] = [];
+
+	for (let i = 0; i < items.length; i++) {
+		const item = items[i];
+		const number = parent ? `${parent}.${i + 1}` : `${i + 1}`;
+		out.push({
+			...item,
+			number,
+		});
+		if (item.items?.length) {
+			out.push(...walk(item.items, number));
 		}
 	}
-	walk(agenda);
+
 	return out;
+}
+
+/** Pre-order flatten of nested agenda (matches backend order). */
+export function flattenAgenda(agenda: AgendaItem[]) {
+	return walk(agenda);
 }
 
 export class AgendaState {
 	#meeting: MeetingState;
 	#selectedOptionIndexesByPoll = new SvelteMap<string, number[]>();
+	#flat: (AgendaItem & { number: string })[];
 
 	constructor(meeting: MeetingState) {
 		this.#meeting = meeting;
+		this.#flat = $derived(flattenAgenda(this.agenda));
 	}
 
 	get agenda() {
 		return this.#meeting.meeting.agenda ?? [];
 	}
 
-	/** Flattened agenda (pre-order) for navigation. */
-	get flatAgenda() {
-		return flattenAgenda(this.agenda);
+	get flat() {
+		return this.#flat;
 	}
 
 	get currentAgendaItemId() {
-		const flat = this.flatAgenda;
-		return (
-			this.#meeting.meeting.currentAgendaItemId ??
-			(flat.length > 0 ? flat[0].id : undefined)
-		);
+		const flat = this.flat;
+		return this.#meeting.meeting.currentAgendaItemId ?? (flat.length > 0 ? flat[0].id : undefined);
 	}
 
 	get currentIndex() {
-		return this.flatAgenda.findIndex((item) => item.id === this.currentAgendaItemId);
+		return this.flat.findIndex((item) => item.id === this.currentAgendaItemId);
 	}
 
 	get currentItem() {
-		return this.flatAgenda[this.currentIndex];
+		return this.flat[this.currentIndex];
 	}
 
 	get nextItem() {
-		const flat = this.flatAgenda;
 		const idx = this.currentIndex;
-		return idx >= 0 && idx < flat.length - 1 ? flat[idx + 1] : undefined;
+		return idx >= 0 && idx < this.flat.length - 1 ? this.flat[idx + 1] : undefined;
 	}
 
 	get previousItem() {
-		const flat = this.flatAgenda;
+		const flat = this.flat;
 		const idx = this.currentIndex;
 		return idx > 0 ? flat[idx - 1] : undefined;
 	}

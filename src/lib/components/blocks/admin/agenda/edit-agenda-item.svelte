@@ -11,6 +11,7 @@
 	import SaveIcon from '@lucide/svelte/icons/save';
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
 	import EditPoll from './edit-poll.svelte';
+	import EditSubItems from './edit-sub-items.svelte';
 	import { SvelteMap } from 'svelte/reactivity';
 	import type { PollDraft, MajorityRule, PollType } from './types';
 	import { PollDraftSchema } from '$lib/validation';
@@ -119,19 +120,6 @@
 	});
 
 	const canSubmit = $derived(!!newTitle.trim() && polls.length !== 0);
-
-	let newSubItemTitle = $state('');
-
-	async function addSubItem() {
-		if (!item || !newSubItemTitle.trim()) {
-			return;
-		}
-		await meeting.adminMutate(api.admin.agenda.createAgendaItem, {
-			title: newSubItemTitle.trim(),
-			parentId: item.id,
-		});
-		newSubItemTitle = '';
-	}
 
 	function addPollDraft() {
 		polls = [...polls, newPollDraft()];
@@ -388,51 +376,8 @@
 			</div>
 		{/if}
 
-		{#if isEditMode && item && (item.items?.length ?? 0) > 0}
-			<div class="border-t pt-4">
-				<p class="text-sm font-medium text-muted-foreground">Underpunkter</p>
-				<ul class="mt-2 space-y-1">
-					{#each item.items as sub (sub.id)}
-						<li class="flex items-center gap-2 text-sm">
-							<span>{sub.title}</span>
-							<Button
-								type="button"
-								variant="ghost"
-								size="sm"
-								class="text-destructive hover:bg-destructive/10 hover:text-destructive"
-								onclick={() =>
-									confirm({
-										title: 'Ta bort underpunkt?',
-										description: 'Är du säker på att du vill ta bort denna underpunkt?',
-										onConfirm: () =>
-											meeting.adminMutate(api.admin.agenda.removeAgendaItem, {
-												agendaItemId: sub.id,
-											}),
-									})}
-							>
-								Ta bort
-							</Button>
-						</li>
-					{/each}
-				</ul>
-			</div>
-		{/if}
-
 		{#if isEditMode && item}
-			<div class="border-t pt-4">
-				<p class="text-sm font-medium text-muted-foreground">Lägg till underpunkt</p>
-				<div class="mt-2 flex flex-wrap items-center gap-2">
-					<Input
-						bind:value={newSubItemTitle}
-						placeholder="Titel underpunkt"
-						class="min-w-[12rem]"
-					/>
-					<Button type="button" variant="outline" size="sm" onclick={addSubItem} disabled={!newSubItemTitle.trim()}>
-						<PlusIcon class="size-4" />
-						Lägg till underpunkt
-					</Button>
-				</div>
-			</div>
+			<EditSubItems parentItem={item} />
 		{/if}
 	</form>
 {/if}

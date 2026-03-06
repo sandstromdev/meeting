@@ -156,7 +156,7 @@
 										description:
 											'Är du säker på att du vill flytta upp denna person i talarlistan?',
 										onConfirm: () =>
-											meeting.mm(api.moderator.meeting.moveSpeakerInQueue, {
+											meeting.moderatorMutate(api.moderator.meeting.moveSpeakerInQueue, {
 												ordinal: entry.ordinal,
 												direction: 'up',
 											}),
@@ -176,7 +176,7 @@
 										description:
 											'Är du säker på att du vill flytta ner denna person i talarlistan?',
 										onConfirm: () =>
-											meeting.mm(api.moderator.meeting.moveSpeakerInQueue, {
+											meeting.moderatorMutate(api.moderator.meeting.moveSpeakerInQueue, {
 												ordinal: entry.ordinal,
 												direction: 'down',
 											}),
@@ -195,7 +195,7 @@
 										description:
 											'Är du säker på att du vill ta bort denna person från talarlistan?',
 										onConfirm: () =>
-											meeting.mm(api.moderator.meeting.removeFromSpeakerQueue, {
+											meeting.moderatorMutate(api.moderator.meeting.removeFromSpeakerQueue, {
 												ordinal: entry.ordinal,
 											}),
 									})}

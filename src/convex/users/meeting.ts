@@ -48,9 +48,7 @@ export const getData = withMe.query().public(async ({ ctx }) => {
 	const agenda = normalizeAgendaItems(meeting.agenda);
 	const flat = flattenAgenda(agenda);
 	const hasValidCurrentAgendaItem = flat.some((item) => item.id === meeting.currentAgendaItemId);
-	const currentAgendaItemId = hasValidCurrentAgendaItem
-		? meeting.currentAgendaItemId
-		: flat[0]?.id;
+	const currentAgendaItemId = hasValidCurrentAgendaItem ? meeting.currentAgendaItemId : flat[0]?.id;
 	const eligibleVoters = getEligibleVoterCount(meeting);
 
 	type HydratedPoll = {

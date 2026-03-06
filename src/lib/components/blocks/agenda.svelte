@@ -8,7 +8,6 @@
 		CollapsibleTrigger,
 	} from '$lib/components/ui/collapsible';
 	import { confirm } from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
-	import { flattenAgenda } from '$lib/agenda.svelte';
 	import { getMeetingContext } from '$lib/context.svelte';
 	import { usePageState } from '$lib/page-state.svelte';
 	import { cn } from '$lib/utils';
@@ -20,38 +19,24 @@
 
 	const meeting = getMeetingContext();
 	const ps = usePageState();
+	const as = meeting.agenda;
 
-	const agenda = $derived(meeting.meeting.agenda ?? []);
-	const flatAgenda = $derived(flattenAgenda(agenda));
-	const currentAgendaItemId = $derived(
-		meeting.meeting.currentAgendaItemId ?? (flatAgenda.length > 0 ? flatAgenda[0].id : undefined),
-	);
+	const agenda = $derived(as.flat);
 
-	const currentAgendaItemIndex = $derived(
-		flatAgenda.findIndex((item) => item.id === currentAgendaItemId),
-	);
-	const currentAgendaItem = $derived(flatAgenda[currentAgendaItemIndex]);
-
-	function hasBeenCompleted(index: number) {
-		return currentAgendaItemIndex >= 0 && currentAgendaItemIndex > index;
+	function hasBeenCompleted(id: string) {
+		const index = agenda.findIndex((item) => item.id === id);
+		return as.currentIndex >= 0 && as.currentIndex > index;
 	}
 
-	const mainStart = $derived(Math.max(0, currentAgendaItemIndex - 1));
+	const mainStart = $derived(Math.max(0, as.currentIndex - 1));
 	const mainEnd = $derived(
-		currentAgendaItemIndex < 0
-			? flatAgenda.length
-			: Math.min(flatAgenda.length, currentAgendaItemIndex + 3),
+		as.currentIndex < 0 ? agenda.length : Math.min(agenda.length, as.currentIndex + 3),
 	);
 	const parts = $derived({
-		previous: flatAgenda.slice(0, mainStart),
-		main: flatAgenda.slice(mainStart, mainEnd),
-		upcoming: flatAgenda.slice(mainEnd),
+		previous: agenda.slice(0, mainStart),
+		main: agenda.slice(mainStart, mainEnd),
+		upcoming: agenda.slice(mainEnd),
 	});
-
-	type AgendaDraft = {
-		id: string;
-		title: string;
-	};
 
 	let editingItemId = $state<string | undefined>(undefined);
 </script>
@@ -66,7 +51,7 @@
 
 	<CollapsibleContent>
 		<div class="border-t">
-			{#if flatAgenda.length === 0}
+			{#if agenda.length === 0}
 				<p class="text-sm text-muted-foreground">Inga agendapunkter ännu.</p>
 			{:else}
 				{#if parts.previous.length > 0}
@@ -78,7 +63,7 @@
 							<ChevronDownIcon class="size-4 shrink-0 transition-transform" />
 						</CollapsibleTrigger>
 						<CollapsibleContent>
-							<ol>
+							<ol class="border-t">
 								{#each parts.previous as item, i (item.id)}
 									{@render itemRow(item, i)}
 								{/each}
@@ -121,96 +106,95 @@
 	</CollapsibleContent>
 </Collapsible>
 
-{#snippet itemRow(item: (typeof flatAgenda)[number], index: number)}
-	<li
-		class={cn(
-			'flex gap-2 px-2 py-2 text-sm not-last:border-b',
-			hasBeenCompleted(index) && 'bg-muted/50 text-muted-foreground',
-		)}
-	>
-		{#if meeting.isAdmin}
-			<Button
-				size="icon"
-				variant="ghost"
-				disabled={item.id === currentAgendaItemId}
-				type="button"
-				onClickPromise={() =>
-					meeting.adminMutate(api.admin.agenda.setCurrentAgendaItem, {
-						agendaItemId: item.id,
-					})}
-			>
-				<ChevronRightIcon class="size-4" />
-			</Button>
-		{/if}
-
-		{#if editingItemId === item.id}
-			<EditAgendaItem agendaItemId={item.id} onClose={() => (editingItemId = undefined)} />
-		{:else}
-			<div class="w-[4ch] shrink-0 text-right text-muted-foreground">
-				{index + 1}.
-			</div>
-			<span class={cn('text-sm font-medium', hasBeenCompleted(index) && 'line-through')}>
-				{item.title}
-			</span>
-		{/if}
-
-		{#if meeting.isAdmin}
-			<div class="ml-auto flex gap-0.5">
-				{#if editingItemId !== item.id}
-					<Button
-						size="icon"
-						variant="ghost"
-						type="button"
-						onClickPromise={() =>
-							meeting.adminMutate(api.admin.agenda.moveAgendaItem, {
-								agendaItemId: item.id,
-								direction: 'up',
-							})}
-						disabled={index <= 0}
-					>
-						<ChevronUpIcon class="size-4" />
-					</Button>
-
-					<Button
-						size="icon"
-						variant="ghost"
-						type="button"
-						onClickPromise={() =>
-							meeting.adminMutate(api.admin.agenda.moveAgendaItem, {
-								agendaItemId: item.id,
-								direction: 'down',
-							})}
-						disabled={index >= flatAgenda.length - 1}
-					>
-						<ChevronDownIcon class="size-4" />
-					</Button>
-					<Button
-						size="icon"
-						variant="ghost"
-						type="button"
-						onclick={() => (editingItemId = item.id)}
-					>
-						<PencilIcon class="size-4" />
-					</Button>
-					<Button
-						size="icon"
-						variant="ghost"
-						class="text-destructive hover:bg-destructive/10 hover:text-destructive"
-						type="button"
-						onclick={() =>
-							confirm({
-								title: 'Ta bort punkt?',
-								description: 'Är du säker på att du vill ta bort denna punkt?',
-								onConfirm: () =>
-									meeting.adminMutate(api.admin.agenda.removeAgendaItem, {
-										agendaItemId: item.id,
-									}),
-							})}
-					>
-						<Trash2Icon class="size-4" />
-					</Button>
-				{/if}
-			</div>
-		{/if}
+{#snippet itemRow(item: (typeof agenda)[number], index: number)}
+	<li class="">
+		<div
+			class={cn(
+				'flex gap-2 border-b px-2 py-2 text-sm',
+				hasBeenCompleted(item.id) && 'bg-muted/50 text-muted-foreground',
+			)}
+		>
+			{#if meeting.isAdmin}
+				<Button
+					size="icon"
+					variant="ghost"
+					disabled={item.id === as.currentAgendaItemId}
+					type="button"
+					onClickPromise={() =>
+						meeting.adminMutate(api.admin.agenda.setCurrentAgendaItem, {
+							agendaItemId: item.id,
+						})}
+				>
+					<ChevronRightIcon class="size-4" />
+				</Button>
+			{/if}
+			{#if editingItemId === item.id}
+				<EditAgendaItem agendaItemId={item.id} onClose={() => (editingItemId = undefined)} />
+			{:else}
+				<span class="flex shrink-0 items-baseline font-mono text-muted-foreground">
+					{item.number}.
+				</span>
+				<span class={cn('text-sm font-medium', hasBeenCompleted(item.id) && 'line-through')}>
+					{item.title}
+				</span>
+			{/if}
+			{#if meeting.isAdmin}
+				<div class="ml-auto flex gap-0.5">
+					{#if editingItemId !== item.id}
+						<Button
+							size="icon"
+							variant="ghost"
+							type="button"
+							onClickPromise={() =>
+								meeting.adminMutate(api.admin.agenda.moveAgendaItem, {
+									agendaItemId: item.id,
+									direction: 'up',
+								})}
+							disabled={index <= 0}
+						>
+							<ChevronUpIcon class="size-4" />
+						</Button>
+						<Button
+							size="icon"
+							variant="ghost"
+							type="button"
+							onClickPromise={() =>
+								meeting.adminMutate(api.admin.agenda.moveAgendaItem, {
+									agendaItemId: item.id,
+									direction: 'down',
+								})}
+							disabled={index >= agenda.length - 1}
+						>
+							<ChevronDownIcon class="size-4" />
+						</Button>
+						<Button
+							size="icon"
+							variant="ghost"
+							type="button"
+							onclick={() => (editingItemId = item.id)}
+						>
+							<PencilIcon class="size-4" />
+						</Button>
+						<Button
+							size="icon"
+							variant="ghost"
+							class="text-destructive hover:bg-destructive/10 hover:text-destructive"
+							type="button"
+							onclick={() =>
+								confirm({
+									title: 'Ta bort punkt?',
+									description: 'Är du säker på att du vill ta bort denna punkt?',
+									onConfirm: () =>
+										meeting.adminMutate(api.admin.agenda.removeAgendaItem, {
+											agendaItemId: item.id,
+										}),
+								})}
+						>
+							<Trash2Icon class="size-4" />
+						</Button>
+					{/if}
+				</div>
+			{/if}
+		</div>
 	</li>
 {/snippet}

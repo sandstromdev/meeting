@@ -21,9 +21,9 @@
 		{#if ag.currentItem}
 			<div class="mt-2 space-y-1">
 				<h3 class={cn('text-lg font-semibold', ps.isProjector && 'text-2xl')}>
-					{ag.currentIndex + 1}. {ag.currentItem.title}
+					{ag.currentItem.number}. {ag.currentItem.title}
 				</h3>
-				{#if ag.currentItem.polls?.length}
+				{#if !ps.isProjector && ag.currentItem.polls?.length}
 					<div class="mt-2 space-y-3">
 						{#each ag.currentItem.polls as poll, i (poll.id)}
 							<div class="rounded-md border bg-muted/30 p-2 text-sm">
@@ -81,15 +81,11 @@
 											{#if poll.winnerOptionIndexes.length === 0}
 												Ingen vinnare (ingen nådde majoriteten).
 											{:else if poll.isTie}
-												Oavgjort: {poll.winnerOptionIndexes
-													.map((i) => poll.options[i])
-													.join(', ')}
+												Oavgjort: {poll.winnerOptionIndexes.map((i) => poll.options[i]).join(', ')}
 											{:else if poll.winnerOptionIndexes.length === 1}
 												Vinnare: {poll.options[poll.winnerOptionIndexes[0]]}
 											{:else}
-												Vinnare: {poll.winnerOptionIndexes
-													.map((i) => poll.options[i])
-													.join(', ')}
+												Vinnare: {poll.winnerOptionIndexes.map((i) => poll.options[i]).join(', ')}
 											{/if}
 										</p>
 									{/if}
@@ -111,7 +107,7 @@
 			</div>
 			{#if showNext && ag.nextItem}
 				<div class={cn('mt-2 text-sm text-muted-foreground', ps.isProjector && 'text-lg')}>
-					<p>Nästa punkt: {ag.currentIndex + 2}. {ag.nextItem.title}</p>
+					<p>Nästa punkt: {ag.nextItem.number}. {ag.nextItem.title}</p>
 				</div>
 			{/if}
 		{:else}
