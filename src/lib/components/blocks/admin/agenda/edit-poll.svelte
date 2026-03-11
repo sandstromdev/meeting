@@ -6,21 +6,14 @@
 	import Label from '$lib/components/ui/label/label.svelte';
 	import { NativeSelectOption } from '$lib/components/ui/native-select';
 	import NativeSelect from '$lib/components/ui/native-select/native-select.svelte';
+	import { MAJORITY_LABELS } from '$lib/polls';
 	import { cn } from '$lib/utils';
-	import { PollDraftSchema } from '$lib/validation';
+	import { PollDraftSchema, type PollDraft } from '$lib/validation';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
-	import { Debounced, useDebounce } from 'runed';
-	import type { MajorityRule, PollDraft } from './types';
-	import * as z from 'zod';
+	import { useDebounce } from 'runed';
 	import { untrack } from 'svelte';
-
-	const MAJORITY_LABELS = {
-		simple: 'Enkel majoritet (>50 %)',
-		two_thirds: 'Kvalificerad majoritet (≥2/3)',
-		three_quarters: '3/4 majoritet',
-		unanimous: 'Enighet (100 %)',
-	} satisfies Record<MajorityRule, string>;
+	import * as z from 'zod';
 
 	let {
 		poll = $bindable({
@@ -29,8 +22,8 @@
 			type: 'single_winner',
 			winningCount: 1,
 			majorityRule: 'simple',
-			resultsPublic: false,
-			includeVacantOption: true,
+			isResultPublic: false,
+			allowsAbstain: true,
 			maxVotesPerVoter: 1,
 		}),
 	}: { poll: PollDraft } = $props();
@@ -40,7 +33,7 @@
 	);
 	const maxAllowed = $derived(Math.max(1, optionsCount));
 	const canDeleteOption = $derived(
-		poll.includeVacantOption ? poll.options.length > 1 : poll.options.length > 2,
+		poll.allowsAbstain ? poll.options.length > 1 : poll.options.length > 2,
 	);
 
 	let errors = $state<string>('');
@@ -65,7 +58,7 @@
 			poll.winningCount = 1;
 		} else {
 			poll.maxVotesPerVoter = Math.min(Math.max(1, Math.floor(poll.maxVotesPerVoter)), maxAllowed);
-			poll.winningCount = Math.min(Math.max(1, Math.floor(poll.winningCount)), optionsCount);
+			poll.winningCount = Math.min(Math.max(1, Math.floor(poll.winningCount ?? 1)), optionsCount);
 		}
 	});
 
@@ -80,12 +73,12 @@
 		poll.options = poll.options.filter((_, i) => i !== index);
 	}
 
-	function removeVacantOption() {
-		if (!poll.includeVacantOption) {
+	function removeAllowsAbstain() {
+		if (!poll.allowsAbstain) {
 			return;
 		}
 
-		poll.includeVacantOption = false;
+		poll.allowsAbstain = false;
 
 		if (poll.options.length === 1) {
 			addPollOption();
@@ -152,12 +145,12 @@
 	{/if}
 
 	<Label class="flex items-center gap-2 text-sm">
-		<Checkbox bind:checked={poll.resultsPublic} />
+		<Checkbox bind:checked={poll.isResultPublic} />
 		Visa resultat för alla (annars endast admin)
 	</Label>
 	<Label class="flex items-center gap-2 text-sm">
-		<Checkbox bind:checked={poll.includeVacantOption} />
-		Inkludera ledig (avstår) som alternativ
+		<Checkbox bind:checked={poll.allowsAbstain} />
+		Inkludera avstår som alternativ
 	</Label>
 	<p class="text-xs text-muted-foreground">Alternativ (minst 2)</p>
 	<div class="space-y-2">
@@ -189,7 +182,7 @@
 				</Button>
 			</div>
 		{/each}
-		{#if poll.includeVacantOption}
+		{#if poll.allowsAbstain}
 			<div class="flex gap-2">
 				<div
 					class="grid size-9 place-items-center rounded-md border bg-background text-muted-foreground"
@@ -207,7 +200,7 @@
 					variant="outline"
 					size="icon"
 					class="shrink-0 text-muted-foreground"
-					onclick={() => removeVacantOption()}
+					onclick={() => removeAllowsAbstain()}
 					aria-label="Ta bort alternativ"
 				>
 					<Trash2Icon class="size-4" />

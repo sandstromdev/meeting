@@ -1,18 +1,8 @@
 import { pick } from 'convex-helpers';
 import type { Doc } from '../_generated/dataModel';
-import { AppError, errors } from './error';
 
 export function pickParticipantData(doc: Doc<'meetingParticipants'>) {
-	return pick(doc, ['_id', 'role', 'anonID', 'absentSince', 'isInSpeakerQueue', 'name']);
+	return pick(doc, ['_id', 'role', 'absentSince', 'isInSpeakerQueue', 'name']);
 }
 
 export type StrippedMeetingParticipant = ReturnType<typeof pickParticipantData>;
-
-export function requireNotAbsent<T extends Pick<Doc<'meetingParticipants'>, 'absentSince'>>(
-	user: T,
-	action?: string,
-): asserts user is T & { absentSince: 0 } {
-	if (user.absentSince) {
-		throw new AppError(errors.illegal_while_absent(action));
-	}
-}

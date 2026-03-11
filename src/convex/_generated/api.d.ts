@@ -9,6 +9,7 @@
  */
 
 import type * as admin_agenda from "../admin/agenda.js";
+import type * as admin_heartbeat from "../admin/heartbeat.js";
 import type * as admin_meeting from "../admin/meeting.js";
 import type * as admin_poll from "../admin/poll.js";
 import type * as auth from "../auth.js";
@@ -21,14 +22,19 @@ import type * as helpers_builder_types from "../helpers/builder/types.js";
 import type * as helpers_error from "../helpers/error.js";
 import type * as helpers_index from "../helpers/index.js";
 import type * as helpers_meeting from "../helpers/meeting.js";
+import type * as helpers_meetingCounters from "../helpers/meetingCounters.js";
+import type * as helpers_meetingData from "../helpers/meetingData.js";
 import type * as helpers_poll from "../helpers/poll.js";
+import type * as helpers_types from "../helpers/types.js";
 import type * as helpers_users from "../helpers/users.js";
 import type * as http from "../http.js";
 import type * as meetings from "../meetings.js";
 import type * as moderator_meeting from "../moderator/meeting.js";
+import type * as users_attendance from "../users/attendance.js";
 import type * as users_auth from "../users/auth.js";
 import type * as users_meeting from "../users/meeting.js";
 import type * as users_poll from "../users/poll.js";
+import type * as users_queue from "../users/queue.js";
 
 import type {
   ApiFromModules,
@@ -38,6 +44,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   "admin/agenda": typeof admin_agenda;
+  "admin/heartbeat": typeof admin_heartbeat;
   "admin/meeting": typeof admin_meeting;
   "admin/poll": typeof admin_poll;
   auth: typeof auth;
@@ -50,14 +57,19 @@ declare const fullApi: ApiFromModules<{
   "helpers/error": typeof helpers_error;
   "helpers/index": typeof helpers_index;
   "helpers/meeting": typeof helpers_meeting;
+  "helpers/meetingCounters": typeof helpers_meetingCounters;
+  "helpers/meetingData": typeof helpers_meetingData;
   "helpers/poll": typeof helpers_poll;
+  "helpers/types": typeof helpers_types;
   "helpers/users": typeof helpers_users;
   http: typeof http;
   meetings: typeof meetings;
   "moderator/meeting": typeof moderator_meeting;
+  "users/attendance": typeof users_attendance;
   "users/auth": typeof users_auth;
   "users/meeting": typeof users_meeting;
   "users/poll": typeof users_poll;
+  "users/queue": typeof users_queue;
 }>;
 
 /**
@@ -2062,6 +2074,30 @@ export declare const components: {
     adapterTest: {
       runCustomTests: FunctionReference<"action", "internal", any, any>;
       runTests: FunctionReference<"action", "internal", any, any>;
+    };
+  };
+  shardedCounter: {
+    public: {
+      add: FunctionReference<
+        "mutation",
+        "internal",
+        { count: number; name: string; shard?: number; shards?: number },
+        number
+      >;
+      count: FunctionReference<"query", "internal", { name: string }, number>;
+      estimateCount: FunctionReference<
+        "query",
+        "internal",
+        { name: string; readFromShards?: number; shards?: number },
+        any
+      >;
+      rebalance: FunctionReference<
+        "mutation",
+        "internal",
+        { name: string; shards?: number },
+        any
+      >;
+      reset: FunctionReference<"mutation", "internal", { name: string }, any>;
     };
   };
 };

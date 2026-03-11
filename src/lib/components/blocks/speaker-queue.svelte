@@ -2,8 +2,6 @@
 	import { api } from '$convex/_generated/api';
 	import { Button } from '$lib/components/ui/button';
 	import { getMeetingContext } from '$lib/context.svelte';
-	import ChevronUpIcon from '@lucide/svelte/icons/chevron-up';
-	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
 	import XIcon from '@lucide/svelte/icons/x';
 	import * as Alert from '$lib/components/ui/alert';
 	import InfoIcon from '@lucide/svelte/icons/info';
@@ -21,9 +19,6 @@
 	const ps = usePageState();
 
 	const nextSpeakers = $derived(queue.nextSpeakers);
-
-	const canMoveUp = (displayIndex: number) => displayIndex > 0;
-	const canMoveDown = (displayIndex: number) => displayIndex < nextSpeakers.length - 1;
 
 	const showQueueControls = $derived(!ps.isProjector && meeting.isModerator);
 	const showFlowControls = $derived(!ps.isProjector && meeting.isAdmin);
@@ -122,7 +117,7 @@
 		<p class="text-sm text-muted-foreground">Ingen står i kön.</p>
 	{:else}
 		<ol class={cn('not-last:border-b', ps.isProjector ? 'text-xl' : 'text-sm')}>
-			{#each nextSpeakers as entry, displayIndex (entry.ordinal)}
+			{#each nextSpeakers as entry, displayIndex (entry._id)}
 				<li class="flex items-center justify-between gap-2 py-2">
 					<div class="flex min-w-0 flex-1 items-center gap-[0.75em]">
 						<span
@@ -137,54 +132,11 @@
 							{#if !ps.isProjector && entry.userId === meeting.me._id}
 								<span class="ml-1 text-[0.85em] text-muted-foreground">(du)</span>
 							{/if}
-							{#if entry.isAbsent}
-								<span class="ml-1 text-[0.85em] text-muted-foreground">(frånvarande)</span>
-							{/if}
 						</p>
 					</div>
 
 					{#if showQueueControls}
 						<div class="flex shrink-0 items-center gap-0.5">
-							<Button
-								variant="ghost"
-								size="icon"
-								class="size-8"
-								disabled={!canMoveUp(displayIndex)}
-								onclick={() =>
-									confirm({
-										title: 'Flytta upp personen?',
-										description:
-											'Är du säker på att du vill flytta upp denna person i talarlistan?',
-										onConfirm: () =>
-											meeting.moderatorMutate(api.moderator.meeting.moveSpeakerInQueue, {
-												ordinal: entry.ordinal,
-												direction: 'up',
-											}),
-									})}
-								aria-label="Flytta upp"
-							>
-								<ChevronUpIcon class="size-4" />
-							</Button>
-							<Button
-								variant="ghost"
-								size="icon"
-								class="size-8"
-								disabled={!canMoveDown(displayIndex)}
-								onclick={() =>
-									confirm({
-										title: 'Flytta ner personen?',
-										description:
-											'Är du säker på att du vill flytta ner denna person i talarlistan?',
-										onConfirm: () =>
-											meeting.moderatorMutate(api.moderator.meeting.moveSpeakerInQueue, {
-												ordinal: entry.ordinal,
-												direction: 'down',
-											}),
-									})}
-								aria-label="Flytta ner"
-							>
-								<ChevronDownIcon class="size-4" />
-							</Button>
 							<Button
 								variant="ghost"
 								size="icon"
@@ -196,7 +148,7 @@
 											'Är du säker på att du vill ta bort denna person från talarlistan?',
 										onConfirm: () =>
 											meeting.moderatorMutate(api.moderator.meeting.removeFromSpeakerQueue, {
-												ordinal: entry.ordinal,
+												entryId: entry._id,
 											}),
 									})}
 								aria-label="Ta bort"

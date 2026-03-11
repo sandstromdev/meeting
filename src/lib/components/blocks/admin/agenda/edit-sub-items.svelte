@@ -46,7 +46,9 @@
 	let expandedSubItemId = $state<string | null>(null);
 
 	async function addSubItem() {
-		if (!parentItem || !newSubItemTitle.trim()) return;
+		if (!parentItem || !newSubItemTitle.trim()) {
+			return;
+		}
 		await meeting.adminMutate(api.admin.agenda.createAgendaItem, {
 			title: newSubItemTitle.trim(),
 			parentId: parentItem.id,
@@ -137,11 +139,7 @@
 	<div class="mt-4">
 		<p class="mb-2 text-sm font-medium text-muted-foreground">Lägg till underpunkt</p>
 		<div class="flex flex-wrap items-center gap-2">
-			<Input
-				bind:value={newSubItemTitle}
-				placeholder="Titel underpunkt"
-				class="min-w-[12rem]"
-			/>
+			<Input bind:value={newSubItemTitle} placeholder="Titel underpunkt" class="min-w-[12rem]" />
 			<Button
 				type="button"
 				variant="outline"

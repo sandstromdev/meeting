@@ -1,5 +1,4 @@
 // oxlint-disable typescript/no-explicit-any
-import { c } from '$convex/helpers';
 import type { EmptyObject } from 'convex-helpers';
 import type { GenericValidator, PropertyValidators } from 'convex/values';
 import { z } from 'zod';
@@ -95,21 +94,3 @@ type InferFromShape<Shape> = Shape extends ValidatorInput
 export type InferredArgs<Shape> = Shape extends ValidatorInput
 	? InferFromShape<Shape>
 	: EmptyObject;
-
-const t1 = {
-	normal: z.number(),
-	take: z.number().default(10),
-	skip: z.number().optional(),
-};
-
-type T2 = InferredArgs<typeof t1>;
-
-const t = c
-	.query()
-	.input({ take: z.number().default(10) })
-	.public(async () => {
-		return;
-	});
-//    ^?
-
-type TT = Expand<typeof t>;

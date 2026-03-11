@@ -1,6 +1,5 @@
 import { defineSchema, defineTable } from 'convex/server';
 import { v } from 'convex/values';
-import type { Id } from './_generated/dataModel';
 
 /** Recursive agenda item: each item can have nested items (any depth). */
 export const AgendaItem = v.object({
@@ -8,7 +7,7 @@ export const AgendaItem = v.object({
 	title: v.string(),
 	pollIds: v.array(v.id('polls')),
 	/** Nested items (same shape recursively). Stored as array; runtime enforces shape. */
-	items: v.optional(v.array(v.any())),
+	items: v.array(v.any()),
 });
 
 export const QueueEntry = v.object({
@@ -16,17 +15,19 @@ export const QueueEntry = v.object({
 	name: v.string(),
 });
 
-export const SpeakingSession = v.object({
-	startTime: v.number(),
-	stopTime: v.optional(v.number()),
-});
-
 export const SpeakerQueueEntry = v.object({
 	meetingId: v.id('meetings'),
-	ordinal: v.number(),
 	userId: v.id('meetingParticipants'),
 	name: v.string(),
-	sessions: v.array(SpeakingSession),
+});
+
+export const Request = v.object({
+	type: v.union(v.literal('requested'), v.literal('accepted')),
+	by: v.object({
+		userId: v.id('meetingParticipants'),
+		name: v.string(),
+	}),
+	startTime: v.optional(v.number()),
 });
 
 export const Meeting = v.object({
@@ -43,55 +44,30 @@ export const Meeting = v.object({
 
 	isOpen: v.boolean(),
 
-	speakerIndex: v.number(),
-	maxOrdinal: v.number(),
-
-	break: v.nullable(
-		v.object({
-			type: v.union(v.literal('requested'), v.literal('accepted')),
-			by: v.object({
-				userId: v.id('meetingParticipants'),
-				name: v.string(),
-			}),
-		}),
-	),
+	lastConsumedCreationTime: v.number(),
 
 	currentSpeaker: v.nullable(
 		v.object({
 			userId: v.id('meetingParticipants'),
 			name: v.string(),
 			startTime: v.number(),
+			creationTime: v.optional(v.number()),
 		}),
 	),
 
-	pointOfOrder: v.nullable(
+	/** Last main speaker (for undo/step back). Not set for point of order, reply, break. */
+	previousSpeaker: v.nullable(
 		v.object({
-			type: v.union(v.literal('requested'), v.literal('accepted')),
-			by: v.object({
-				userId: v.id('meetingParticipants'),
-				name: v.string(),
-			}),
-			startTime: v.optional(v.number()),
+			userId: v.id('meetingParticipants'),
+			name: v.string(),
+			startTime: v.number(),
+			creationTime: v.number(),
 		}),
 	),
 
-	reply: v.optional(
-		v.nullable(
-			v.object({
-				type: v.union(v.literal('requested'), v.literal('accepted')),
-				by: v.object({
-					userId: v.id('meetingParticipants'),
-					name: v.string(),
-				}),
-				startTime: v.optional(v.number()),
-			}),
-		),
-	),
-
-	participants: v.number(),
-	absent: v.number(),
-
-	anonIdCounter: v.number(),
+	break: v.nullable(Request),
+	pointOfOrder: v.nullable(Request),
+	reply: v.nullable(Request),
 });
 
 export const pollType = v.union(v.literal('multi_winner'), v.literal('single_winner'));
@@ -105,33 +81,41 @@ export const majorityRule = v.union(
 export type PollType = typeof pollType.type;
 export type MajorityRule = typeof majorityRule.type;
 
-export const Poll = v.object({
+const pollBaseFields = {
 	meetingId: v.id('meetings'),
-	agendaItemId: v.string(),
+	agendaItemId: v.optional(v.string()),
 	title: v.string(),
 	options: v.array(v.string()),
-	maxVotesPerVoter: v.number(),
-	type: pollType,
-	/** For multi_winner: how many top options win. */
-	winningCount: v.optional(v.number()),
-	/** For single_winner: what counts as majority (of votes cast). */
-	majorityRule: v.optional(majorityRule),
-	/** If true, an "Avstår" (abstain) option is included for voters. Default true. */
 	allowsAbstain: v.boolean(),
 	isOpen: v.boolean(),
+	maxVotesPerVoter: v.number(),
 	/** If true, everyone can see results when poll is closed; if false, only admins can. */
-	resultsPublic: v.optional(v.boolean()),
+	isResultPublic: v.boolean(),
 	openedAt: v.optional(v.number()),
 	closedAt: v.optional(v.number()),
-	closedBy: v.optional(v.id('meetingParticipants')),
-	createdBy: v.id('meetingParticipants'),
 	updatedAt: v.number(),
-});
+};
+
+/** Discriminated union: multi_winner requires winningCount, single_winner requires majorityRule. */
+export const Poll = v.union(
+	v.object({
+		...pollBaseFields,
+		type: v.literal('multi_winner'),
+		/** How many top options win. */
+		winningCount: v.number(),
+	}),
+	v.object({
+		...pollBaseFields,
+		type: v.literal('single_winner'),
+		/** What counts as majority (of votes cast). */
+		majorityRule: majorityRule,
+	}),
+);
 
 export const PollVote = v.object({
 	meetingId: v.id('meetings'),
 	pollId: v.id('polls'),
-	anonID: v.number(),
+	userId: v.id('meetingParticipants'),
 	optionIndex: v.number(),
 	createdAt: v.number(),
 });
@@ -162,10 +146,8 @@ export const AbsenceEntry = v.object({
 });
 
 export const MeetingParticipant = v.object({
-	_id: v.id('meetingParticipants'),
 	meetingId: v.id('meetings'),
 	name: v.string(),
-	anonID: v.number(),
 
 	tokenIdentifier: v.string(),
 
@@ -188,15 +170,14 @@ export default defineSchema(
 		meetingParticipants: defineTable(MeetingParticipant)
 			.index('by_token', ['tokenIdentifier'])
 			.index('by_token_meeting', ['tokenIdentifier', 'meetingId'])
-			.index('by_meeting_anon', ['meetingId', 'anonID'])
+			.index('by_meeting', ['meetingId'])
 			.index('by_meeting_absent', ['meetingId', 'absentSince']),
 
 		meetings: defineTable(Meeting).index('by_code', ['code']),
 
 		speakerQueueEntries: defineTable(SpeakerQueueEntry)
-			.index('by_meeting_ordinal', ['meetingId', 'ordinal'])
-			.index('by_meeting_user', ['meetingId', 'userId'])
-			.index('by_meeting_user_ordinal', ['meetingId', 'userId', 'ordinal']),
+			.index('by_meeting', ['meetingId'])
+			.index('by_meeting_user', ['meetingId', 'userId']),
 
 		pointOfOrderEntries: defineTable(PointOfOrderEntry)
 			.index('by_meeting', ['meetingId'])
@@ -217,7 +198,7 @@ export default defineSchema(
 
 		pollVotes: defineTable(PollVote)
 			.index('by_poll', ['pollId'])
-			.index('by_poll_anon', ['pollId', 'anonID']),
+			.index('by_poll_user', ['pollId', 'userId']),
 
 		heartbeats: defineTable(Heartbeat)
 			.index('by_token', ['tokenIdentifier'])

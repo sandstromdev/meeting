@@ -1,128 +1,33 @@
 import type { MutationCtx, QueryCtx } from '$convex/_generated/server';
-import type { UserIdentity } from 'convex/server';
+import type { UserIdentity, Scheduler } from 'convex/server';
+import { decAbsent } from './meetingCounters';
 import { AppError, errors } from './error';
 import type { Doc, Id } from '$convex/_generated/dataModel';
-
-type Db = Pick<QueryCtx, 'db'>['db'];
-
-export async function getSpeakerQueueEntryByOrdinal(
-	db: Db,
-	meetingId: Id<'meetings'>,
-	ordinal: number,
-) {
-	return db
-		.query('speakerQueueEntries')
-		.withIndex('by_meeting_ordinal', (q) => q.eq('meetingId', meetingId).eq('ordinal', ordinal))
-		.first();
-}
-
-export async function closeSpeakerSessionIfOpen(
-	db: MutationCtx['db'],
-	entry: Doc<'speakerQueueEntries'>,
-	now: number,
-) {
-	const sessions = entry.sessions ?? [];
-	if (sessions.length === 0) return;
-	const last = sessions[sessions.length - 1];
-	if (last?.stopTime !== undefined) return;
-	const updated = [...sessions];
-	updated[updated.length - 1] = { ...last, stopTime: now };
-	await db.patch('speakerQueueEntries', entry._id, { sessions: updated });
-}
-
-/** First queue entry after `afterOrdinal` whose participant is not absent. */
-export async function findNextPresentSpeaker(
-	db: Db,
-	meetingId: Id<'meetings'>,
-	afterOrdinal: number,
-	take = 20,
-): Promise<Doc<'speakerQueueEntries'> | null> {
-	const candidates = await db
-		.query('speakerQueueEntries')
-		.withIndex('by_meeting_ordinal', (q) =>
-			q.eq('meetingId', meetingId).gt('ordinal', afterOrdinal),
-		)
-		.order('asc')
-		.take(take);
-	for (const entry of candidates) {
-		const p = await db.get('meetingParticipants', entry.userId);
-		if (!p?.absentSince) return entry;
-	}
-	return null;
-}
-
-/** First queue entry before `beforeOrdinal` (desc order) whose participant is not absent. */
-export async function findPrevPresentSpeaker(
-	db: Db,
-	meetingId: Id<'meetings'>,
-	beforeOrdinal: number,
-	take = 20,
-): Promise<Doc<'speakerQueueEntries'> | null> {
-	const candidates = await db
-		.query('speakerQueueEntries')
-		.withIndex('by_meeting_ordinal', (q) =>
-			q.eq('meetingId', meetingId).lt('ordinal', beforeOrdinal),
-		)
-		.order('desc')
-		.take(take);
-	for (const entry of candidates) {
-		const p = await db.get('meetingParticipants', entry.userId);
-		if (!p?.absentSince) return entry;
-	}
-	return null;
-}
-
-export async function setNotInSpeakerQueue(
-	db: MutationCtx['db'],
-	userId: Id<'meetingParticipants'>,
-) {
-	await db.patch('meetingParticipants', userId, {
-		isInSpeakerQueue: false,
-	});
-}
-
-export async function setCurrentSpeaker(
-	db: MutationCtx['db'],
-	meetingId: Id<'meetings'>,
-	entry: Doc<'speakerQueueEntries'>,
-	startTime: number,
-) {
-	const sessions = [...(entry.sessions ?? []), { startTime }];
-	await db.patch('speakerQueueEntries', entry._id, { sessions });
-	await db.patch('meetings', meetingId, {
-		currentSpeaker: {
-			userId: entry.userId,
-			name: entry.name,
-			startTime,
-		},
-		speakerIndex: entry.ordinal,
-	});
-}
+import { internal } from '$convex/_generated/api';
 
 export async function logSpeakerSlot(
-	db: MutationCtx['db'],
-	meetingId: Id<'meetings'>,
+	ctx: { scheduler: Scheduler; meeting: Pick<Doc<'meetings'>, '_id'> },
 	type: 'reply' | 'point_of_order' | 'speaker',
 	by: { userId: Id<'meetingParticipants'>; name: string },
 	startTime: number,
 	endTime: number,
 ) {
-	await db.insert('speakerLogEntries', {
-		meetingId,
+	await ctx.scheduler.runAfter(0, internal.admin.meeting.logSpeaker, {
+		meetingId: ctx.meeting._id,
 		type,
-		userId: by.userId,
-		name: by.name,
+		by,
 		startTime,
 		endTime,
 	});
 }
 
-/** Closes the user's open absence, marks them present, and decrements meeting.absent. */
+/** Closes the user's open absence, marks them present, and decrements the absent counter. */
 export async function completeReturnToMeeting(
-	db: MutationCtx['db'],
-	meeting: Pick<Doc<'meetings'>, '_id' | 'absent'>,
+	ctx: MutationCtx,
+	meeting: Pick<Doc<'meetings'>, '_id'>,
 	userId: Id<'meetingParticipants'>,
 ) {
+	const { db } = ctx;
 	const now = Date.now();
 	const openAbsences = await db
 		.query('absenceEntries')
@@ -134,9 +39,7 @@ export async function completeReturnToMeeting(
 		await db.patch('absenceEntries', toClose._id, { endTime: now });
 	}
 	await db.patch('meetingParticipants', userId, { absentSince: 0, returnRequestedAt: 0 });
-	await db.patch('meetings', meeting._id, {
-		absent: Math.max(0, (meeting.absent ?? 0) - 1),
-	});
+	await decAbsent(ctx, meeting._id);
 }
 
 export async function getMeetingParticipant(

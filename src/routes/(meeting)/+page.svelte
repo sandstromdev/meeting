@@ -38,7 +38,9 @@
 <ConfirmDialog />
 
 {#if role === 'admin'}
-	<ViewSelector compact />
+	<div class="absolute top-8 right-8">
+		<ViewSelector compact triggerClass="" />
+	</div>
 {/if}
 
 <div class="mx-auto p-4 lg:py-12">

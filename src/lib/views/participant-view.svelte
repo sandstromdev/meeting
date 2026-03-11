@@ -14,7 +14,7 @@
 	const now = useNow();
 </script>
 
-{#if !ctx.meeting.startedAt || now.current < ctx.meeting.startedAt}
+{#if !ctx.meeting.isOpen || !ctx.meeting.startedAt || now.current < ctx.meeting.startedAt}
 	<div class="flex min-h-[50vh] flex-col items-center justify-center gap-4">
 		<p class="text-center text-2xl font-semibold">Mötet har inte börjat ännu</p>
 	</div>

@@ -1,32 +1,26 @@
 import type { Doc, Id } from '$convex/_generated/dataModel';
-import type { MutationCtx, QueryCtx } from '$convex/_generated/server';
+import type { MutationCtx } from '$convex/_generated/server';
+import type { MajorityRule, PollType } from '$lib/polls';
 import { AppError, errors } from './error';
-
-type Db = QueryCtx['db'];
+import type { Db } from './types';
 
 /** Label for the abstain option when allowsAbstain is true. */
 export const ABSTAIN_OPTION_LABEL = 'Avstår';
 
-export function optionsWithAbstainIfRequested(
-	options: string[],
-	allowsAbstain: boolean,
-): string[] {
+export function optionsWithAbstainIfRequested(options: string[], allowsAbstain: boolean) {
 	if (allowsAbstain) {
-		if (options[options.length - 1] === ABSTAIN_OPTION_LABEL) return options;
+		if (options[options.length - 1] === ABSTAIN_OPTION_LABEL) {
+			return options;
+		}
 		return [...options, ABSTAIN_OPTION_LABEL];
 	}
-	if (options[options.length - 1] === ABSTAIN_OPTION_LABEL) return options.slice(0, -1);
+	if (options[options.length - 1] === ABSTAIN_OPTION_LABEL) {
+		return options.slice(0, -1);
+	}
 	return options;
 }
 
-export type PollType = 'multi_winner' | 'single_winner';
-export type MajorityRule = 'simple' | 'two_thirds' | 'three_quarters' | 'unanimous';
-
-export function getPollType(poll: Pick<Doc<'polls'>, 'type' | 'winningCount' | 'majorityRule'>): PollType {
-	return poll.type ?? 'single_winner';
-}
-
-function getMajorityThreshold(rule: MajorityRule): number {
+function getMajorityThreshold(rule: MajorityRule) {
 	switch (rule) {
 		case 'simple':
 			return 0.5;
@@ -42,34 +36,32 @@ function getMajorityThreshold(rule: MajorityRule): number {
 export type OptionTotal = { optionIndex: number; option: string; votes: number };
 
 export function computeWinners(
-	poll: Pick<Doc<'polls'>, 'type' | 'winningCount' | 'majorityRule' | 'options'>,
+	poll: Doc<'polls'>,
 	optionTotals: OptionTotal[],
 	votesCast: number,
 ): { winnerOptionIndexes: number[]; isTie: boolean } {
-	const type = getPollType(poll);
 	if (optionTotals.length === 0 || votesCast === 0) {
 		return { winnerOptionIndexes: [], isTie: false };
 	}
-	if (type === 'multi_winner') {
-		const count = Math.max(1, Math.min(poll.winningCount ?? 1, optionTotals.length));
-		const sorted = [...optionTotals].sort((a, b) => b.votes - a.votes);
+	if (poll.type === 'multi_winner') {
+		const count = Math.max(1, Math.min(poll.winningCount, optionTotals.length));
+		const sorted = [...optionTotals].toSorted((a, b) => b.votes - a.votes);
 		const thresholdVotes = sorted[count - 1]?.votes ?? 0;
-		const winners = sorted
-			.filter((o) => o.votes >= thresholdVotes)
-			.map((o) => o.optionIndex);
+		const winners = sorted.filter((o) => o.votes >= thresholdVotes).map((o) => o.optionIndex);
 		const lastWinnerVotes = sorted[count - 1]?.votes;
-		const isTie = lastWinnerVotes != null && sorted.filter((o) => o.votes === lastWinnerVotes).length > 1;
+		const isTie =
+			lastWinnerVotes != null && sorted.filter((o) => o.votes === lastWinnerVotes).length > 1;
 		return { winnerOptionIndexes: winners, isTie };
 	}
 	// single_winner: option(s) that meet majority of votes cast
-	const rule = poll.majorityRule ?? 'simple';
+	const rule = poll.majorityRule;
 	const threshold = getMajorityThreshold(rule);
 	const minVotes =
 		rule === 'simple'
 			? Math.floor(votesCast * threshold) + 1 // strictly more than half
 			: Math.ceil(votesCast * threshold);
 	const meeting = optionTotals.filter((o) => o.votes >= minVotes);
-	const sorted = [...meeting].sort((a, b) => b.votes - a.votes);
+	const sorted = [...meeting].toSorted((a, b) => b.votes - a.votes);
 	const topVotes = sorted[0]?.votes;
 	if (topVotes == null) {
 		return { winnerOptionIndexes: [], isTie: false };
@@ -98,12 +90,6 @@ export function assertPollInMeeting(
 	}
 }
 
-export function assertPollOptionIndex(poll: Pick<Doc<'polls'>, 'options'>, optionIndex: number) {
-	if (optionIndex < 0 || optionIndex >= poll.options.length) {
-		throw new AppError(errors.invalid_poll_option(optionIndex));
-	}
-}
-
 export function assertPollEditable(poll: Pick<Doc<'polls'>, 'isOpen'>) {
 	if (poll.isOpen) {
 		throw new AppError(errors.illegal_poll_action('edit_while_open'));
@@ -121,15 +107,13 @@ export function assertPollVoteLimit(options: string[], maxVotesPerVoter: number)
 	}
 }
 
-export function getPollMaxVotesPerVoter(
-	poll: Pick<Doc<'polls'>, 'options' | 'maxVotesPerVoter' | 'type'>,
-): number {
-	if (getPollType(poll) === 'single_winner') {
+/* export function getPollMaxVotesPerVoter(poll: Doc<'polls'>) {
+	if (poll.type === 'single_winner') {
 		return 1;
 	}
-	const configured = Math.floor(poll.maxVotesPerVoter ?? 1);
+	const configured = Math.floor(poll.maxVotesPerVoter);
 	return Math.max(1, Math.min(configured, poll.options.length));
-}
+} */
 
 export function assertPollTypeConfig(
 	pollType: PollType,
@@ -139,67 +123,13 @@ export function assertPollTypeConfig(
 	if (pollType === 'multi_winner') {
 		const count = opts.winningCount ?? 1;
 		if (count < 1 || count > optionsCount) {
-			throw new AppError(errors.invalid_poll_type_config({ kind: 'winningCount', value: count, optionsCount }));
+			throw new AppError(
+				errors.invalid_poll_type_config({ kind: 'winningCount', value: count, optionsCount }),
+			);
 		}
 	} else {
 		if (!opts.majorityRule) {
 			throw new AppError(errors.invalid_poll_type_config({ kind: 'majorityRule_required' }));
 		}
 	}
-}
-
-export function getEligibleVoterCount(meeting: Pick<Doc<'meetings'>, 'participants' | 'absent'>) {
-	return Math.max(0, (meeting.participants ?? 0) - (meeting.absent ?? 0));
-}
-
-export async function countVotesForPoll(db: Db, pollId: Id<'polls'>) {
-	const votes = await db
-		.query('pollVotes')
-		.withIndex('by_poll', (q) => q.eq('pollId', pollId))
-		.collect();
-	return votes.length;
-}
-
-export async function countVotersForPoll(db: Db, pollId: Id<'polls'>) {
-	const votes = await db
-		.query('pollVotes')
-		.withIndex('by_poll', (q) => q.eq('pollId', pollId))
-		.collect();
-	return new Set(votes.map((vote) => vote.anonID)).size;
-}
-
-export async function getVoteByAnonId(db: Db, pollId: Id<'polls'>, anonID: number) {
-	return db
-		.query('pollVotes')
-		.withIndex('by_poll_anon', (q) => q.eq('pollId', pollId).eq('anonID', anonID))
-		.first();
-}
-
-export async function closePoll(
-	db: MutationCtx['db'],
-	pollId: Id<'polls'>,
-	opts?: { closedBy?: Id<'meetingParticipants'> },
-) {
-	await db.patch('polls', pollId, {
-		isOpen: false,
-		closedAt: Date.now(),
-		closedBy: opts?.closedBy,
-		updatedAt: Date.now(),
-	});
-}
-
-export async function closePollIfAllEligibleHaveVoted(
-	db: MutationCtx['db'],
-	meeting: Pick<Doc<'meetings'>, 'participants' | 'absent'>,
-	pollId: Id<'polls'>,
-) {
-	const eligibleVoters = getEligibleVoterCount(meeting);
-	const votersCount = await countVotersForPoll(db, pollId);
-
-	if (eligibleVoters > 0 && votersCount >= eligibleVoters) {
-		await closePoll(db, pollId);
-		return true;
-	}
-
-	return false;
 }

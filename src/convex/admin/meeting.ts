@@ -1,10 +1,11 @@
 import { admin } from '$convex/helpers/auth';
-import {
-	completeReturnToMeeting,
-	logSpeakerSlot,
-} from '$convex/helpers/meeting';
+import { completeReturnToMeeting, logSpeakerSlot } from '$convex/helpers/meeting';
+import { flattenAgenda } from '$convex/helpers/agenda';
 import { pickParticipantData } from '$convex/helpers/users';
 import { zid } from 'convex-helpers/server/zod4';
+import { z } from 'zod';
+import { MeetingCode } from '$lib/validation';
+import { countAbsent, countParticipants } from '$convex/helpers/meetingCounters';
 
 export const getPointOfOrderEntries = admin.query().public(async ({ ctx }) => {
 	const entries = await ctx.db
@@ -35,11 +36,20 @@ export const getSpeakerLogEntries = admin.query().public(async ({ ctx }) => {
 	}));
 });
 
+export const getAttendance = admin.query().public(async ({ ctx }) => {
+	const [participants, absentees] = await Promise.all([
+		countParticipants(ctx, ctx.meeting._id),
+		countAbsent(ctx, ctx.meeting._id),
+	]);
+
+	return { participants, absentees };
+});
+
 export const getAbsentees = admin.query().public(async ({ ctx }) => {
 	const participants = await ctx.db
 		.query('meetingParticipants')
 		.withIndex('by_meeting_absent', (q) => q.eq('meetingId', ctx.meeting._id).gt('absentSince', 0))
-		.collect();
+		.take(100);
 	return participants.map((p) => pickParticipantData(p));
 });
 
@@ -56,13 +66,13 @@ export const getReturnRequests = admin.query().public(async ({ ctx }) => {
 	const participants = await ctx.db
 		.query('meetingParticipants')
 		.withIndex('by_meeting_absent', (q) => q.eq('meetingId', ctx.meeting._id).gt('absentSince', 0))
-		.collect();
+		.take(100);
 	return participants
 		.filter((p) => p.returnRequestedAt)
 		.map((p) => ({
 			userId: p._id,
 			name: p.name,
-			requestedAt: p.returnRequestedAt!,
+			requestedAt: p.returnRequestedAt,
 		}));
 });
 
@@ -77,7 +87,7 @@ export const approveReturnRequest = admin
 			return false;
 		}
 
-		await completeReturnToMeeting(db, meeting, args.userId);
+		await completeReturnToMeeting(ctx, meeting, args.userId);
 		return true;
 	});
 
@@ -94,8 +104,8 @@ export const denyReturnRequest = admin
 		return true;
 	});
 
-export const clearPointOfOrder = admin.mutation().public(async ({ ctx: { db, meeting } }) => {
-	const po = meeting.pointOfOrder;
+export const clearPointOfOrder = admin.mutation().public(async ({ ctx }) => {
+	const po = ctx.meeting.pointOfOrder;
 	if (!po) {
 		return false;
 	}
@@ -103,10 +113,10 @@ export const clearPointOfOrder = admin.mutation().public(async ({ ctx: { db, mee
 	const now = Date.now();
 
 	if (po.type === 'accepted') {
-		await logSpeakerSlot(db, meeting._id, 'point_of_order', po.by, po.startTime ?? now, now);
+		await logSpeakerSlot(ctx, 'point_of_order', po.by, po.startTime ?? now, now);
 	}
 
-	await db.patch('meetings', meeting._id, {
+	await ctx.db.patch('meetings', ctx.meeting._id, {
 		pointOfOrder: null,
 	});
 
@@ -172,7 +182,8 @@ export const acceptReply = admin.mutation().public(async ({ ctx: { db, meeting }
 	return true;
 });
 
-export const clearReply = admin.mutation().public(async ({ ctx: { db, meeting } }) => {
+export const clearReply = admin.mutation().public(async ({ ctx }) => {
+	const { db, meeting } = ctx;
 	const reply = meeting.reply;
 
 	if (!reply) {
@@ -182,7 +193,7 @@ export const clearReply = admin.mutation().public(async ({ ctx: { db, meeting } 
 	const now = Date.now();
 
 	if (reply.type === 'accepted') {
-		await logSpeakerSlot(db, meeting._id, 'reply', reply.by, reply.startTime ?? now, now);
+		await logSpeakerSlot(ctx, 'reply', reply.by, reply.startTime ?? now, now);
 	}
 
 	await db.patch('meetings', meeting._id, {
@@ -191,3 +202,140 @@ export const clearReply = admin.mutation().public(async ({ ctx: { db, meeting } 
 
 	return true;
 });
+
+export const toggleMeeting = admin.mutation().public(async ({ ctx: { db, meeting } }) => {
+	if (meeting.isOpen) {
+		await db.patch('meetings', meeting._id, { isOpen: false });
+		return true;
+	}
+	const now = Date.now();
+	await db.patch('meetings', meeting._id, {
+		isOpen: true,
+		startedAt: meeting.startedAt ?? now,
+	});
+	return true;
+});
+
+export const resetMeeting = admin.mutation().public(async ({ ctx }) => {
+	const { db, meeting } = ctx;
+	const now = Date.now();
+
+	if (meeting.pointOfOrder?.type === 'accepted') {
+		await logSpeakerSlot(
+			ctx,
+			'point_of_order',
+			meeting.pointOfOrder.by,
+			meeting.pointOfOrder.startTime ?? now,
+			now,
+		);
+	}
+	if (meeting.reply?.type === 'accepted') {
+		await logSpeakerSlot(ctx, 'reply', meeting.reply.by, meeting.reply.startTime ?? now, now);
+	}
+	if (meeting.currentSpeaker) {
+		await logSpeakerSlot(
+			ctx,
+			'speaker',
+			meeting.currentSpeaker,
+			meeting.currentSpeaker.startTime,
+			now,
+		);
+	}
+
+	const entries = await db
+		.query('speakerQueueEntries')
+		.withIndex('by_meeting', (q) => q.eq('meetingId', meeting._id))
+		.collect();
+	for (const entry of entries) {
+		await db.delete('speakerQueueEntries', entry._id);
+	}
+
+	const participants = await db
+		.query('meetingParticipants')
+		.withIndex('by_meeting', (q) => q.eq('meetingId', meeting._id))
+		.collect();
+	for (const p of participants) {
+		if (p.isInSpeakerQueue) {
+			await db.patch('meetingParticipants', p._id, { isInSpeakerQueue: false });
+		}
+	}
+
+	const flat = flattenAgenda(meeting.agenda);
+	const firstItemId = flat[0]?.id;
+
+	await db.patch('meetings', meeting._id, {
+		currentSpeaker: null,
+		previousSpeaker: null,
+		pointOfOrder: null,
+		reply: null,
+		break: null,
+		lastConsumedCreationTime: -1,
+		currentAgendaItemId: firstItemId ?? undefined,
+	});
+
+	return true;
+});
+
+export const updateMeetingData = admin
+	.mutation()
+	.input({
+		title: z.string().trim().min(1).optional(),
+		code: MeetingCode.optional(),
+		date: z.number().optional(),
+	})
+	.public(async ({ ctx, args }) => {
+		const { db, meeting } = ctx;
+		const updates: Record<string, unknown> = {};
+
+		if (args.title !== undefined) {
+			updates.title = args.title;
+		}
+		if (args.date !== undefined) {
+			updates.date = args.date;
+		}
+		if (args.code !== undefined) {
+			const newCode = args.code;
+			if (newCode !== meeting.code) {
+				const existing = await db
+					.query('meetings')
+					.withIndex('by_code', (q) => q.eq('code', newCode))
+					.first();
+				if (existing) {
+					return false;
+				}
+			}
+			updates.code = newCode;
+		}
+
+		if (Object.keys(updates).length === 0) {
+			return true;
+		}
+
+		await db.patch('meetings', meeting._id, updates);
+		return true;
+	});
+
+export const logSpeaker = admin
+	.mutation()
+	.input({
+		type: z.enum(['point_of_order', 'reply', 'speaker']),
+		by: z.object({
+			userId: zid('meetingParticipants'),
+			name: z.string(),
+		}),
+		startTime: z.number(),
+		endTime: z.number(),
+	})
+	.internal(async ({ ctx, args }) => {
+		const { db, meeting } = ctx;
+		const { type, by, startTime, endTime } = args;
+
+		await db.insert('speakerLogEntries', {
+			meetingId: meeting._id,
+			type,
+			userId: by.userId,
+			name: by.name,
+			startTime,
+			endTime,
+		});
+	});

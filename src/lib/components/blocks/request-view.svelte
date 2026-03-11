@@ -15,7 +15,7 @@
 	const hasRequestedPointOfOrder = $derived(
 		m.pointOfOrder?.type === 'requested' && m.pointOfOrder.by.userId === me._id,
 	);
-	
+
 	const isInSpeakerQueue = $derived(me.isInSpeakerQueue && !meeting.isCurrentSpeaker);
 	const hasRequestedBreak = $derived(m.break?.type === 'requested' && m.break.by.userId === me._id);
 

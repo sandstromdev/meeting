@@ -5,6 +5,7 @@
 	import PreviousSpeaker from '$lib/components/blocks/admin/previous-speaker.svelte';
 	import QueueAdminControls from '$lib/components/blocks/admin/queue-admin-controls.svelte';
 	import Requests from '$lib/components/blocks/admin/requests.svelte';
+	import MeetingControl from '$lib/components/blocks/admin/meeting-control.svelte';
 	import SpeakerLog from '$lib/components/blocks/admin/speaker-log.svelte';
 	import Agenda from '$lib/components/blocks/agenda.svelte';
 	import CurrentAgendaItem from '$lib/components/blocks/current-agenda-item.svelte';
@@ -57,5 +58,9 @@
 		<Separator />
 
 		<SpeakerLog />
+
+		<Separator />
+
+		<MeetingControl />
 	</aside>
 </div>

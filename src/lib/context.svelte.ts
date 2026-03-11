@@ -26,8 +26,14 @@ type CurrentSpeaker =
 			startTime?: never;
 	  };
 
+type AttendanceState = {
+	participants: number;
+	absent: number;
+};
+
 export class MeetingState {
 	#data: MeetingData;
+	#attendance: AttendanceState;
 
 	readonly convex: ConvexClient;
 	readonly agenda: AgendaState;
@@ -47,8 +53,19 @@ export class MeetingState {
 		this.agenda = new AgendaState(this);
 		this.speakerQueue = new SpeakerQueue(this);
 
+		this.#attendance = $state({
+			participants: 0,
+			absent: 0,
+		});
+
+		const attendance = this.adminQuery(api.admin.meeting.getAttendance);
+
 		$effect(() => {
 			this.#data = data();
+			this.#attendance = {
+				participants: attendance.data?.participants ?? 0,
+				absent: attendance.data?.absentees ?? 0,
+			};
 		});
 	}
 
@@ -223,6 +240,16 @@ export class MeetingState {
 
 	get id() {
 		return this.meeting?._id;
+	}
+
+	get voterRoll() {
+		return this.participants - this.absent;
+	}
+	get participants() {
+		return this.#attendance.participants;
+	}
+	get absent() {
+		return this.#attendance.absent;
 	}
 
 	get hasPendingReturnRequest() {

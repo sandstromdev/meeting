@@ -25,6 +25,13 @@ export function usePageState() {
 			setParam('view', value);
 		},
 
+		get projectorMode() {
+			return params.projectorMode;
+		},
+		set projectorMode(value: ProjectorMode) {
+			setParam('projectorMode', value);
+		},
+
 		get isProjector() {
 			return params.view === 'projector';
 		},
@@ -44,7 +51,9 @@ export function validateSearchParams(url: URL) {
 
 export const ParamsSchema = z.object({
 	view: z.enum(['projector', 'queue', 'default']).catch('default'),
+	projectorMode: z.enum(['intro', 'meeting']).catch('meeting'),
 });
 
 export type Params = z.infer<typeof ParamsSchema>;
 export type View = Params['view'];
+export type ProjectorMode = Params['projectorMode'];

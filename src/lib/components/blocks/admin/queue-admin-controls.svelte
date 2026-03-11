@@ -35,7 +35,7 @@
 		</Button>
 		{#if !queue.break}
 			<Button
-				onClickPromise={() => meeting.mutate(api.users.meeting.requestBreak)}
+				onClickPromise={() => meeting.mutate(api.users.queue.request, { type: 'break' })}
 				disabled={!queue.canRequestBreak}
 				type="button"
 				variant="outline"
@@ -45,7 +45,7 @@
 			</Button>
 		{:else if queue.break.type === 'requested' && queue.break.by.userId === meeting.me._id}
 			<Button
-				onClickPromise={() => meeting.mutate(api.users.meeting.recallBreakRequest)}
+				onClickPromise={() => meeting.mutate(api.users.queue.recallRequest, { type: 'break' })}
 				type="button"
 				variant="outline"
 			>
@@ -71,7 +71,7 @@
 			{/if}
 		{:else}
 			<Button
-				onClickPromise={() => meeting.mutate(api.users.meeting.requestBreak)}
+				onClickPromise={() => meeting.mutate(api.users.queue.request, { type: 'break' })}
 				type="button"
 				variant="outline"
 			>

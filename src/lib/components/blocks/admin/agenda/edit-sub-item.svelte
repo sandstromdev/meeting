@@ -101,7 +101,9 @@
 	}
 
 	function movePollUp(index: number) {
-		if (index <= 0) return;
+		if (index <= 0) {
+			return;
+		}
 		polls = [
 			...polls.slice(0, index - 1),
 			polls[index],
@@ -111,7 +113,9 @@
 	}
 
 	function movePollDown(index: number) {
-		if (index >= polls.length - 1) return;
+		if (index >= polls.length - 1) {
+			return;
+		}
 		polls = [...polls.slice(0, index), polls[index + 1], polls[index], ...polls.slice(index + 2)];
 	}
 
@@ -126,9 +130,13 @@
 	}
 
 	function draftChanged(draft: PollDraft): boolean {
-		if (!draft.id) return false;
+		if (!draft.id) {
+			return false;
+		}
 		const orig = originalPolls.get(draft.id);
-		if (!orig) return false;
+		if (!orig) {
+			return false;
+		}
 		return (
 			orig.title !== draft.title.trim() ||
 			!optionsEqual(orig.options, draft.options) ||
@@ -223,9 +231,13 @@
 		e?.preventDefault();
 		for (const poll of polls) {
 			const result = PollDraftSchema.safeParse(poll);
-			if (!result.success) return;
+			if (!result.success) {
+				return;
+			}
 		}
-		if (!canSubmit) return;
+		if (!canSubmit) {
+			return;
+		}
 		isLoading = true;
 		await submitEdit();
 		isLoading = false;

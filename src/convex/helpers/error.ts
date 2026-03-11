@@ -1,7 +1,7 @@
 import { ConvexError } from 'convex/values';
 import type { Id } from '$convex/_generated/dataModel';
 import { ErrorMessages } from '$lib/errors';
-import type { z } from 'zod';
+import { z } from 'zod';
 
 export const errors = {
 	unauthorized: { code: 'unauthorized' },
@@ -26,6 +26,8 @@ export const errors = {
 			| { kind: 'winningCount'; value: number; optionsCount: number }
 			| { kind: 'majorityRule_required' },
 	) => ({ code: 'invalid_poll_type_config', ...args }) as const,
+	invalid_poll_draft: (error: z.ZodError) =>
+		({ code: 'invalid_poll_draft', error: z.treeifyError(error) }) as const,
 	illegal_poll_action: (
 		action:
 			| 'edit_while_open'
@@ -84,7 +86,7 @@ export class AppError<ErrorCode extends AppErrorCode> extends ConvexError<
 	}
 
 	// oxlint-disable-next-line typescript/no-explicit-any
-	message = ErrorMessages[this.data.code as ErrorCode](this.data as any);
+	message = ErrorMessages[this.data.code as AppErrorCode](this.data as any);
 
 	static fromConvex<ErrorCode extends AppErrorCode, Data extends ClientErrorObject<ErrorCode>>(
 		err: ConvexError<Data>,

@@ -31,10 +31,7 @@
 
 	const agenda = $derived(meeting.meeting.agenda ?? []);
 
-	function findItemInAgenda(
-		items: typeof agenda,
-		id: string,
-	): (typeof agenda)[number] | null {
+	function findItemInAgenda(items: typeof agenda, id: string): (typeof agenda)[number] | null {
 		for (const a of items) {
 			if (a.id === id) {
 				return a;

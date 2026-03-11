@@ -1,4 +1,5 @@
 import { authed, withMe } from '$convex/helpers/auth';
+import { incParticipants } from '$convex/helpers/meetingCounters';
 import { getMeetingByCode, getMeetingParticipant } from '$convex/helpers/meeting';
 import { MeetingCode } from '$lib/validation';
 import { zid } from 'convex-helpers/server/zod4';
@@ -30,8 +31,6 @@ export const connect = authed
 			await ctx.db.insert('meetingParticipants', {
 				meetingId: meeting._id,
 				tokenIdentifier: ctx.user.tokenIdentifier,
-				anonID: meeting.anonIdCounter + 1,
-
 				name: ctx.user.name,
 
 				role: 'participant' as const,
@@ -41,10 +40,7 @@ export const connect = authed
 				returnRequestedAt: 0,
 			});
 
-			await ctx.db.patch('meetings', meeting._id, {
-				anonIdCounter: meeting.anonIdCounter + 1,
-				participants: meeting.participants + 1,
-			});
+			await incParticipants(ctx, meeting._id);
 		}
 
 		return meeting._id;

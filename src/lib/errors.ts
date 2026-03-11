@@ -39,6 +39,7 @@ export const ErrorMessages = {
 		}
 		return 'Enkel-vinnare omröstning kräver att en majoritetsregel väljs.';
 	},
+	invalid_poll_draft: (_args) => 'Poll-utkastet innehåller ogiltiga värden.',
 	poll_not_found: ({ pollId }) => `Pollen med id '${pollId}' hittades inte.`,
 	meeting_not_found: ({ meetingCode, meetingId }) =>
 		`Mötet med ${meetingCode ? 'möteskoden' : 'id'} '${meetingCode ?? meetingId}' hittades inte.`,

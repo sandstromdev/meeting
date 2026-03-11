@@ -1,178 +1,174 @@
 import { moderator } from '$convex/helpers/auth';
 import { AppError, errors } from '$convex/helpers/error';
-import {
-	closeSpeakerSessionIfOpen,
-	findNextPresentSpeaker,
-	findPrevPresentSpeaker,
-	getSpeakerQueueEntryByOrdinal,
-	logSpeakerSlot,
-	setCurrentSpeaker,
-	setNotInSpeakerQueue,
-} from '$convex/helpers/meeting';
+import { logSpeakerSlot } from '$convex/helpers/meeting';
+import { zid } from 'convex-helpers/server/zod4';
 import { z } from 'zod';
 
 export const getPreviousSpeakers = moderator
 	.query()
 	.input({ take: z.number().default(10) })
 	.public(async ({ ctx: { db, meeting }, args }) => {
-		const speakerIndex = meeting.speakerIndex ?? -1;
-
 		const entries = await db
-			.query('speakerQueueEntries')
-			.withIndex('by_meeting_ordinal', (q) =>
-				q
-					.eq('meetingId', meeting._id)
-					.lt('ordinal', meeting.currentSpeaker == null ? speakerIndex + 1 : speakerIndex),
-			)
+			.query('speakerLogEntries')
+			.withIndex('by_meeting_endTime', (q) => q.eq('meetingId', meeting._id))
 			.order('desc')
-			.take(args.take);
+			.take(args.take * 3);
 
-		const ids = [...new Set(entries.map((e) => e.userId))];
-
-		const results = await Promise.all(
-			ids.map(async (id) => {
-				const p = await db.get('meetingParticipants', id);
-				return [id, !!p?.absentSince] as const;
-			}),
-		);
-
-		const absentByUser = new Map(results);
-
-		return entries.map((e) => ({
-			userId: e.userId,
-			name: e.name,
-			ordinal: e.ordinal,
-			sessions: e.sessions ?? [],
-			isAbsent: absentByUser.get(e.userId) ?? false,
-		}));
+		return entries
+			.map((e) => ({
+				type: e.type,
+				userId: e.userId,
+				name: e.name,
+				startTime: e.startTime,
+				endTime: e.endTime,
+			}))
+			.filter((e) => e.type === 'speaker' && e.userId != null)
+			.slice(0, args.take);
 	});
 
-export const getPreviousSpeaker = moderator.query().public(async ({ ctx: { db, meeting } }) => {
-	const speakerIndex = meeting.speakerIndex ?? -1;
-
-	const entry = await db
-		.query('speakerQueueEntries')
-		.withIndex('by_meeting_ordinal', (q) =>
-			q.eq('meetingId', meeting._id).lt('ordinal', speakerIndex),
-		)
-		.order('desc')
-		.first();
-
-	return entry;
+export const getPreviousSpeaker = moderator.query().public(async ({ ctx: { meeting } }) => {
+	return meeting.previousSpeaker ?? null;
 });
 
 export const removeFromSpeakerQueue = moderator
 	.mutation()
-	.input({ ordinal: z.number() })
+	.input({ entryId: zid('speakerQueueEntries') })
 	.public(async ({ ctx, args }) => {
-		const { speakerIndex, _id } = ctx.meeting;
+		const { meeting } = ctx;
+		const entry = await ctx.db.get('speakerQueueEntries', args.entryId);
 
-		if (args.ordinal === speakerIndex) {
+		if (!entry || entry.meetingId !== meeting._id) {
+			return;
+		}
+
+		if (entry._creationTime === meeting.currentSpeaker?.creationTime) {
 			throw new AppError(errors.cannot_delete_current_speaker());
 		}
 
-		const entry = await getSpeakerQueueEntryByOrdinal(ctx.db, _id, args.ordinal);
-
-		if (!entry) {
-			return;
-		}
-
 		await ctx.db.delete('speakerQueueEntries', entry._id);
-		await setNotInSpeakerQueue(ctx.db, entry.userId);
-	});
 
-export const moveSpeakerInQueue = moderator
-	.mutation()
-	.input({
-		ordinal: z.number(),
-		direction: z.enum(['up', 'down']),
-	})
-	.public(async ({ ctx, args }) => {
-		const { speakerIndex, _id } = ctx.meeting;
-
-		if (args.ordinal === speakerIndex) {
-			return;
+		const stillQueued = await ctx.db
+			.query('speakerQueueEntries')
+			.withIndex('by_meeting_user', (q) =>
+				q
+					.eq('meetingId', meeting._id)
+					.eq('userId', entry.userId)
+					.gt('_creationTime', meeting.lastConsumedCreationTime ?? -1),
+			)
+			.first();
+		if (!stillQueued) {
+			await ctx.db.patch('meetingParticipants', entry.userId, { isInSpeakerQueue: false });
 		}
-
-		const newOrdinal = args.direction === 'up' ? args.ordinal - 1 : args.ordinal + 1;
-
-		const entry = await getSpeakerQueueEntryByOrdinal(ctx.db, _id, args.ordinal);
-		const swapEntry = await getSpeakerQueueEntryByOrdinal(ctx.db, _id, newOrdinal);
-
-		if (!entry || !swapEntry) {
-			return;
-		}
-
-		await ctx.db.patch('speakerQueueEntries', entry._id, {
-			ordinal: newOrdinal,
-		});
-		await ctx.db.patch('speakerQueueEntries', swapEntry._id, {
-			ordinal: args.ordinal,
-		});
 	});
 
 export const nextSpeaker = moderator.mutation().public(async ({ ctx }) => {
-	const { speakerIndex, currentSpeaker, _id } = ctx.meeting;
+	const { currentSpeaker, _id } = ctx.meeting;
 	const now = Date.now();
+	const consumedCreationTime = currentSpeaker?.creationTime;
 
 	if (currentSpeaker) {
-		const currentEntry = await getSpeakerQueueEntryByOrdinal(ctx.db, _id, speakerIndex);
-		if (currentEntry) {
-			await closeSpeakerSessionIfOpen(ctx.db, currentEntry, now);
+		await logSpeakerSlot(ctx, 'speaker', currentSpeaker, currentSpeaker.startTime, now);
+		await ctx.db.patch('meetingParticipants', currentSpeaker.userId, { isInSpeakerQueue: false });
+
+		if (consumedCreationTime !== undefined) {
+			const currentEntry = await ctx.db
+				.query('speakerQueueEntries')
+				.withIndex('by_meeting', (q) =>
+					q.eq('meetingId', _id).eq('_creationTime', consumedCreationTime),
+				)
+				.first();
+			if (currentEntry) {
+				await ctx.db.delete('speakerQueueEntries', currentEntry._id);
+			}
 		}
-		await logSpeakerSlot(ctx.db, _id, 'speaker', currentSpeaker, currentSpeaker.startTime, now);
-		await setNotInSpeakerQueue(ctx.db, currentSpeaker.userId);
 	}
 
-	const nextEntry = await findNextPresentSpeaker(ctx.db, _id, speakerIndex);
+	const previousSpeaker =
+		currentSpeaker != null
+			? {
+					userId: currentSpeaker.userId,
+					name: currentSpeaker.name,
+					startTime: currentSpeaker.startTime,
+					creationTime: consumedCreationTime ?? ctx.meeting.lastConsumedCreationTime ?? -1,
+				}
+			: null;
+	const nextCursor = consumedCreationTime ?? ctx.meeting.lastConsumedCreationTime ?? -1;
+
+	if (consumedCreationTime !== undefined) {
+		await ctx.db.patch('meetings', _id, { lastConsumedCreationTime: consumedCreationTime });
+	}
+
+	const candidates = await ctx.db
+		.query('speakerQueueEntries')
+		.withIndex('by_meeting', (q) => q.eq('meetingId', _id).gt('_creationTime', nextCursor))
+		.order('asc')
+		.take(20);
+	let nextEntry: (typeof candidates)[number] | null = null;
+	for (const entry of candidates) {
+		const participant = await ctx.db.get('meetingParticipants', entry.userId);
+		if (!participant?.absentSince) {
+			nextEntry = entry;
+			break;
+		}
+	}
 	if (!nextEntry) {
 		await ctx.db.patch('meetings', _id, {
+			previousSpeaker,
 			currentSpeaker: null,
 		});
 		return;
 	}
 
-	await setCurrentSpeaker(ctx.db, _id, nextEntry, now);
+	const latestMeeting = await ctx.db.get('meetings', _id);
+	if (!latestMeeting) {
+		return;
+	}
+	const latestPreviousSpeaker =
+		latestMeeting.currentSpeaker != null
+			? {
+					...latestMeeting.currentSpeaker,
+					creationTime:
+						latestMeeting.currentSpeaker.creationTime ??
+						latestMeeting.lastConsumedCreationTime ??
+						-1,
+				}
+			: null;
+	await ctx.db.patch('meetings', _id, {
+		previousSpeaker: latestPreviousSpeaker,
+		currentSpeaker: {
+			userId: nextEntry.userId,
+			name: nextEntry.name,
+			startTime: now,
+			creationTime: nextEntry._creationTime,
+		},
+	});
 });
 
 export const previousSpeaker = moderator.mutation().public(async ({ ctx }) => {
-	const { speakerIndex, currentSpeaker, _id } = ctx.meeting;
-	const now = Date.now();
+	const { previousSpeaker: prev, _id } = ctx.meeting;
 
-	if (currentSpeaker) {
-		const currentEntry = await getSpeakerQueueEntryByOrdinal(ctx.db, _id, speakerIndex);
-		if (currentEntry) {
-			await closeSpeakerSessionIfOpen(ctx.db, currentEntry, now);
-		}
-		// Don't set isInSpeakerQueue false: the current speaker goes back to the queue
-	}
-
-	const beforeOrdinal = currentSpeaker == null ? speakerIndex + 1 : speakerIndex;
-	const prevEntry = await findPrevPresentSpeaker(ctx.db, _id, beforeOrdinal);
-	if (!prevEntry) {
+	if (!prev) {
 		return;
 	}
 
-	await setCurrentSpeaker(ctx.db, _id, prevEntry, now);
-	await ctx.db.patch('meetingParticipants', prevEntry.userId, {
-		isInSpeakerQueue: true,
+	await ctx.db.patch('meetings', _id, {
+		currentSpeaker: {
+			userId: prev.userId,
+			name: prev.name,
+			startTime: Date.now(),
+		},
+		lastConsumedCreationTime: prev.creationTime,
+		previousSpeaker: null,
 	});
 });
 
 export const clearPreviousSpeakers = moderator
 	.mutation()
 	.public(async ({ ctx: { db, meeting } }) => {
-		const entries = await db
-			.query('speakerQueueEntries')
-			.withIndex('by_meeting_ordinal', (q) =>
-				q.eq('meetingId', meeting._id).lte('ordinal', meeting.speakerIndex),
-			)
-			.collect();
-
-		await Promise.all(entries.map((e) => db.delete('speakerQueueEntries', e._id)));
-
 		await db.patch('meetings', meeting._id, {
-			speakerIndex: -1,
+			currentSpeaker: null,
+			lastConsumedCreationTime: -1,
+			previousSpeaker: null,
 		});
 
 		return true;

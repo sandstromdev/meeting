@@ -1,26 +1,45 @@
 <script lang="ts">
 	import { getMeetingContext } from '$lib/context.svelte';
+	import { tv, type VariantProps } from 'tailwind-variants';
+
+	let { size = 'default' }: { size?: VariantProps<typeof variants>['size'] } = $props();
 
 	const meeting = getMeetingContext();
+	const stats = $derived([
+		{ value: meeting.voterRoll, label: 'Röstlängd' },
+		{ value: meeting.participants, label: 'Mötesdeltagare' },
+		{ value: meeting.absent, label: 'Frånvarande' },
+	]);
 
-	const absent = $derived(meeting.meeting.absent ?? 0);
-	const present = $derived(meeting.meeting.participants ?? 0);
-	const voterRoll = $derived(present - absent);
+	const variants = tv({
+		base: 'px-4 py-3',
+		slots: {
+			root: 'px-4 py-3',
+			number: 'text-2xl font-semibold tabular-nums',
+			label: 'mt-0.5 text-xs text-muted-foreground',
+		},
+		variants: {
+			size: {
+				default: {},
+				lg: {
+					root: 'px-6 py-4',
+					number: 'text-4xl font-semibold tabular-nums',
+					label: 'mt-0.5 text-sm text-muted-foreground',
+				},
+			},
+		},
+	});
+
+	const { root, number, label } = $derived(variants({ size }));
 </script>
 
-<div class="px-4 py-3">
+<div class={root()}>
 	<dl class="grid grid-cols-3 gap-4 text-center">
-		<div>
-			<dd class="text-2xl font-semibold tabular-nums">{voterRoll}</dd>
-			<dt class="mt-0.5 text-xs text-muted-foreground">Röstlängd</dt>
-		</div>
-		<div>
-			<dd class="text-2xl font-semibold tabular-nums">{present}</dd>
-			<dt class="mt-0.5 text-xs text-muted-foreground">Mötesdeltagare</dt>
-		</div>
-		<div>
-			<dd class="text-2xl font-semibold tabular-nums">{absent}</dd>
-			<dt class="mt-0.5 text-xs text-muted-foreground">Frånvarande</dt>
-		</div>
+		{#each stats as stat (stat.label)}
+			<div>
+				<dd class={number()}>{stat.value}</dd>
+				<dt class={label()}>{stat.label}</dt>
+			</div>
+		{/each}
 	</dl>
 </div>

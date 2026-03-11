@@ -83,9 +83,7 @@
 								{item.number}.
 							</div>
 							{#if editingItem?.id !== item.id}
-								<span
-									class={cn('text-sm font-medium', hasBeenCompleted(index) && 'line-through')}
-								>
+								<span class={cn('text-sm font-medium', hasBeenCompleted(index) && 'line-through')}>
 									{item.title}
 								</span>
 							{:else}

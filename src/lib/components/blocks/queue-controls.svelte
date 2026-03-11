@@ -42,7 +42,7 @@
 			<Button
 				class="mx-auto h-12 w-full"
 				size="lg"
-				onClickPromise={() => meeting.mutate(api.users.meeting.doneSpeaking)}
+				onClickPromise={() => meeting.mutate(api.users.queue.doneSpeaking)}
 			>
 				Klar
 			</Button>
@@ -53,14 +53,14 @@
 				disabled={!isCurrentSpeaker && !canJoinQueue && !isInQueue}
 				onClickPromise={() =>
 					isCurrentSpeaker
-						? meeting.mutate(api.users.meeting.doneSpeaking)
+						? meeting.mutate(api.users.queue.doneSpeaking)
 						: isInQueue
-							? meeting.mutate(api.users.meeting.recallSpeakerQueueRequest)
-							: meeting.mutate(api.users.meeting.placeInSpeakerQueue)}
+							? meeting.mutate(api.users.queue.recallSpeakerQueueRequest)
+							: meeting.mutate(api.users.queue.placeInSpeakerQueue)}
 			>
 				{#if isInQueue}
 					<LogOutIcon class="size-4" />
-					Ta mig ur kön
+					Gå ur kön
 				{:else}
 					<PlusIcon class="size-4" />
 					Ställ dig i kön
@@ -85,7 +85,8 @@
 						<Button
 							variant="outline"
 							size="lg"
-							onClickPromise={() => meeting.mutate(api.users.meeting.requestPointOfOrder)}
+							onClickPromise={() =>
+								meeting.mutate(api.users.queue.request, { type: 'pointOfOrder' })}
 							type="button"
 						>
 							Ordningsfråga
@@ -95,7 +96,7 @@
 							variant="outline"
 							size="lg"
 							onClickPromise={() =>
-								meeting.mutate(api.users.meeting.recallPointOfOrderRequest)}
+								meeting.mutate(api.users.queue.recallRequest, { type: 'pointOfOrder' })}
 							type="button"
 						>
 							Återkalla ordningsfråga
@@ -105,7 +106,7 @@
 						<Button
 							variant="outline"
 							size="lg"
-							onClickPromise={() => meeting.mutate(api.users.meeting.requestReply)}
+							onClickPromise={() => meeting.mutate(api.users.queue.request, { type: 'reply' })}
 							type="button"
 						>
 							Begär replik
@@ -114,7 +115,8 @@
 						<Button
 							variant="outline"
 							size="lg"
-							onClickPromise={() => meeting.mutate(api.users.meeting.recallReplyRequest)}
+							onClickPromise={() =>
+								meeting.mutate(api.users.queue.recallRequest, { type: 'reply' })}
 							type="button"
 						>
 							Återkalla replik
@@ -125,7 +127,7 @@
 							disabled={!queue.canRequestBreak}
 							variant="outline"
 							size="lg"
-							onClickPromise={() => meeting.mutate(api.users.meeting.requestBreak)}
+							onClickPromise={() => meeting.mutate(api.users.queue.request, { type: 'break' })}
 							type="button"
 						>
 							Föreslå streck
@@ -134,7 +136,8 @@
 						<Button
 							variant="outline"
 							size="lg"
-							onClickPromise={() => meeting.mutate(api.users.meeting.recallBreakRequest)}
+							onClickPromise={() =>
+								meeting.mutate(api.users.queue.recallRequest, { type: 'break' })}
 							type="button"
 						>
 							Återkalla streck
@@ -157,7 +160,7 @@
 				<Button
 					variant="outline"
 					size="lg"
-					onClickPromise={() => meeting.mutate(api.users.meeting.recallReturnRequest)}
+					onClickPromise={() => meeting.mutate(api.users.attendance.recallReturnRequest)}
 					type="button"
 				>
 					Återkalla begäran
@@ -167,7 +170,7 @@
 			<Button
 				variant="outline"
 				size="lg"
-				onClickPromise={() => meeting.mutate(api.users.meeting.requestReturnToMeeting)}
+				onClickPromise={() => meeting.mutate(api.users.attendance.requestReturnToMeeting)}
 				type="button"
 			>
 				Begär återkomst
@@ -184,7 +187,7 @@
 					description: isInQueue
 						? 'Om du lämnar mötet kommer du förlora din plats i kön. För att komma tillbaka behöver du bli godkänd av mötesadmin.'
 						: 'För att komma tillbaka behöver du bli godkänd av mötesadmin.',
-					onConfirm: () => meeting.mutate(api.users.meeting.leaveMeeting),
+					onConfirm: () => meeting.mutate(api.users.attendance.leaveMeeting),
 				})}
 			type="button"
 		>
