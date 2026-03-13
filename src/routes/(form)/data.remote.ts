@@ -25,19 +25,32 @@ export const signIn = form(SignInSchema, async ({ email, _password }) => {
 export const signUp = form(SignUpSchema, async ({ email, _password, name }) => {
 	const event = getRequestEvent();
 
-	const { error } = await authClient.signUp.email({
+	console.log({
 		name,
 		email,
-		password: _password,
-		fetchOptions: { customFetchImpl: event.fetch },
+		_password,
 	});
 
-	if (error) {
-		if (error.code === 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL') {
-			invalid(ErrorMessages.email_exists());
-		}
+	try {
+		const { data, error } = await authClient.signUp.email({
+			name,
+			email,
+			password: _password,
+			fetchOptions: { customFetchImpl: event.fetch },
+		});
 
-		console.error(error);
+		console.log({ data, error });
+
+		if (error) {
+			if (error.code === 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL') {
+				invalid(ErrorMessages.email_exists());
+			}
+
+			console.error(error);
+			invalid(ErrorMessages.internal_error());
+		}
+	} catch (e) {
+		console.error(e);
 		invalid(ErrorMessages.internal_error());
 	}
 
