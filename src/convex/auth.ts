@@ -22,7 +22,10 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
 
 		database: authComponent.adapter(ctx),
 
-		trustedOrigins: ['https://meeting-six-zeta.vercel.app'],
+		trustedOrigins: [
+			'https://meeting-six-zeta.vercel.app',
+			'https://grand-marmot-786.eu-west-1.convex.site',
+		],
 
 		emailAndPassword: {
 			enabled: true,
