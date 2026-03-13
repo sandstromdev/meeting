@@ -6,7 +6,9 @@ import type { DataModel } from './_generated/dataModel';
 import { query } from './_generated/server';
 import authConfig from './auth.config';
 
-export const authComponent = createClient<DataModel>(components.betterAuth);
+export const authComponent = createClient<DataModel>(components.betterAuth, {
+	verbose: true,
+});
 
 export const createAuth = (ctx: GenericCtx<DataModel>) => {
 	let siteUrl = process.env.PUBLIC_SITE_URL;
