@@ -8,6 +8,9 @@ export function getConvexClient(token?: string) {
 	const client = createConvexHttpClient({
 		convexUrl: env.PUBLIC_CONVEX_URL,
 		token: token ?? event.locals.token,
+		options: {
+			logger: true,
+		},
 	});
 
 	return client;
