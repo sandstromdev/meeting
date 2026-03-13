@@ -11,7 +11,7 @@ export const authComponent = createClient<DataModel>(components.betterAuth, {
 });
 
 export const createAuth = (ctx: GenericCtx<DataModel>) => {
-	let siteUrl = process.env.PUBLIC_SITE_URL;
+	const siteUrl = process.env.PUBLIC_SITE_URL;
 
 	if (!siteUrl) {
 		console.error('SITE_URL is not set');
@@ -21,6 +21,8 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
 		baseURL: siteUrl,
 
 		database: authComponent.adapter(ctx),
+
+		trustedOrigins: ['https://meeting-six-zeta.vercel.app'],
 
 		emailAndPassword: {
 			enabled: true,
