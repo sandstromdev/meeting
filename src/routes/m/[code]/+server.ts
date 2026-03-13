@@ -21,7 +21,7 @@ export const GET: RequestHandler = async (event) => {
 		redirect(303, `${PUBLIC_SITE_URL}/anslut?error=invalid_meeting_code&m=${params.code}`);
 	}
 
-	const convex = getConvexClient();
+	const convex = getConvexClient(event);
 
 	try {
 		const meetingId = await convex.mutation(api.users.auth.connect, {

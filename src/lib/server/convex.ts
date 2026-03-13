@@ -1,20 +1,18 @@
 import { getRequestEvent } from '$app/server';
-import { env } from '$env/dynamic/public';
+import { PUBLIC_CONVEX_URL } from '$env/static/public';
 import type { RequestEvent } from '@sveltejs/kit';
 import { ConvexHttpClient } from 'convex/browser';
 
-export function getConvexClient(event?: Pick<RequestEvent, 'locals' | 'fetch'>, token?: string) {
+export function getConvexClient(event?: Pick<RequestEvent, 'locals' | 'fetch'>) {
 	const { locals, fetch } = event ?? getRequestEvent();
 
-	const auth = token ?? locals.token;
-
-	const client = new ConvexHttpClient(env.PUBLIC_CONVEX_URL, {
+	const client = new ConvexHttpClient(PUBLIC_CONVEX_URL, {
 		fetch,
 		logger: true,
 	});
 
-	if (auth) {
-		client.setAuth(auth);
+	if (locals.token) {
+		client.setAuth(locals.token);
 	}
 
 	return client;

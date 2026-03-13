@@ -7,7 +7,7 @@ import { error, invalid, redirect } from '@sveltejs/kit';
 import { ConnectFormSchema } from './schema';
 
 export const connectForm = form(ConnectFormSchema, async (data, issue) => {
-	const convex = getConvexClient();
+	const convex = getConvexClient(getRequestEvent());
 
 	try {
 		const id = await convex.mutation(api.users.auth.connect, data);

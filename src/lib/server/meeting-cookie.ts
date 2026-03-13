@@ -47,14 +47,14 @@ export async function getMeeting() {
 	return getConvexClient().query(api.meetings.getMeetingById, { meetingId });
 }
 
-export async function getMeetingData(token: string) {
+export async function getMeetingData() {
 	const meetingId = getMeetingCookie();
 
 	if (!meetingId) {
 		return null;
 	}
 
-	return getConvexClient(token)
+	return getConvexClient(getRequestEvent())
 		.query(api.users.meeting.getData, { meetingId })
 		.catch(() => null);
 }

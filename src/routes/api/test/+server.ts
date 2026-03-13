@@ -6,14 +6,14 @@ import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ fetch, locals }) => {
 	const convex = getConvexClient({ fetch, locals });
-	const c2 = new ConvexHttpClient(PUBLIC_CONVEX_URL, { fetch });
+	const c2 = new ConvexHttpClient(PUBLIC_CONVEX_URL, { fetch, logger: true });
 
 	const response1 = await convex
 		.query(api.meetings.ping, {})
 		.then((response) => ({ response }))
 		.catch((error) => ({ error }));
 
-	const response2 = await fetch(`${PUBLIC_CONVEX_SITE_URL}/api/test`)
+	const response2 = await fetch(`${PUBLIC_CONVsEX_SITE_URL}/api/test`)
 		.then(async (response) => ({
 			response: await response.text(),
 			status: response.status,
