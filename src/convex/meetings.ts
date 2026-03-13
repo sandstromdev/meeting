@@ -13,3 +13,8 @@ export const findByCode = c
 	.query()
 	.input({ meetingCode: MeetingCode })
 	.public(async ({ ctx, args: { meetingCode } }) => getMeetingByCode(ctx, meetingCode));
+
+export const ping = c.query().public(async ({ ctx }) => {
+	console.log({ ctx, user: await ctx.auth.getUserIdentity() });
+	return 'pong';
+});
