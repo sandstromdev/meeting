@@ -45,10 +45,13 @@ export const errors = {
 
 	email_exists: { code: 'email_exists' },
 	invalid_credentials: { code: 'invalid_credentials' },
+	invalid_meeting_code: { code: 'invalid_meeting_code' },
 
 	zod_error: (issues: z.core.$ZodErrorTree<unknown, string>) =>
 		({ code: 'bad_args', issues }) as const,
 } as const;
+
+export const errorCodes = new Set<AppErrorCode>(Object.keys(errors) as AppErrorCode[]);
 
 type AppErr = typeof errors;
 type AppFlatErr = {
@@ -83,6 +86,10 @@ export class AppError<ErrorCode extends AppErrorCode> extends ConvexError<
 
 	is<T extends AppErrorCode>(code: T): this is AppError<T> {
 		return this.data.code === code;
+	}
+
+	get code() {
+		return this.data.code;
 	}
 
 	// oxlint-disable-next-line typescript/no-explicit-any
@@ -125,4 +132,8 @@ export function getAppError(err: unknown) {
 	}
 
 	return AppError.fromConvex(err);
+}
+
+export function isAppErrorCode(code: string): code is AppErrorCode {
+	return errorCodes.has(code as AppErrorCode);
 }

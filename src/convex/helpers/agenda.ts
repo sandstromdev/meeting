@@ -341,11 +341,3 @@ export function createNewAgendaItem(title: string, depth = 0) {
 export function appendToAgenda(agenda: Agenda, parentId: string, newItem: AgendaItem) {
 	return insertChildAfterSubtree(agenda, parentId, newItem);
 }
-
-export function removeItemFromAgenda(agenda: Agenda, id: AgendaItemId): Agenda {
-	return removeSubtree(agenda, id).agenda;
-}
-
-export function flattenAgenda(agenda: Agenda) {
-	return computeAgendaNumbers(agenda);
-}

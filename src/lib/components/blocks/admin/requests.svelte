@@ -7,7 +7,7 @@
 	import { cn } from '$lib/utils';
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import XIcon from '@lucide/svelte/icons/x';
-	import { useQuery } from 'convex-svelte';
+	import { useQuery } from '@mmailaender/convex-svelte';
 	import { api } from '$convex/_generated/api';
 
 	const meeting = getMeetingContext();

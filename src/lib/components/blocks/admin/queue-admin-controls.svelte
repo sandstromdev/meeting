@@ -2,7 +2,7 @@
 	import { api } from '$convex/_generated/api';
 	import { Button } from '$lib/components/ui/button';
 	import { getMeetingContext } from '$lib/context.svelte';
-	import { useQuery } from 'convex-svelte';
+	import { useQuery } from '@mmailaender/convex-svelte';
 	import ChevronLeftIcon from '@lucide/svelte/icons/chevron-left';
 	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
 	import PauseIcon from '@lucide/svelte/icons/pause';

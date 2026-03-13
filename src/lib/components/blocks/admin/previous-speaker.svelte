@@ -9,7 +9,7 @@
 	import { confirm } from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
 	import { getMeetingContext } from '$lib/context.svelte';
 	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
-	import { useQuery } from 'convex-svelte';
+	import { useQuery } from '@mmailaender/convex-svelte';
 
 	const meeting = getMeetingContext();
 

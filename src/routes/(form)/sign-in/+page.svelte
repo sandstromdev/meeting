@@ -7,7 +7,7 @@
 	import Separator from '$lib/components/ui/separator/separator.svelte';
 	import { ErrorMessages } from '$lib/errors';
 	import { signIn } from '../data.remote';
-	import { SignInSchema } from '../schema';
+	import { SignInSchema, validateRedirect } from '../schema';
 
 	let { data } = $props();
 
@@ -19,43 +19,54 @@
 	const { email, _password } = signIn.fields;
 </script>
 
-<form
-	{...signIn.preflight(SignInSchema).enhance(async ({ form, data, submit }) => {
-		try {
-			error = undefined;
-			loading = true;
+<div class="max-w-sm rounded-md border px-6 py-5">
+	<form
+		{...signIn.preflight(SignInSchema).enhance(async ({ submit }) => {
+			try {
+				error = undefined;
+				loading = true;
 
-			await submit();
+				await submit();
 
-			window.location.pathname = '/anslut';
-		} catch (e) {
-			loading = false;
-			console.error(e);
-			error = 'Ett fel har inträffat.';
-		}
-	})}
->
-	<Field.Set class="w-2xs gap-3">
-		<Field.Legend class="!text-xl font-bold">Logga in</Field.Legend>
+				console.log({
+					redirect: data.redirect,
+					validateRedirect: validateRedirect(data.redirect),
+				});
 
-		<Field.Field>
-			<Field.Label for="email">E-postadress</Field.Label>
-			<Input id="email" {...email.as('email')} />
-			<Field.Error errors={email.issues()} />
-		</Field.Field>
+				if (validateRedirect(data.redirect)) {
+					window.location.pathname = data.redirect;
+				} else {
+					window.location.pathname = '/anslut';
+				}
+			} catch (e) {
+				loading = false;
+				console.error(e);
+				error = 'Ett fel har inträffat.';
+			}
+		})}
+	>
+		<Field.Set class="w-2xs gap-3">
+			<Field.Legend class="!text-xl font-bold">Logga in</Field.Legend>
 
-		<Field.Field>
-			<Field.Label for="password">Lösenord</Field.Label>
-			<Input id="password" {..._password.as('password')} />
-			<Field.Error errors={_password.issues()} />
-		</Field.Field>
+			<Field.Field>
+				<Field.Label for="email">E-postadress</Field.Label>
+				<Input id="email" {...email.as('email')} />
+				<Field.Error errors={email.issues()} />
+			</Field.Field>
 
-		<Field.Error {errors} />
+			<Field.Field>
+				<Field.Label for="password">Lösenord</Field.Label>
+				<Input id="password" {..._password.as('password')} />
+				<Field.Error errors={_password.issues()} />
+			</Field.Field>
 
-		<Button type="submit" {loading}>Logga in</Button>
+			<Field.Error {errors} />
 
-		<Separator />
+			<Button type="submit" {loading}>Logga in</Button>
 
-		<Button href={resolve('/sign-up')} variant="outline">Skapa konto</Button>
-	</Field.Set>
-</form>
+			<Separator />
+
+			<Button href={resolve('/sign-up')} variant="outline">Skapa konto</Button>
+		</Field.Set>
+	</form>
+</div>

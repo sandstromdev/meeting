@@ -3,8 +3,9 @@ import { redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { deleteMeetingCookie } from '$lib/server/meeting-cookie';
 
-export const GET = (async ({ fetch }) => {
+export const GET = (async ({ fetch, getClientAddress, url, request }) => {
 	await authClient.signOut({ fetchOptions: { customFetchImpl: fetch } });
+
 	deleteMeetingCookie();
 
 	redirect(307, '/sign-in');

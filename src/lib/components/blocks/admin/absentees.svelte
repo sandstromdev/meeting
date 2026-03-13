@@ -9,7 +9,7 @@
 	import { getMeetingContext } from '$lib/context.svelte';
 	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
 	import { untrack } from 'svelte';
-	import { useQuery } from 'convex-svelte';
+	import { useQuery } from '@mmailaender/convex-svelte';
 	import { api } from '$convex/_generated/api';
 	import { formatDuration } from '$lib/duration';
 	import { useNow } from '$lib/now.svelte';
@@ -58,6 +58,8 @@
 
 		untrack(() => (lastIds = newIds));
 	});
+
+	const intl = new Intl.DateTimeFormat('sv-SE', { timeStyle: 'short' });
 </script>
 
 <Collapsible>
@@ -80,7 +82,7 @@
 							<p class="flex items-center justify-between">
 								<span class="truncate">{a.name}</span>
 								<span class="text-xs text-muted-foreground">
-									{formatDuration(now.current - a.absentSince)}
+									{intl.format(new Date(a.absentSince))}
 								</span>
 							</p>
 						</li>

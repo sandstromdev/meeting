@@ -10,3 +10,7 @@ export const SignUpSchema = z.object({
 	_password: z.string().min(8),
 	name: z.string().nonempty(),
 });
+
+export function validateRedirect(redirect?: string | null): redirect is string {
+	return !!redirect && (redirect.startsWith('/m/') || redirect === '/');
+}

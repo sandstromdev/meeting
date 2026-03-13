@@ -49,7 +49,9 @@
 		subItem?.id ? { agendaItemId: subItem.id } : 'skip',
 	);
 
-	function hydrateToDraft(p: NonNullable<typeof currentPollsResult.data>[number]): EditablePollDraft {
+	function hydrateToDraft(
+		p: NonNullable<typeof currentPollsResult.data>[number],
+	): EditablePollDraft {
 		const opts = [...p.options];
 		const options =
 			p.allowsAbstain && opts[opts.length - 1] === ABSTAIN_OPTION_LABEL ? opts.slice(0, -1) : opts;

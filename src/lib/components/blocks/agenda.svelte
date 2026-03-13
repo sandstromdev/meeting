@@ -26,7 +26,7 @@
 	const agenda = $derived(as.flat);
 
 	function hasBeenCompleted(idx: number) {
-		return as.currentIndex >= 0 && as.currentIndex >= idx;
+		return as.currentIndex >= 0 && as.currentIndex > idx;
 	}
 
 	function getSubtreeEnd(index: number) {
@@ -205,6 +205,7 @@
 			class={cn(
 				'flex gap-2 border-b px-2 py-2 text-sm',
 				hasBeenCompleted(index) && 'bg-muted/50 text-muted-foreground',
+				item.id === as.currentAgendaItemId && 'bg-sky-100 text-sky-500',
 			)}
 		>
 			{#if meeting.isAdmin}
@@ -224,7 +225,7 @@
 			{#if editingItemId === item.id}
 				<EditAgendaItem agendaItemId={item.id} onClose={() => (editingItemId = undefined)} />
 			{:else}
-				<span class="flex shrink-0 items-baseline font-mono text-muted-foreground">
+				<span class="flex shrink-0 items-baseline font-mono text-current/70">
 					{item.number}.
 				</span>
 				<span class={cn('text-sm font-medium', hasBeenCompleted(index) && 'line-through')}>

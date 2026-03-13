@@ -6,6 +6,7 @@
 	import AdminInfo from '$lib/components/blocks/admin/admin-info.svelte';
 	import { getMeetingContext } from '$lib/context.svelte';
 	import { usePageState } from '$lib/page-state.svelte';
+	import { qr } from '@svelte-put/qr/svg';
 
 	const meeting = getMeetingContext();
 	const ps = usePageState();
@@ -14,7 +15,7 @@
 </script>
 
 {#if ps.projectorMode === 'intro'}
-	<main class="mx-auto flex min-h-[60vh] max-w-6xl flex-col items-center justify-center gap-6 px-8">
+	<main class="mx-auto flex max-w-6xl gap-6 px-8 pt-[10vh]">
 		<div class="flex w-full max-w-2xl flex-col gap-6">
 			<MeetingInfo />
 			{#if meeting.meeting.code}
@@ -28,6 +29,14 @@
 			{/if}
 			<div class="rounded-lg border">
 				<AdminInfo size="lg" />
+			</div>
+		</div>
+		<div class="flex-1">
+			<div class="rounded-lg border p-4">
+				<svg use:qr={{ data: meeting.url, shape: 'circle' }} />
+				<p class="text-center text-sm text-muted-foreground">
+					Skanna QR-koden för att komma till mötet
+				</p>
 			</div>
 		</div>
 	</main>

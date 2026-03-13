@@ -1,6 +1,6 @@
 import { api } from '$convex/_generated/api';
 import type { Id } from '$convex/_generated/dataModel';
-import { useConvexClient, useQuery } from 'convex-svelte';
+import { useConvexClient, useQuery } from '@mmailaender/convex-svelte';
 import type { ConvexClient } from 'convex/browser';
 import type { Getter } from 'runed';
 import { createContext } from 'svelte';
@@ -8,6 +8,7 @@ import { AgendaState } from './agenda.svelte';
 import { SpeakerQueue } from './speaker-queue.svelte';
 import type { DefaultFunctionArgs, FunctionReference } from 'convex/server';
 import type { UseQueryOptions, UseQueryReturn } from '$lib/types';
+import { PUBLIC_SITE_URL } from '$env/static/public';
 
 export type MeetingData = typeof api.users.meeting.getData._returnType;
 
@@ -66,6 +67,7 @@ export class MeetingState {
 
 		$effect(() => {
 			this.#data = data();
+
 			this.#attendance = {
 				participants: attendance.data?.participants ?? 0,
 				absent: attendance.data?.absentees ?? 0,
@@ -318,10 +320,18 @@ export class MeetingState {
 		return this.role === 'admin' || this.role === 'moderator';
 	}
 
+	get isParticipant() {
+		return this.role === 'participant';
+	}
+
 	get isCurrentSpeaker() {
 		return this.currentSpeaker.type === 'empty'
 			? false
 			: this.currentSpeaker.userId === this.me?._id;
+	}
+
+	get url() {
+		return `${PUBLIC_SITE_URL}/m/${this.meeting.code}`;
 	}
 }
 

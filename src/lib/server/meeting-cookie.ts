@@ -2,13 +2,12 @@ import { dev } from '$app/environment';
 import { getRequestEvent } from '$app/server';
 import { api } from '$convex/_generated/api';
 import type { Id } from '$convex/_generated/dataModel';
+import type { RequestEvent } from '@sveltejs/kit';
 import { getConvexClient } from './convex';
 
 const cookieName = 'meeting-id';
 
-export function setMeetingCookie(meetingId: Id<'meetings'>) {
-	const event = getRequestEvent();
-
+export function setMeetingCookie(event: RequestEvent, meetingId: Id<'meetings'>) {
 	event.cookies.set(cookieName, meetingId, {
 		path: '/',
 		secure: !dev,

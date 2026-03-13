@@ -1,4 +1,4 @@
-import { form } from '$app/server';
+import { form, getRequestEvent } from '$app/server';
 import { api } from '$convex/_generated/api';
 import { getAppError } from '$convex/helpers/error';
 import { getConvexClient } from '$lib/server/convex';
@@ -12,7 +12,7 @@ export const connectForm = form(ConnectFormSchema, async (data, issue) => {
 	try {
 		const id = await convex.mutation(api.users.auth.connect, data);
 
-		setMeetingCookie(id);
+		setMeetingCookie(getRequestEvent(), id);
 	} catch (e) {
 		const err = getAppError(e);
 

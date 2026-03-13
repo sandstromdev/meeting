@@ -1,12 +1,12 @@
 import { api } from '$convex/_generated/api';
 import { createAuth } from '$convex/auth';
-import { getConvexClient } from '$lib/server/convex';
+import { getAppError } from '$convex/helpers/error';
 import { redirectIfNotAuthed, redirectIfNotInMeeting } from '$lib/server/guards';
+import { deleteMeetingCookie } from '$lib/server/meeting-cookie';
 import { getAuthState } from '@mmailaender/convex-better-auth-svelte/sveltekit';
+import { convexLoad } from '@mmailaender/convex-svelte/sveltekit';
 import { error, redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
-import { getAppError } from '$convex/helpers/error';
-import { deleteMeetingCookie } from '$lib/server/meeting-cookie';
 
 export const load = (async ({ locals, cookies }) => {
 	redirectIfNotAuthed('/sign-in');
@@ -22,14 +22,14 @@ export const load = (async ({ locals, cookies }) => {
 		redirect(307, '/anslut');
 	}
 
-	const convex = getConvexClient();
-
 	try {
-		const data = await convex.query(api.users.meeting.getData, { meetingId: locals.meetingId });
-
 		return {
-			meeting: data,
-			meetingId: data.meeting._id,
+			meeting: await convexLoad(
+				api.users.meeting.getData,
+				{ meetingId: locals.meetingId },
+				{ token: locals.token },
+			),
+			meetingId: locals.meetingId,
 		};
 	} catch (e) {
 		const err = getAppError(e);

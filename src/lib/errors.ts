@@ -1,4 +1,4 @@
-import type { AppErrorMessages } from '$convex/helpers/error';
+import { isAppErrorCode, type AppErrorMessages } from '$convex/helpers/error';
 
 export const ErrorMessages = {
 	unauthorized: () => 'Oauktoriserad.',
@@ -44,6 +44,7 @@ export const ErrorMessages = {
 	meeting_not_found: ({ meetingCode, meetingId }) =>
 		`Mötet med ${meetingCode ? 'möteskoden' : 'id'} '${meetingCode ?? meetingId}' hittades inte.`,
 	meeting_participant_not_found: ({ meetingId: _ }) => `Du är inte deltagare i mötet.`,
+	invalid_meeting_code: () => 'Ogiltig möteskod.',
 	email_exists: () => 'En användare med den e-postadressen finns redan.',
 	invalid_credentials: () => 'Felaktig e-post eller lösenord.',
 	zod_error: (_iss) => 'Ett eller flera argument var felaktiga.',

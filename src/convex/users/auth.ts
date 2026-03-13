@@ -3,7 +3,7 @@ import { getMeetingByCode, getMeetingParticipant } from '$convex/helpers/meeting
 import { MeetingCode } from '$lib/validation';
 import { zid } from 'convex-helpers/server/zod4';
 import { pickParticipantData } from '$convex/helpers/users';
-import { getParticipantCounter } from '$convex/helpers/counters';
+import { getAbsentCounter, getParticipantCounter } from '$convex/helpers/counters';
 
 export const getUserData = withMe
 	.input({ meetingId: zid('meetings') })
@@ -27,8 +27,10 @@ export const connect = authed
 			)
 			.first();
 
+		const now = Date.now();
+
 		if (!p) {
-			await ctx.db.insert('meetingParticipants', {
+			const id = await ctx.db.insert('meetingParticipants', {
 				meetingId: meeting._id,
 				tokenIdentifier: ctx.user.tokenIdentifier,
 				name: ctx.user.name,
@@ -36,11 +38,25 @@ export const connect = authed
 				role: 'participant' as const,
 				isInSpeakerQueue: false,
 
-				absentSince: 0,
+				absentSince: meeting.isOpen ? now : 0,
 				returnRequestedAt: 0,
 			});
 
 			await getParticipantCounter(meeting._id).inc(ctx);
+			await getAbsentCounter(meeting._id).inc(ctx);
+
+			if (meeting.isOpen) {
+				await ctx.db.insert('absenceEntries', {
+					meetingId: meeting._id,
+					userId: id,
+					name: ctx.user.name,
+					startTime: now,
+				});
+			}
+		}
+
+		if (p && p.absentSince > 0 && p.role !== 'admin') {
+			await ctx.db.patch('meetingParticipants', p._id, { returnRequestedAt: now });
 		}
 
 		return meeting._id;

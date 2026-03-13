@@ -6,6 +6,7 @@
 		CollapsibleContent,
 		CollapsibleTrigger,
 	} from '$lib/components/ui/collapsible';
+	import * as Dialog from '$lib/components/ui/dialog';
 	import Separator from '$lib/components/ui/separator/separator.svelte';
 	import { getMeetingContext } from '$lib/context.svelte';
 	import LogOutIcon from '@lucide/svelte/icons/log-out';
@@ -15,6 +16,7 @@
 	import { confirm } from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
 
 	const meeting = getMeetingContext();
+	const isAbsent = $derived(!!meeting.me.absentSince);
 	const queue = meeting.speakerQueue;
 
 	const isInQueue = $derived(meeting.me.isInSpeakerQueue);
@@ -150,33 +152,7 @@
 		<Separator />
 	{/if}
 
-	{#if meeting.me.absentSince}
-		{#if meeting.hasPendingReturnRequest}
-			<div class="flex flex-col gap-2">
-				<div class="flex items-center justify-center gap-2 text-muted-foreground">
-					<LoaderCircle class="size-4 animate-spin" />
-					Väntar på godkännande
-				</div>
-				<Button
-					variant="outline"
-					size="lg"
-					onClickPromise={() => meeting.mutate(api.users.attendance.recallReturnRequest)}
-					type="button"
-				>
-					Återkalla begäran
-				</Button>
-			</div>
-		{:else}
-			<Button
-				variant="outline"
-				size="lg"
-				onClickPromise={() => meeting.mutate(api.users.attendance.requestReturnToMeeting)}
-				type="button"
-			>
-				Begär återkomst
-			</Button>
-		{/if}
-	{:else}
+	{#if !isAbsent}
 		<Button
 			variant="outline"
 			size="lg"
@@ -196,3 +172,47 @@
 		</Button>
 	{/if}
 </div>
+
+{#if isAbsent}
+	<Dialog.Root open={true}>
+		<Dialog.Content
+			showCloseButton={false}
+			interactOutsideBehavior="ignore"
+			escapeKeydownBehavior="ignore"
+		>
+			<Dialog.Header>
+				<Dialog.Title>Du är markerad som frånvarande</Dialog.Title>
+				<Dialog.Description>
+					Du kan inte delta i mötet förrän en mötesadmin godkänner din återkomst.
+				</Dialog.Description>
+			</Dialog.Header>
+			{#if meeting.hasPendingReturnRequest}
+				<div class="flex flex-col gap-4">
+					<div class="flex items-center justify-center gap-2 text-muted-foreground">
+						<LoaderCircle class="size-4 animate-spin" />
+						Väntar på godkännande
+					</div>
+					<Button
+						variant="outline"
+						size="lg"
+						class="w-full"
+						onClickPromise={() => meeting.mutate(api.users.attendance.recallReturnRequest)}
+						type="button"
+					>
+						Återkalla begäran
+					</Button>
+				</div>
+			{:else}
+				<Button
+					variant="default"
+					size="lg"
+					class="w-full"
+					onClickPromise={() => meeting.mutate(api.users.attendance.requestReturnToMeeting)}
+					type="button"
+				>
+					Begär återkomst
+				</Button>
+			{/if}
+		</Dialog.Content>
+	</Dialog.Root>
+{/if}

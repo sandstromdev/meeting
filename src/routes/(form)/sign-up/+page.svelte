@@ -5,7 +5,7 @@
 	import Input from '$lib/components/ui/input/input.svelte';
 	import Separator from '$lib/components/ui/separator/separator.svelte';
 	import { signUp } from '../data.remote';
-	import { SignUpSchema } from '../schema';
+	import { SignUpSchema, validateRedirect } from '../schema';
 
 	let { data } = $props();
 
@@ -17,15 +17,20 @@
 	const { name, email, _password } = signUp.fields;
 </script>
 
+<div class="max-w-sm rounded-md border px-6 py-5">
 <form
-	{...signUp.preflight(SignUpSchema).enhance(async ({ form, data, submit }) => {
+	{...signUp.preflight(SignUpSchema).enhance(async ({ submit }) => {
 		try {
 			error = undefined;
 			loading = true;
 
 			await submit();
 
-			window.location.pathname = '/';
+			if (validateRedirect(data.redirect)) {
+				window.location.pathname = data.redirect;
+			} else {
+				window.location.pathname = '/anslut';
+			}
 		} catch (e) {
 			loading = false;
 			console.error(e);
@@ -63,3 +68,4 @@
 		<Button href={resolve('/sign-in')} variant="outline">Logga in</Button>
 	</Field.Set>
 </form>
+</div>
