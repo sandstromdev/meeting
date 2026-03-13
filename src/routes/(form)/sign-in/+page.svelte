@@ -33,11 +33,11 @@
 					validateRedirect: validateRedirect(data.redirect),
 				});
 
-				if (validateRedirect(data.redirect)) {
+				/* if (validateRedirect(data.redirect)) {
 					window.location.pathname = data.redirect;
 				} else {
 					window.location.pathname = '/anslut';
-				}
+				} */
 			} catch (e) {
 				loading = false;
 				console.error(e);

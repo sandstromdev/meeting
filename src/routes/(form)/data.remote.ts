@@ -31,6 +31,8 @@ export const signUp = form(SignUpSchema, async ({ email, _password, name }) => {
 		_password,
 	});
 
+	let e;
+
 	try {
 		const { data, error } = await authClient.signUp.email({
 			name,
@@ -41,15 +43,17 @@ export const signUp = form(SignUpSchema, async ({ email, _password, name }) => {
 
 		console.log({ data, error });
 
-		if (error) {
-			if (error.code === 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL') {
-				invalid(ErrorMessages.email_exists());
-			}
-
-			console.error(error);
-			invalid(ErrorMessages.internal_error());
-		}
+		e = error;
 	} catch (e) {
+		console.error(e);
+		invalid(ErrorMessages.internal_error());
+	}
+
+	if (e) {
+		if (e.code === 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL') {
+			invalid(ErrorMessages.email_exists());
+		}
+
 		console.error(e);
 		invalid(ErrorMessages.internal_error());
 	}
