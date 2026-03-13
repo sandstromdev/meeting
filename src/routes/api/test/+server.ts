@@ -4,9 +4,8 @@ import { getConvexClient } from '$lib/server/convex';
 import { ConvexHttpClient } from 'convex/browser';
 import type { RequestHandler } from './$types';
 
-export const GET: RequestHandler = async ({ fetch }) => {
-	const convex = getConvexClient();
-
+export const GET: RequestHandler = async ({ fetch, locals }) => {
+	const convex = getConvexClient({ fetch, locals });
 	const c2 = new ConvexHttpClient(PUBLIC_CONVEX_URL, { fetch });
 
 	const response1 = await convex
