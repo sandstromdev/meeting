@@ -15,6 +15,8 @@ export const GET: RequestHandler = async ({ fetch }) => {
 		.then((response) => ({ response }))
 		.catch((error) => ({ error }));
 
+	console.log({ response1, response2 });
+
 	return Response.json({
 		response1,
 		response2,
