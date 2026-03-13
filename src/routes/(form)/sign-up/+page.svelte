@@ -86,7 +86,6 @@
 			<Separator />
 
 			<Button href={resolve('/sign-in')} variant="outline">Logga in</Button>
-			<Button href={resolve('/api/test')} variant="outline" data-sveltekit-reload>Test</Button>
 		</Field.Set>
 	</form>
 </div>
