@@ -1,11 +1,8 @@
-import { form, getRequestEvent } from '$app/server';
-import { authClient } from '$lib/auth-client';
-import { ErrorMessages } from '$lib/errors';
-import { invalid } from '@sveltejs/kit';
+import { form } from '$app/server';
 import { SignInSchema, SignUpSchema } from './schema';
 
-export const signIn = form(SignInSchema, async ({ email, _password }) => {
-	const event = getRequestEvent();
+export const signIn = form(SignInSchema, async () => {
+	/* const event = getRequestEvent();
 
 	const { error } = await authClient.signIn.email({
 		email,
@@ -17,13 +14,13 @@ export const signIn = form(SignInSchema, async ({ email, _password }) => {
 		invalid(ErrorMessages.invalid_credentials());
 	} else if (error) {
 		console.error(error);
-	}
+	} */
 
 	return { success: true };
 });
 
-export const signUp = form(SignUpSchema, async ({ email, _password, name }) => {
-	const event = getRequestEvent();
+export const signUp = form(SignUpSchema, async () => {
+	/* const event = getRequestEvent();
 
 	console.log({
 		name,
@@ -56,7 +53,7 @@ export const signUp = form(SignUpSchema, async ({ email, _password, name }) => {
 
 		console.error(e);
 		invalid(ErrorMessages.internal_error());
-	}
+	} */
 
 	return { success: true };
 });
