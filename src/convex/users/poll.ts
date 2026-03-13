@@ -1,6 +1,7 @@
 import { withMe } from '$convex/helpers/auth';
 import { AppError, errors } from '$convex/helpers/error';
-import { assertPollInMeeting, getPollOrThrow } from '$convex/helpers/poll';
+import { assertPollInMeeting, computeWinners, getPollOrThrow } from '$convex/helpers/poll';
+import { getAbsentCounter, getParticipantCounter } from '$convex/helpers/counters';
 import { zid } from 'convex-helpers/server/zod4';
 import { z } from 'zod';
 
@@ -57,7 +58,6 @@ export const vote = withMe
 					pollId: args.pollId,
 					userId: ctx.me._id,
 					optionIndex,
-					createdAt: Date.now(),
 				}),
 			),
 		);
@@ -82,3 +82,143 @@ export const vote = withMe
 
 		return true;
 	});
+
+export const getPollsByAgendaItemId = withMe
+	.query()
+	.input({
+		agendaItemId: z.string().min(1),
+	})
+	.public(async ({ ctx, args }) => {
+		const [participants, absentees, polls] = await Promise.all([
+			getParticipantCounter(ctx.meeting._id).count(ctx),
+			getAbsentCounter(ctx.meeting._id).count(ctx),
+			ctx.db
+				.query('polls')
+				.withIndex('by_meeting_agendaItem', (q) =>
+					q.eq('meetingId', ctx.meeting._id).eq('agendaItemId', args.agendaItemId),
+				)
+				.collect(),
+		]);
+
+		const eligibleVoters = Math.max(0, participants - absentees);
+
+		return Promise.all(
+			polls.map(async (poll) => {
+				const votes = await ctx.db
+					.query('pollVotes')
+					.withIndex('by_poll', (q) => q.eq('pollId', poll._id))
+					.collect();
+
+				const optionTotals = poll.options.map((option, optionIndex) => ({
+					optionIndex,
+					option,
+					votes: 0,
+				}));
+
+				const voters = new Set<string>();
+				const myVoteOptionIndexes: number[] = [];
+
+				for (const vote of votes) {
+					voters.add(vote.userId);
+					optionTotals[vote.optionIndex].votes += 1;
+					if (vote.userId === ctx.me._id) {
+						myVoteOptionIndexes.push(vote.optionIndex);
+					}
+				}
+
+				const hasVoted = myVoteOptionIndexes.length > 0;
+				const votesCount = votes.length;
+				const votersCount = voters.size;
+
+				const pollMaxVotes =
+					poll.type === 'single_winner' ? eligibleVoters : eligibleVoters * poll.maxVotesPerVoter;
+
+				const winners = computeWinners(poll, optionTotals, votesCount, pollMaxVotes);
+				const canSeeResults = !poll.isOpen && (poll.isResultPublic || ctx.me.role === 'admin');
+
+				return {
+					id: poll._id,
+					title: poll.title,
+					options: poll.options,
+					isOpen: poll.isOpen,
+					maxVotesPerVoter: poll.maxVotesPerVoter,
+					votesCount,
+					votersCount,
+					eligibleVoters,
+					hasVoted,
+					myVoteOptionIndexes,
+					optionTotals: canSeeResults ? optionTotals : undefined,
+					winnerOptionIndexes: canSeeResults ? winners.winnerOptionIndexes : undefined,
+					isTie: canSeeResults ? winners.isTie : undefined,
+				};
+			}),
+		);
+	});
+
+export const getCurrentPoll = withMe.query().public(async ({ ctx }) => {
+	const pollId = ctx.meeting.currentPollId;
+
+	if (!pollId) {
+		return null;
+	}
+
+	const poll = await ctx.db.get('polls', pollId);
+
+	if (!poll || poll.meetingId !== ctx.meeting._id) {
+		return null;
+	}
+
+	const [participants, absentees, votes] = await Promise.all([
+		getParticipantCounter(ctx.meeting._id).count(ctx),
+		getAbsentCounter(ctx.meeting._id).count(ctx),
+		ctx.db
+			.query('pollVotes')
+			.withIndex('by_poll', (q) => q.eq('pollId', poll._id))
+			.collect(),
+	]);
+
+	const eligibleVoters = Math.max(0, participants - absentees);
+
+	const optionTotals = poll.options.map((option, optionIndex) => ({
+		optionIndex,
+		option,
+		votes: 0,
+	}));
+
+	const voters = new Set<string>();
+	const myVoteOptionIndexes: number[] = [];
+
+	for (const vote of votes) {
+		voters.add(vote.userId);
+		optionTotals[vote.optionIndex].votes += 1;
+		if (vote.userId === ctx.me._id) {
+			myVoteOptionIndexes.push(vote.optionIndex);
+		}
+	}
+
+	const hasVoted = myVoteOptionIndexes.length > 0;
+	const votesCount = votes.length;
+	const votersCount = voters.size;
+
+	const pollMaxVotes =
+		poll.type === 'single_winner' ? eligibleVoters : eligibleVoters * poll.maxVotesPerVoter;
+	const winners = computeWinners(poll, optionTotals, votesCount, pollMaxVotes);
+	const canSeeTotals = !poll.isOpen && (poll.isResultPublic || ctx.me.role === 'admin');
+
+	return {
+		id: poll._id,
+		title: poll.title,
+		options: poll.options,
+		isOpen: poll.isOpen,
+		maxVotesPerVoter: poll.maxVotesPerVoter,
+		type: poll.type,
+		votesCount,
+		votersCount,
+		eligibleVoters,
+		hasVoted,
+		myVoteOptionIndexes,
+		optionTotals: canSeeTotals ? optionTotals : undefined,
+		winnerOptionIndexes: winners.winnerOptionIndexes,
+		isTie: winners.isTie,
+	};
+});

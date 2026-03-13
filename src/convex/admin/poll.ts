@@ -3,12 +3,7 @@ import { c } from '$convex/helpers';
 import { findAgendaItemById, setPollIdsForItem } from '$convex/helpers/agenda';
 import { admin } from '$convex/helpers/auth';
 import { AppError, errors } from '$convex/helpers/error';
-import {
-	assertPollEditable,
-	assertPollInMeeting,
-	getPollOrThrow,
-	optionsWithAbstainIfRequested,
-} from '$convex/helpers/poll';
+import { assertPollEditable, assertPollInMeeting, getPollOrThrow } from '$convex/helpers/poll';
 import { PollDraftSchema, PollSchema } from '$lib/validation';
 import { zid } from 'convex-helpers/server/zod4';
 import { z } from 'zod';
@@ -69,13 +64,13 @@ export const editPoll = admin
 
 		const nextAllowsAbstain = args.edits.allowsAbstain ?? poll.allowsAbstain;
 		const rawOptions = args.edits.options ?? poll.options;
-		const nextOptions = optionsWithAbstainIfRequested(rawOptions, nextAllowsAbstain);
+		const optionsCount = nextAllowsAbstain ? rawOptions.length : rawOptions.length - 1;
 
-		if (nextOptions.length < 2) {
+		if (optionsCount < 1 || (optionsCount < 2 && !nextAllowsAbstain)) {
 			throw new AppError(
 				errors.invalid_poll_vote_limit({
 					maxVotesPerVoter: 1,
-					optionsCount: nextOptions.length,
+					optionsCount,
 				}),
 			);
 		}
@@ -106,22 +101,72 @@ export const openPoll = admin
 	.public(async ({ ctx, args }) => {
 		const poll = await getPollOrThrow(ctx.db, args.pollId);
 		assertPollInMeeting(poll, ctx.meeting._id);
+		const now = Date.now();
+		let didChange = false;
 
-		if (poll.isOpen) {
-			return false;
+		if (ctx.meeting.currentPollId && ctx.meeting.currentPollId !== args.pollId) {
+			const currentPoll = await ctx.db.get('polls', ctx.meeting.currentPollId);
+			if (currentPoll && currentPoll.meetingId === ctx.meeting._id && currentPoll.isOpen) {
+				await ctx.db.patch('polls', currentPoll._id, {
+					isOpen: false,
+					closedAt: now,
+					updatedAt: now,
+				});
+				didChange = true;
+			}
 		}
 
-		await ctx.db.patch('polls', args.pollId, {
-			isOpen: true,
-			openedAt: Date.now(),
-			closedAt: undefined,
-			updatedAt: Date.now(),
-		});
+		if (!poll.isOpen) {
+			await ctx.db.patch('polls', args.pollId, {
+				isOpen: true,
+				openedAt: now,
+				closedAt: undefined,
+				updatedAt: now,
+			});
+			didChange = true;
+		}
 
-		return true;
+		if (ctx.meeting.currentPollId !== args.pollId) {
+			await ctx.db.patch('meetings', ctx.meeting._id, {
+				currentPollId: args.pollId,
+			});
+			didChange = true;
+		}
+
+		return didChange;
 	});
 
 export const closePollByAdmin = admin
+	.mutation()
+	.input({
+		pollId: zid('polls'),
+	})
+	.public(async ({ ctx, args }) => {
+		const poll = await getPollOrThrow(ctx.db, args.pollId);
+		assertPollInMeeting(poll, ctx.meeting._id);
+		let didChange = false;
+		const now = Date.now();
+
+		if (poll.isOpen) {
+			await ctx.db.patch('polls', args.pollId, {
+				isOpen: false,
+				closedAt: now,
+				updatedAt: now,
+			});
+			didChange = true;
+		}
+
+		if (ctx.meeting.currentPollId === args.pollId) {
+			await ctx.db.patch('meetings', ctx.meeting._id, {
+				currentPollId: undefined,
+			});
+			didChange = true;
+		}
+
+		return didChange;
+	});
+
+export const closePollAndShowResults = admin
 	.mutation()
 	.input({
 		pollId: zid('polls'),
@@ -139,8 +184,16 @@ export const closePollByAdmin = admin
 			closedAt: Date.now(),
 			updatedAt: Date.now(),
 		});
+
 		return true;
 	});
+
+export const clearCurrentPollId = admin.mutation().public(async ({ ctx }) => {
+	await ctx.db.patch('meetings', ctx.meeting._id, {
+		currentPollId: undefined,
+	});
+	return true;
+});
 
 export const removePoll = admin
 	.mutation()
@@ -164,6 +217,12 @@ export const removePoll = admin
 
 				await ctx.db.patch('meetings', ctx.meeting._id, { agenda: nextAgenda });
 			}
+		}
+
+		if (ctx.meeting.currentPollId === args.pollId) {
+			await ctx.db.patch('meetings', ctx.meeting._id, {
+				currentPollId: undefined,
+			});
 		}
 
 		await ctx.scheduler.runAfter(0, internal.admin.poll.cleanupPollVotes, {
@@ -204,4 +263,34 @@ export const cleanupPollAgendaItemIds = c
 			}
 		}
 		return { deleted };
+	});
+
+export const getAllPolls = admin.query().public(async ({ ctx }) => {
+	return ctx.db
+		.query('polls')
+		.withIndex('by_meeting', (q) => q.eq('meetingId', ctx.meeting._id))
+		.collect();
+});
+
+export const getPoll = admin
+	.query()
+	.input({
+		pollId: zid('polls'),
+	})
+	.public(async ({ ctx, args }) => {
+		return getPollOrThrow(ctx.db, args.pollId);
+	});
+
+export const getPollsByAgendaItemId = admin
+	.query()
+	.input({
+		agendaItemId: z.string(),
+	})
+	.public(async ({ ctx, args }) => {
+		return ctx.db
+			.query('polls')
+			.withIndex('by_meeting_agendaItem', (q) =>
+				q.eq('meetingId', ctx.meeting._id).eq('agendaItemId', args.agendaItemId),
+			)
+			.collect();
 	});

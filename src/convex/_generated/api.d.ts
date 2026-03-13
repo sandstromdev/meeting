@@ -19,11 +19,10 @@ import type * as helpers_agenda from "../helpers/agenda.js";
 import type * as helpers_auth from "../helpers/auth.js";
 import type * as helpers_builder_index from "../helpers/builder/index.js";
 import type * as helpers_builder_types from "../helpers/builder/types.js";
+import type * as helpers_counters from "../helpers/counters.js";
 import type * as helpers_error from "../helpers/error.js";
 import type * as helpers_index from "../helpers/index.js";
 import type * as helpers_meeting from "../helpers/meeting.js";
-import type * as helpers_meetingCounters from "../helpers/meetingCounters.js";
-import type * as helpers_meetingData from "../helpers/meetingData.js";
 import type * as helpers_poll from "../helpers/poll.js";
 import type * as helpers_types from "../helpers/types.js";
 import type * as helpers_users from "../helpers/users.js";
@@ -54,11 +53,10 @@ declare const fullApi: ApiFromModules<{
   "helpers/auth": typeof helpers_auth;
   "helpers/builder/index": typeof helpers_builder_index;
   "helpers/builder/types": typeof helpers_builder_types;
+  "helpers/counters": typeof helpers_counters;
   "helpers/error": typeof helpers_error;
   "helpers/index": typeof helpers_index;
   "helpers/meeting": typeof helpers_meeting;
-  "helpers/meetingCounters": typeof helpers_meetingCounters;
-  "helpers/meetingData": typeof helpers_meetingData;
   "helpers/poll": typeof helpers_poll;
   "helpers/types": typeof helpers_types;
   "helpers/users": typeof helpers_users;
@@ -2076,7 +2074,31 @@ export declare const components: {
       runTests: FunctionReference<"action", "internal", any, any>;
     };
   };
-  shardedCounter: {
+  participantCounter: {
+    public: {
+      add: FunctionReference<
+        "mutation",
+        "internal",
+        { count: number; name: string; shard?: number; shards?: number },
+        number
+      >;
+      count: FunctionReference<"query", "internal", { name: string }, number>;
+      estimateCount: FunctionReference<
+        "query",
+        "internal",
+        { name: string; readFromShards?: number; shards?: number },
+        any
+      >;
+      rebalance: FunctionReference<
+        "mutation",
+        "internal",
+        { name: string; shards?: number },
+        any
+      >;
+      reset: FunctionReference<"mutation", "internal", { name: string }, any>;
+    };
+  };
+  absentCounter: {
     public: {
       add: FunctionReference<
         "mutation",

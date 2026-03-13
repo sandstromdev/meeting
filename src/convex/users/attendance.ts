@@ -1,6 +1,6 @@
 import { withMe } from '$convex/helpers/auth';
 import { AppError, errors } from '$convex/helpers/error';
-import { incAbsent } from '$convex/helpers/meetingCounters';
+import { getAbsentCounter } from '$convex/helpers/counters';
 import { completeReturnToMeeting } from '$convex/helpers/meeting';
 
 export const leaveMeeting = withMe.mutation().public(async ({ ctx }) => {
@@ -22,14 +22,11 @@ export const leaveMeeting = withMe.mutation().public(async ({ ctx }) => {
 	const now = Date.now();
 
 	if (me.isInSpeakerQueue) {
-		const lastConsumedCreationTime = meeting.lastConsumedCreationTime ?? -1;
+		const lastConsumedCt = meeting.lastConsumedCt ?? -1;
 		const entries = await db
 			.query('speakerQueueEntries')
 			.withIndex('by_meeting_user', (q) =>
-				q
-					.eq('meetingId', meeting._id)
-					.eq('userId', me._id)
-					.gt('_creationTime', lastConsumedCreationTime),
+				q.eq('meetingId', meeting._id).eq('userId', me._id).gt('_creationTime', lastConsumedCt),
 			)
 			.collect();
 		for (const entry of entries) {
@@ -50,7 +47,7 @@ export const leaveMeeting = withMe.mutation().public(async ({ ctx }) => {
 		absentSince: now,
 	});
 
-	await incAbsent(ctx, meeting._id);
+	await getAbsentCounter(meeting._id).inc(ctx);
 });
 
 export const requestReturnToMeeting = withMe.mutation().public(async ({ ctx }) => {

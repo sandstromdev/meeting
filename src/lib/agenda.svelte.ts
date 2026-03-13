@@ -1,32 +1,15 @@
 import { api } from '$convex/_generated/api';
+import type { Id } from '$convex/_generated/dataModel';
+import { computeAgendaNumbers } from '$convex/helpers/agenda';
 import type { MeetingData, MeetingState } from './context.svelte';
 import { SvelteMap } from 'svelte/reactivity';
 
 type AgendaItem = MeetingData['meeting']['agenda'][number];
-type Poll = AgendaItem['polls'][number];
-
-function walk(items: AgendaItem[], parent = '') {
-	const out: (AgendaItem & { number: string })[] = [];
-
-	for (let i = 0; i < items.length; i++) {
-		const item = items[i];
-		const number = parent ? `${parent}.${i + 1}` : `${i + 1}`;
-		out.push({
-			...item,
-			number,
-		});
-		if (item.items?.length) {
-			out.push(...walk(item.items, number));
-		}
-	}
-
-	return out;
-}
-
-/** Pre-order flatten of nested agenda (matches backend order). */
-export function flattenAgenda(agenda: AgendaItem[]) {
-	return walk(agenda);
-}
+export type AgendaPoll = {
+	id: Id<'polls'>;
+	hasVoted: boolean;
+	maxVotesPerVoter: number;
+};
 
 export class AgendaState {
 	#meeting: MeetingState;
@@ -35,7 +18,7 @@ export class AgendaState {
 
 	constructor(meeting: MeetingState) {
 		this.#meeting = meeting;
-		this.#flat = $derived(flattenAgenda(this.agenda));
+		this.#flat = $derived(computeAgendaNumbers(this.agenda));
 	}
 
 	get agenda() {
@@ -78,7 +61,7 @@ export class AgendaState {
 		return this.selectedForPoll(pollId).includes(optionIndex);
 	}
 
-	toggleOption(poll: Poll, optionIndex: number) {
+	toggleOption(poll: AgendaPoll, optionIndex: number) {
 		if (poll.hasVoted) {
 			return;
 		}
@@ -101,7 +84,7 @@ export class AgendaState {
 		this.#selectedOptionIndexesByPoll.set(poll.id, [...current, optionIndex]);
 	}
 
-	async submitVote(poll: Poll) {
+	async submitVote(poll: AgendaPoll) {
 		const optionIndexes = this.selectedForPoll(poll.id);
 		if (optionIndexes.length === 0) {
 			return;

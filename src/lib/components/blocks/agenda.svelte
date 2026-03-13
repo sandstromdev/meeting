@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { api } from '$convex/_generated/api';
+	import { canMoveSubtree } from '$convex/helpers/agenda';
 	import EditAgendaItem from '$lib/components/blocks/admin/agenda/edit-agenda-item.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import {
@@ -7,11 +8,12 @@
 		CollapsibleContent,
 		CollapsibleTrigger,
 	} from '$lib/components/ui/collapsible';
-	import { confirm } from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
+	import { confirm, confirmAsync } from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
 	import { getMeetingContext } from '$lib/context.svelte';
 	import { usePageState } from '$lib/page-state.svelte';
 	import { cn } from '$lib/utils';
 	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
+	import ChevronLeftIcon from '@lucide/svelte/icons/chevron-left';
 	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
 	import ChevronUpIcon from '@lucide/svelte/icons/chevron-up';
 	import PencilIcon from '@lucide/svelte/icons/pencil';
@@ -23,9 +25,100 @@
 
 	const agenda = $derived(as.flat);
 
-	function hasBeenCompleted(id: string) {
-		const index = agenda.findIndex((item) => item.id === id);
-		return as.currentIndex >= 0 && as.currentIndex > index;
+	function hasBeenCompleted(idx: number) {
+		return as.currentIndex >= 0 && as.currentIndex >= idx;
+	}
+
+	function getSubtreeEnd(index: number) {
+		const current = agenda[index];
+		if (!current) {
+			return index + 1;
+		}
+		let cursor = index + 1;
+		while (cursor < agenda.length && agenda[cursor].depth > current.depth) {
+			cursor += 1;
+		}
+		return cursor;
+	}
+
+	function canMoveUp(index: number) {
+		const current = agenda[index];
+		if (!current) {
+			return false;
+		}
+		for (let i = index - 1; i >= 0; i--) {
+			if (agenda[i].depth < current.depth) {
+				return false;
+			}
+			if (agenda[i].depth === current.depth) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	function canMoveDown(index: number) {
+		const current = agenda[index];
+		if (!current) {
+			return false;
+		}
+		const nextSiblingIndex = getSubtreeEnd(index);
+		if (nextSiblingIndex >= agenda.length) {
+			return false;
+		}
+		return agenda[nextSiblingIndex].depth === current.depth;
+	}
+
+	function hasChildren(index: number) {
+		const current = agenda[index];
+		const next = agenda[index + 1];
+		return !!current && !!next && next.depth > current.depth;
+	}
+
+	async function removeAgendaItemWithChoice(itemId: string, index: number) {
+		if (!hasChildren(index)) {
+			confirm({
+				title: 'Ta bort punkt?',
+				description: 'Är du säker på att du vill ta bort denna punkt?',
+				onConfirm: () =>
+					meeting.adminMutate(api.admin.agenda.removeAgendaItem, {
+						agendaItemId: itemId,
+						deletionMode: 'delete_subtree',
+					}),
+			});
+			return;
+		}
+
+		const keepChildren = await confirmAsync({
+			title: 'Punkten har underpunkter',
+			description: 'Vill du behålla underpunkterna och bara ta bort huvudpunkten?',
+			confirm: { text: 'Behåll underpunkter' },
+			cancel: { text: 'Ta bort allt' },
+		});
+
+		if (keepChildren) {
+			await meeting.adminMutate(api.admin.agenda.removeAgendaItem, {
+				agendaItemId: itemId,
+				deletionMode: 'keep_children',
+			});
+			return;
+		}
+
+		const deleteAll = await confirmAsync({
+			title: 'Ta bort punkt och underpunkter?',
+			description: 'Detta tar bort punkten och alla underpunkter permanent.',
+			confirm: { text: 'Ta bort alla' },
+			cancel: { text: 'Avbryt' },
+		});
+
+		if (!deleteAll) {
+			return;
+		}
+
+		await meeting.adminMutate(api.admin.agenda.removeAgendaItem, {
+			agendaItemId: itemId,
+			deletionMode: 'delete_subtree',
+		});
 	}
 
 	const mainStart = $derived(Math.max(0, as.currentIndex - 1));
@@ -111,7 +204,7 @@
 		<div
 			class={cn(
 				'flex gap-2 border-b px-2 py-2 text-sm',
-				hasBeenCompleted(item.id) && 'bg-muted/50 text-muted-foreground',
+				hasBeenCompleted(index) && 'bg-muted/50 text-muted-foreground',
 			)}
 		>
 			{#if meeting.isAdmin}
@@ -134,7 +227,7 @@
 				<span class="flex shrink-0 items-baseline font-mono text-muted-foreground">
 					{item.number}.
 				</span>
-				<span class={cn('text-sm font-medium', hasBeenCompleted(item.id) && 'line-through')}>
+				<span class={cn('text-sm font-medium', hasBeenCompleted(index) && 'line-through')}>
 					{item.title}
 				</span>
 			{/if}
@@ -148,9 +241,36 @@
 							onClickPromise={() =>
 								meeting.adminMutate(api.admin.agenda.moveAgendaItem, {
 									agendaItemId: item.id,
+									direction: 'in',
+								})}
+							disabled={!canMoveSubtree(agenda, item.id, 'in')}
+						>
+							<ChevronRightIcon class="size-4" />
+						</Button>
+						<Button
+							size="icon"
+							variant="ghost"
+							type="button"
+							onClickPromise={() =>
+								meeting.adminMutate(api.admin.agenda.moveAgendaItem, {
+									agendaItemId: item.id,
+									direction: 'out',
+								})}
+							disabled={!canMoveSubtree(agenda, item.id, 'out')}
+						>
+							<ChevronLeftIcon class="size-4" />
+						</Button>
+
+						<Button
+							size="icon"
+							variant="ghost"
+							type="button"
+							onClickPromise={() =>
+								meeting.adminMutate(api.admin.agenda.moveAgendaItem, {
+									agendaItemId: item.id,
 									direction: 'up',
 								})}
-							disabled={index <= 0}
+							disabled={!canMoveUp(index)}
 						>
 							<ChevronUpIcon class="size-4" />
 						</Button>
@@ -163,7 +283,7 @@
 									agendaItemId: item.id,
 									direction: 'down',
 								})}
-							disabled={index >= agenda.length - 1}
+							disabled={!canMoveDown(index)}
 						>
 							<ChevronDownIcon class="size-4" />
 						</Button>
@@ -180,15 +300,7 @@
 							variant="ghost"
 							class="text-destructive hover:bg-destructive/10 hover:text-destructive"
 							type="button"
-							onclick={() =>
-								confirm({
-									title: 'Ta bort punkt?',
-									description: 'Är du säker på att du vill ta bort denna punkt?',
-									onConfirm: () =>
-										meeting.adminMutate(api.admin.agenda.removeAgendaItem, {
-											agendaItemId: item.id,
-										}),
-								})}
+							onclick={() => removeAgendaItemWithChoice(item.id, index)}
 						>
 							<Trash2Icon class="size-4" />
 						</Button>

@@ -9,6 +9,7 @@
 	import SpeakerLog from '$lib/components/blocks/admin/speaker-log.svelte';
 	import Agenda from '$lib/components/blocks/agenda.svelte';
 	import CurrentAgendaItem from '$lib/components/blocks/current-agenda-item.svelte';
+	import CurrentAgendaPolls from '$lib/components/blocks/admin/current-agenda-polls.svelte';
 	import MeetingInfo from '$lib/components/blocks/meeting-info.svelte';
 	import QueueControls from '$lib/components/blocks/queue-controls.svelte';
 	import RequestView from '$lib/components/blocks/request-view.svelte';
@@ -28,6 +29,7 @@
 	<main class="col-span-2 flex flex-col gap-4">
 		<MeetingInfo />
 		<CurrentAgendaItem />
+		<CurrentAgendaPolls />
 		<Timer />
 		<Agenda />
 		<RequestView />

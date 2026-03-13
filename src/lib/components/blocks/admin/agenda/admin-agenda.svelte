@@ -7,9 +7,8 @@
 		CollapsibleContent,
 		CollapsibleTrigger,
 	} from '$lib/components/ui/collapsible';
-	import { confirm } from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
+	import { confirm, confirmAsync } from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
 	import { Input } from '$lib/components/ui/input';
-	import { flattenAgenda } from '$lib/agenda.svelte';
 	import { getMeetingContext } from '$lib/context.svelte';
 	import { usePageState } from '$lib/page-state.svelte';
 	import { cn } from '$lib/utils';
@@ -23,8 +22,7 @@
 	const meeting = getMeetingContext();
 	const ps = usePageState();
 
-	const agenda = $derived(meeting.meeting.agenda ?? []);
-	const flatAgenda = $derived(flattenAgenda(agenda));
+	const flatAgenda = $derived(meeting.agenda.flat);
 	const currentAgendaItemId = $derived(
 		meeting.meeting.currentAgendaItemId ?? (flatAgenda.length > 0 ? flatAgenda[0].id : undefined),
 	);
@@ -36,6 +34,98 @@
 
 	function hasBeenCompleted(index: number) {
 		return currentAgendaItemIndex >= 0 && currentAgendaItemIndex > index;
+	}
+
+	function getSubtreeEnd(index: number) {
+		const current = flatAgenda[index];
+		if (!current) {
+			return index + 1;
+		}
+		let cursor = index + 1;
+		while (cursor < flatAgenda.length && flatAgenda[cursor].depth > current.depth) {
+			cursor += 1;
+		}
+		return cursor;
+	}
+
+	function canMoveUp(index: number) {
+		const current = flatAgenda[index];
+		if (!current) {
+			return false;
+		}
+		for (let i = index - 1; i >= 0; i--) {
+			if (flatAgenda[i].depth < current.depth) {
+				return false;
+			}
+			if (flatAgenda[i].depth === current.depth) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	function canMoveDown(index: number) {
+		const current = flatAgenda[index];
+		if (!current) {
+			return false;
+		}
+		const nextSiblingIndex = getSubtreeEnd(index);
+		if (nextSiblingIndex >= flatAgenda.length) {
+			return false;
+		}
+		return flatAgenda[nextSiblingIndex].depth === current.depth;
+	}
+
+	function hasChildren(index: number) {
+		const current = flatAgenda[index];
+		const next = flatAgenda[index + 1];
+		return !!current && !!next && next.depth > current.depth;
+	}
+
+	async function removeAgendaItemWithChoice(itemId: string, index: number) {
+		if (!hasChildren(index)) {
+			confirm({
+				title: 'Ta bort punkt?',
+				description: 'Är du säker på att du vill ta bort denna punkt?',
+				onConfirm: () =>
+					meeting.adminMutate(api.admin.agenda.removeAgendaItem, {
+						agendaItemId: itemId,
+						deletionMode: 'delete_subtree',
+					}),
+			});
+			return;
+		}
+
+		const keepChildren = await confirmAsync({
+			title: 'Punkten har underpunkter',
+			description: 'Vill du behålla underpunkterna och bara ta bort huvudpunkten?',
+			confirm: { text: 'Behåll underpunkter' },
+			cancel: { text: 'Ta bort allt' },
+		});
+
+		if (keepChildren) {
+			await meeting.adminMutate(api.admin.agenda.removeAgendaItem, {
+				agendaItemId: itemId,
+				deletionMode: 'keep_children',
+			});
+			return;
+		}
+
+		const deleteAll = await confirmAsync({
+			title: 'Ta bort punkt och underpunkter?',
+			description: 'Detta tar bort punkten och alla underpunkter permanent.',
+			confirm: { text: 'Ta bort alla' },
+			cancel: { text: 'Avbryt' },
+		});
+
+		if (!deleteAll) {
+			return;
+		}
+
+		await meeting.adminMutate(api.admin.agenda.removeAgendaItem, {
+			agendaItemId: itemId,
+			deletionMode: 'delete_subtree',
+		});
 	}
 
 	type AgendaDraft = {
@@ -78,6 +168,7 @@
 								'flex items-baseline gap-2 py-2 pr-2 text-sm not-last:border-b',
 								hasBeenCompleted(index) && 'bg-muted/50 text-muted-foreground',
 							)}
+							style={`padding-left: ${item.depth * 1.25}rem;`}
 						>
 							<div class="w-[6ch] shrink-0 text-right text-muted-foreground">
 								{item.number}.
@@ -101,7 +192,7 @@
 												agendaItemId: item.id,
 												direction: 'up',
 											})}
-										disabled={index <= 0}
+										disabled={!canMoveUp(index)}
 									>
 										<ChevronUpIcon class="size-4" />
 									</Button>
@@ -115,7 +206,7 @@
 												agendaItemId: item.id,
 												direction: 'down',
 											})}
-										disabled={index >= flatAgenda.length - 1}
+										disabled={!canMoveDown(index)}
 									>
 										<ChevronDownIcon class="size-4" />
 									</Button>
@@ -148,15 +239,7 @@
 											variant="ghost"
 											class="text-destructive hover:bg-destructive/10 hover:text-destructive"
 											type="button"
-											onclick={() =>
-												confirm({
-													title: 'Ta bort punkt?',
-													description: 'Är du säker på att du vill ta bort denna punkt?',
-													onConfirm: () =>
-														meeting.adminMutate(api.admin.agenda.removeAgendaItem, {
-															agendaItemId: item.id,
-														}),
-												})}
+											onclick={() => removeAgendaItemWithChoice(item.id, index)}
 										>
 											<XIcon class="size-4" />
 										</Button>

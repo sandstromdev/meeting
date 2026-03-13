@@ -1,11 +1,10 @@
 import { admin } from '$convex/helpers/auth';
 import { completeReturnToMeeting, logSpeakerSlot } from '$convex/helpers/meeting';
-import { flattenAgenda } from '$convex/helpers/agenda';
 import { pickParticipantData } from '$convex/helpers/users';
 import { zid } from 'convex-helpers/server/zod4';
 import { z } from 'zod';
 import { MeetingCode } from '$lib/validation';
-import { countAbsent, countParticipants } from '$convex/helpers/meetingCounters';
+import { getAbsentCounter, getParticipantCounter } from '$convex/helpers/counters';
 
 export const getPointOfOrderEntries = admin.query().public(async ({ ctx }) => {
 	const entries = await ctx.db
@@ -38,8 +37,8 @@ export const getSpeakerLogEntries = admin.query().public(async ({ ctx }) => {
 
 export const getAttendance = admin.query().public(async ({ ctx }) => {
 	const [participants, absentees] = await Promise.all([
-		countParticipants(ctx, ctx.meeting._id),
-		countAbsent(ctx, ctx.meeting._id),
+		getParticipantCounter(ctx.meeting._id).count(ctx),
+		getAbsentCounter(ctx.meeting._id).count(ctx),
 	]);
 
 	return { participants, absentees };
@@ -205,7 +204,22 @@ export const clearReply = admin.mutation().public(async ({ ctx }) => {
 
 export const toggleMeeting = admin.mutation().public(async ({ ctx: { db, meeting } }) => {
 	if (meeting.isOpen) {
-		await db.patch('meetings', meeting._id, { isOpen: false });
+		const now = Date.now();
+		if (meeting.currentPollId) {
+			const currentPoll = await db.get('polls', meeting.currentPollId);
+			if (currentPoll && currentPoll.meetingId === meeting._id && currentPoll.isOpen) {
+				await db.patch('polls', currentPoll._id, {
+					isOpen: false,
+					closedAt: now,
+					updatedAt: now,
+				});
+			}
+		}
+
+		await db.patch('meetings', meeting._id, {
+			isOpen: false,
+			currentPollId: undefined,
+		});
 		return true;
 	}
 	const now = Date.now();
@@ -260,7 +274,7 @@ export const resetMeeting = admin.mutation().public(async ({ ctx }) => {
 		}
 	}
 
-	const flat = flattenAgenda(meeting.agenda);
+	const flat = meeting.agenda;
 	const firstItemId = flat[0]?.id;
 
 	await db.patch('meetings', meeting._id, {
@@ -269,8 +283,9 @@ export const resetMeeting = admin.mutation().public(async ({ ctx }) => {
 		pointOfOrder: null,
 		reply: null,
 		break: null,
-		lastConsumedCreationTime: -1,
+		lastConsumedCt: -1,
 		currentAgendaItemId: firstItemId ?? undefined,
+		currentPollId: undefined,
 	});
 
 	return true;

@@ -26,6 +26,11 @@ export function meetsMajorityThreshold(rule: MajorityRule, votesCast: number, ma
 	return votesCast >= minVotes;
 }
 
+export function minimumVotesForMajority(rule: MajorityRule, maxVotes: number) {
+	const threshold = getMajorityRuleThreshold(rule);
+	return rule === 'simple' ? Math.floor(maxVotes * threshold) + 1 : Math.ceil(maxVotes * threshold);
+}
+
 export const MAJORITY_LABELS = {
 	simple: 'Enkel majoritet (>50 %)',
 	two_thirds: 'Kvalificerad majoritet (≥2/3)',

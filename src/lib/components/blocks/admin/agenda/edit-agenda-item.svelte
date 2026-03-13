@@ -13,11 +13,9 @@
 	import EditPoll from './edit-poll.svelte';
 	import EditSubItems from './edit-sub-items.svelte';
 	import { SvelteMap } from 'svelte/reactivity';
-	import type { PollDraft, MajorityRule, PollType } from './types';
-	import { PollDraftSchema } from '$lib/validation';
+	import { ABSTAIN_OPTION_LABEL, type MajorityRule, type PollType } from '$lib/polls';
+	import { PollDraftSchema, type PollDraft } from '$lib/validation';
 	import XIcon from '@lucide/svelte/icons/x';
-
-	const VACANT_OPTION_LABEL = 'Avstår';
 
 	const meeting = getMeetingContext();
 
@@ -29,24 +27,10 @@
 		onClose?: () => unknown;
 	} = $props();
 
-	const agenda = $derived(meeting.meeting.agenda ?? []);
-
-	function findItemInAgenda(items: typeof agenda, id: string): (typeof agenda)[number] | null {
-		for (const a of items) {
-			if (a.id === id) {
-				return a;
-			}
-			if (a.items?.length) {
-				const found = findItemInAgenda(a.items, id);
-				if (found) {
-					return found;
-				}
-			}
-		}
-		return null;
-	}
-
-	const item = $derived(agendaItemId ? findItemInAgenda(agenda, agendaItemId) : null);
+	const flatAgenda = $derived(meeting.agenda.flat);
+	const item = $derived(
+		agendaItemId ? (flatAgenda.find((a) => a.id === agendaItemId) ?? null) : null,
+	);
 	const isEditMode = $derived(!!agendaItemId);
 
 	function newPollDraft() {
@@ -56,58 +40,58 @@
 			type: 'single_winner' as PollType,
 			winningCount: 1,
 			majorityRule: 'simple' as MajorityRule,
-			resultsPublic: false,
-			includeVacantOption: true,
+			isResultPublic: false,
+			allowsAbstain: true,
 			maxVotesPerVoter: 1,
 		} satisfies PollDraft;
 	}
 
+	type EditablePollDraft = PollDraft & { id?: Id<'polls'> };
+
+	function hydrateToDraft(
+		p: NonNullable<typeof currentPollsResult.data>[number],
+	): EditablePollDraft {
+		const opts = [...p.options];
+		const options =
+			p.allowsAbstain && opts[opts.length - 1] === ABSTAIN_OPTION_LABEL ? opts.slice(0, -1) : opts;
+
+		return {
+			id: p._id,
+			title: p.title,
+			options,
+			type: p.type,
+			winningCount: p.type === 'multi_winner' ? p.winningCount : 1,
+			majorityRule: p.type === 'single_winner' ? p.majorityRule : 'simple',
+			isResultPublic: p.isResultPublic,
+			allowsAbstain: p.allowsAbstain,
+			maxVotesPerVoter: p.maxVotesPerVoter,
+		};
+	}
+
+	const currentPollsResult = meeting.adminQuery(api.admin.poll.getPollsByAgendaItemId, () =>
+		isEditMode && agendaItemId ? { agendaItemId } : 'skip',
+	);
+
 	let newTitle = $state('');
-	let polls = $state<PollDraft[]>([]);
+	let polls = $state<EditablePollDraft[]>([]);
 	let isLoading = $state(false);
 	let lastSyncedId = $state<string | null>(null);
 	let initialPollIds = $state<Id<'polls'>[]>([]);
-	let originalPolls = new SvelteMap<Id<'polls'>, PollDraft>();
+	let originalPolls = new SvelteMap<Id<'polls'>, EditablePollDraft>();
 
 	$effect(() => {
 		if (isEditMode && item && item.id !== lastSyncedId) {
+			const currentPolls = currentPollsResult.data;
+			if (!currentPolls) {
+				return;
+			}
 			lastSyncedId = item.id;
 			newTitle = item.title;
-			polls = item.polls.map((p) => {
-				const opts = [...p.options];
-				const includeVacant = p.allowsAbstain;
-				const options =
-					includeVacant && opts[opts.length - 1] === VACANT_OPTION_LABEL ? opts.slice(0, -1) : opts;
-				return {
-					id: p.id,
-					title: p.title,
-					options,
-					type: (p.type ?? 'single_winner') as PollType,
-					winningCount: p.winningCount ?? 1,
-					majorityRule: (p.majorityRule ?? 'simple') as MajorityRule,
-					resultsPublic: p.resultsPublic,
-					includeVacantOption: includeVacant,
-					maxVotesPerVoter: p.maxVotesPerVoter ?? 1,
-				};
-			});
-			initialPollIds = item.polls.map((p) => p.id as Id<'polls'>);
+			polls = currentPolls.map(hydrateToDraft);
+			initialPollIds = currentPolls.map((p) => p._id as Id<'polls'>);
 			originalPolls.clear();
-
-			for (const p of item.polls) {
-				const opts = [...p.options];
-				const includeVacant = p.allowsAbstain;
-				const options =
-					includeVacant && opts[opts.length - 1] === VACANT_OPTION_LABEL ? opts.slice(0, -1) : opts;
-				originalPolls.set(p.id, {
-					title: p.title,
-					options,
-					type: (p.type ?? 'single_winner') as PollType,
-					winningCount: p.winningCount ?? 1,
-					majorityRule: (p.majorityRule ?? 'simple') as MajorityRule,
-					resultsPublic: p.resultsPublic,
-					includeVacantOption: includeVacant,
-					maxVotesPerVoter: p.maxVotesPerVoter ?? 1,
-				});
+			for (const p of currentPolls) {
+				originalPolls.set(p._id, hydrateToDraft(p));
 			}
 		}
 
@@ -151,7 +135,7 @@
 		return ta.length === tb.length && ta.every((x, i) => x === tb[i]);
 	}
 
-	function draftChanged(draft: PollDraft): boolean {
+	function draftChanged(draft: EditablePollDraft): boolean {
 		if (!draft.id) {
 			return false;
 		}
@@ -165,8 +149,8 @@
 			orig.type !== draft.type ||
 			orig.winningCount !== draft.winningCount ||
 			orig.majorityRule !== draft.majorityRule ||
-			orig.resultsPublic !== draft.resultsPublic ||
-			orig.includeVacantOption !== draft.includeVacantOption ||
+			orig.isResultPublic !== draft.isResultPublic ||
+			orig.allowsAbstain !== draft.allowsAbstain ||
 			orig.maxVotesPerVoter !== draft.maxVotesPerVoter
 		);
 	}
@@ -180,21 +164,21 @@
 			const options = poll.options.map((o) => o.trim()).filter(Boolean);
 			if (
 				poll.title.trim() &&
-				(options.length >= 2 || (options.length >= 1 && poll.includeVacantOption))
+				(options.length >= 2 || (options.length >= 1 && poll.allowsAbstain))
 			) {
 				await meeting.adminMutate(api.admin.poll.createPoll, {
 					agendaItemId: created.id,
-					title: poll.title.trim(),
-					options,
-					type: poll.type,
-					winningCount: poll.type === 'multi_winner' ? poll.winningCount : undefined,
-					majorityRule: poll.type === 'single_winner' ? poll.majorityRule : undefined,
-					allowsAbstain: poll.includeVacantOption,
-					resultsPublic: poll.resultsPublic,
-					maxVotesPerVoter:
-						poll.type === 'multi_winner'
-							? Math.min(poll.maxVotesPerVoter, options.length + (poll.includeVacantOption ? 1 : 0))
-							: undefined,
+					draft: {
+						title: poll.title.trim(),
+						options,
+						type: poll.type,
+						winningCount: poll.type === 'multi_winner' ? poll.winningCount : 1,
+						majorityRule: poll.type === 'single_winner' ? poll.majorityRule : undefined,
+						allowsAbstain: poll.allowsAbstain,
+						isResultPublic: poll.isResultPublic,
+						maxVotesPerVoter:
+							poll.type === 'multi_winner' ? Math.min(poll.maxVotesPerVoter, options.length) : 1,
+					},
 				});
 			}
 		}
@@ -228,24 +212,23 @@
 				const options = draft.options.map((o) => o.trim()).filter(Boolean);
 				if (
 					draft.title.trim() &&
-					(options.length >= 2 || (options.length >= 1 && draft.includeVacantOption))
+					(options.length >= 2 || (options.length >= 1 && draft.allowsAbstain))
 				) {
 					const pollId = await meeting.adminMutate(api.admin.poll.createPoll, {
 						agendaItemId,
-						title: draft.title.trim(),
-						options,
-						type: draft.type,
-						winningCount: draft.type === 'multi_winner' ? draft.winningCount : undefined,
-						majorityRule: draft.type === 'single_winner' ? draft.majorityRule : undefined,
-						allowsAbstain: draft.includeVacantOption,
-						resultsPublic: draft.resultsPublic,
-						maxVotesPerVoter:
-							draft.type === 'multi_winner'
-								? Math.min(
-										draft.maxVotesPerVoter,
-										options.length + (draft.includeVacantOption ? 1 : 0),
-									)
-								: undefined,
+						draft: {
+							title: draft.title.trim(),
+							options,
+							type: draft.type,
+							winningCount: draft.type === 'multi_winner' ? draft.winningCount : 1,
+							majorityRule: draft.type === 'single_winner' ? draft.majorityRule : undefined,
+							allowsAbstain: draft.allowsAbstain,
+							isResultPublic: draft.isResultPublic,
+							maxVotesPerVoter:
+								draft.type === 'multi_winner'
+									? Math.min(draft.maxVotesPerVoter, options.length)
+									: 1,
+						},
 					});
 					orderedIds.push(pollId);
 				}
@@ -260,23 +243,22 @@
 		for (const draft of polls) {
 			if (draft.id && draftChanged(draft)) {
 				const options = draft.options.map((o) => o.trim()).filter(Boolean);
-				if (options.length >= 2 || (options.length >= 1 && draft.includeVacantOption)) {
+				if (options.length >= 2 || (options.length >= 1 && draft.allowsAbstain)) {
 					await meeting.adminMutate(api.admin.poll.editPoll, {
 						pollId: draft.id,
-						title: draft.title.trim(),
-						options,
-						type: draft.type,
-						winningCount: draft.type === 'multi_winner' ? draft.winningCount : undefined,
-						majorityRule: draft.type === 'single_winner' ? draft.majorityRule : undefined,
-						allowsAbstain: draft.includeVacantOption,
-						resultsPublic: draft.resultsPublic,
-						maxVotesPerVoter:
-							draft.type === 'multi_winner'
-								? Math.min(
-										draft.maxVotesPerVoter,
-										options.length + (draft.includeVacantOption ? 1 : 0),
-									)
-								: undefined,
+						edits: {
+							title: draft.title.trim(),
+							options,
+							type: draft.type,
+							winningCount: draft.type === 'multi_winner' ? draft.winningCount : 1,
+							majorityRule: draft.type === 'single_winner' ? draft.majorityRule : undefined,
+							allowsAbstain: draft.allowsAbstain,
+							isResultPublic: draft.isResultPublic,
+							maxVotesPerVoter:
+								draft.type === 'multi_winner'
+									? Math.min(draft.maxVotesPerVoter, options.length)
+									: 1,
+						},
 					});
 				}
 			}
@@ -366,7 +348,9 @@
 							</Button>
 						</div>
 						<div class="min-w-0 flex-1">
-							<EditPoll bind:poll={polls[i]} />
+							{#if polls[i]}
+								<EditPoll bind:poll={polls[i]} />
+							{/if}
 						</div>
 					</div>
 				{/each}
@@ -374,7 +358,7 @@
 		{/if}
 
 		{#if isEditMode && item}
-			<EditSubItems parentItem={item} />
+			<EditSubItems parentItemId={item.id} parentDepth={item.depth} />
 		{/if}
 	</form>
 {/if}

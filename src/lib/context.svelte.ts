@@ -13,6 +13,10 @@ export type MeetingData = typeof api.users.meeting.getData._returnType;
 
 const [getContext, setContext] = createContext<MeetingState>();
 
+type ArgsGetter<T extends FunctionReference<'query'>> = () =>
+	| Omit<T['_args'], 'meetingId'>
+	| 'skip';
+
 type CurrentSpeaker =
 	| {
 			type: 'point_of_order' | 'reply' | 'speaker';
@@ -167,14 +171,7 @@ export class MeetingState {
 	>(fn: T): UseQueryReturn<T>;
 	adminQuery<
 		T extends FunctionReference<'query', 'public', { meetingId: Id<'meetings'> }, unknown>,
-	>(fn: T, args?: Getter<Omit<T['_args'], 'meetingId'>>): UseQueryReturn<T>;
-	adminQuery<
-		T extends FunctionReference<'query', 'public', { meetingId: Id<'meetings'> }, unknown>,
-	>(
-		fn: T,
-		args?: Getter<Omit<T['_args'], 'meetingId'>>,
-		opts?: UseQueryOptions<T>,
-	): UseQueryReturn<T>;
+	>(fn: T, args?: ArgsGetter<T>, opts?: UseQueryOptions<T>): UseQueryReturn<T>;
 	adminQuery<
 		T extends FunctionReference<
 			'query',
@@ -182,16 +179,26 @@ export class MeetingState {
 			{ meetingId: Id<'meetings'> } & DefaultFunctionArgs,
 			unknown
 		>,
-	>(fn: T, args?: Getter<Omit<T['_args'], 'meetingId'>>, opts?: UseQueryOptions<T>) {
-		const getter = () =>
-			this.isAdmin
-				? {
-						meetingId: this.id,
-						...args?.(),
-					}
-				: 'skip';
+	>(fn: T, args?: ArgsGetter<T>, opts?: UseQueryOptions<T>) {
+		return useQuery(
+			fn,
+			() => {
+				if (!this.isAdmin) {
+					return 'skip';
+				}
+				const a = args?.();
 
-		return useQuery(fn, getter, opts);
+				if (a === 'skip') {
+					return 'skip';
+				}
+
+				return {
+					meetingId: this.id,
+					...a,
+				};
+			},
+			opts,
+		);
 	}
 
 	moderatorQuery<

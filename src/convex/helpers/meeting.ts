@@ -1,9 +1,9 @@
 import type { MutationCtx, QueryCtx } from '$convex/_generated/server';
 import type { UserIdentity, Scheduler } from 'convex/server';
-import { decAbsent } from './meetingCounters';
 import { AppError, errors } from './error';
 import type { Doc, Id } from '$convex/_generated/dataModel';
 import { internal } from '$convex/_generated/api';
+import { getAbsentCounter } from './counters';
 
 export async function logSpeakerSlot(
 	ctx: { scheduler: Scheduler; meeting: Pick<Doc<'meetings'>, '_id'> },
@@ -39,7 +39,7 @@ export async function completeReturnToMeeting(
 		await db.patch('absenceEntries', toClose._id, { endTime: now });
 	}
 	await db.patch('meetingParticipants', userId, { absentSince: 0, returnRequestedAt: 0 });
-	await decAbsent(ctx, meeting._id);
+	await getAbsentCounter(meeting._id).dec(ctx);
 }
 
 export async function getMeetingParticipant(

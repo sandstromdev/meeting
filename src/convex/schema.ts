@@ -1,13 +1,13 @@
 import { defineSchema, defineTable } from 'convex/server';
 import { v } from 'convex/values';
 
-/** Recursive agenda item: each item can have nested items (any depth). */
+/** Flat agenda item with explicit depth (outline level). */
 export const AgendaItem = v.object({
 	id: v.string(),
 	title: v.string(),
 	pollIds: v.array(v.id('polls')),
-	/** Nested items (same shape recursively). Stored as array; runtime enforces shape. */
-	items: v.array(v.any()),
+	/** Depth in the flat agenda list (0 = top-level, 1 = child, ...). */
+	depth: v.number(),
 });
 
 export const QueueEntry = v.object({
@@ -41,27 +41,29 @@ export const Meeting = v.object({
 	startedAt: v.optional(v.number()),
 	agenda: v.array(AgendaItem),
 	currentAgendaItemId: v.optional(v.string()),
+	currentPollId: v.optional(v.id('polls')),
 
 	isOpen: v.boolean(),
 
-	lastConsumedCreationTime: v.number(),
+	lastConsumedCt: v.number(),
 
 	currentSpeaker: v.nullable(
 		v.object({
+			entryId: v.optional(v.id('speakerQueueEntries')),
+			ct: v.number(),
 			userId: v.id('meetingParticipants'),
 			name: v.string(),
 			startTime: v.number(),
-			creationTime: v.optional(v.number()),
 		}),
 	),
 
 	/** Last main speaker (for undo/step back). Not set for point of order, reply, break. */
 	previousSpeaker: v.nullable(
 		v.object({
+			ct: v.number(),
 			userId: v.id('meetingParticipants'),
 			name: v.string(),
 			startTime: v.number(),
-			creationTime: v.number(),
 		}),
 	),
 
@@ -111,13 +113,13 @@ export const Poll = v.union(
 		majorityRule: majorityRule,
 	}),
 );
+export type Poll = typeof Poll.type;
 
 export const PollVote = v.object({
 	meetingId: v.id('meetings'),
 	pollId: v.id('polls'),
 	userId: v.id('meetingParticipants'),
 	optionIndex: v.number(),
-	createdAt: v.number(),
 });
 
 export const PointOfOrderEntry = v.object({

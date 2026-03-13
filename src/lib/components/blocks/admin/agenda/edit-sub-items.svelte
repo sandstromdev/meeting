@@ -1,11 +1,10 @@
 <script lang="ts">
 	import { api } from '$convex/_generated/api';
-	import type { Id } from '$convex/_generated/dataModel';
 	import { Button } from '$lib/components/ui/button';
 	import Collapsible from '$lib/components/ui/collapsible/collapsible.svelte';
 	import CollapsibleContent from '$lib/components/ui/collapsible/collapsible-content.svelte';
 	import CollapsibleTrigger from '$lib/components/ui/collapsible/collapsible-trigger.svelte';
-	import { confirm } from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
+	import { confirm, confirmAsync } from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
 	import { Input } from '$lib/components/ui/input';
 	import { getMeetingContext } from '$lib/context.svelte';
 	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
@@ -17,41 +16,46 @@
 
 	const meeting = getMeetingContext();
 
-	type SubItem = {
-		id: string;
-		title: string;
-		polls: {
-			id: Id<'polls'>;
-			title: string;
-			options: string[];
-			type?: string;
-			winningCount?: number;
-			majorityRule?: string;
-			allowsAbstain: boolean;
-			maxVotesPerVoter?: number;
-			resultsPublic?: boolean;
-		}[];
-	};
-
 	let {
-		parentItem,
+		parentItemId,
+		parentDepth,
 	}: {
-		parentItem: {
-			id: string;
-			items: SubItem[];
-		};
+		parentItemId: string;
+		parentDepth: number;
 	} = $props();
+
+	const flatAgenda = $derived(meeting.agenda.flat);
+	const subItems = $derived.by(() => {
+		const start = flatAgenda.findIndex((item) => item.id === parentItemId);
+		if (start < 0) {
+			return [];
+		}
+		const out: { id: string; title: string }[] = [];
+		for (let i = start + 1; i < flatAgenda.length; i++) {
+			const candidate = flatAgenda[i];
+			if (candidate.depth <= parentDepth) {
+				break;
+			}
+			if (candidate.depth === parentDepth + 1) {
+				out.push({
+					id: candidate.id,
+					title: candidate.title,
+				});
+			}
+		}
+		return out;
+	});
 
 	let newSubItemTitle = $state('');
 	let expandedSubItemId = $state<string | null>(null);
 
 	async function addSubItem() {
-		if (!parentItem || !newSubItemTitle.trim()) {
+		if (!parentItemId || !newSubItemTitle.trim()) {
 			return;
 		}
 		await meeting.adminMutate(api.admin.agenda.createAgendaItem, {
 			title: newSubItemTitle.trim(),
-			parentId: parentItem.id,
+			parentId: parentItemId,
 		});
 		newSubItemTitle = '';
 	}
@@ -59,14 +63,70 @@
 	function toggleExpand(id: string) {
 		expandedSubItemId = expandedSubItemId === id ? null : id;
 	}
+
+	function hasChildren(itemId: string) {
+		const index = flatAgenda.findIndex((item) => item.id === itemId);
+		if (index < 0) {
+			return false;
+		}
+		const current = flatAgenda[index];
+		const next = flatAgenda[index + 1];
+		return !!next && next.depth > current.depth;
+	}
+
+	async function removeAgendaItemWithChoice(itemId: string) {
+		if (!hasChildren(itemId)) {
+			confirm({
+				title: 'Ta bort underpunkt?',
+				description: 'Är du säker på att du vill ta bort denna underpunkt?',
+				onConfirm: () =>
+					meeting.adminMutate(api.admin.agenda.removeAgendaItem, {
+						agendaItemId: itemId,
+						deletionMode: 'delete_subtree',
+					}),
+			});
+			return;
+		}
+
+		const keepChildren = await confirmAsync({
+			title: 'Underpunkten har egna underpunkter',
+			description: 'Vill du behålla dessa underpunkter och bara ta bort den valda raden?',
+			confirm: { text: 'Behåll underpunkter' },
+			cancel: { text: 'Ta bort allt' },
+		});
+
+		if (keepChildren) {
+			await meeting.adminMutate(api.admin.agenda.removeAgendaItem, {
+				agendaItemId: itemId,
+				deletionMode: 'keep_children',
+			});
+			return;
+		}
+
+		const deleteAll = await confirmAsync({
+			title: 'Ta bort underpunkt och alla underpunkter?',
+			description: 'Detta tar bort allt under denna punkt permanent.',
+			confirm: { text: 'Ta bort alla' },
+			cancel: { text: 'Avbryt' },
+		});
+
+		if (!deleteAll) {
+			return;
+		}
+
+		await meeting.adminMutate(api.admin.agenda.removeAgendaItem, {
+			agendaItemId: itemId,
+			deletionMode: 'delete_subtree',
+		});
+	}
 </script>
 
 <div class="border-t pt-4">
 	<p class="text-sm font-medium text-muted-foreground">Underpunkter</p>
 
-	{#if (parentItem.items?.length ?? 0) > 0}
+	{#if subItems.length > 0}
 		<ul class="mt-2 space-y-1">
-			{#each parentItem.items as sub (sub.id)}
+			{#each subItems as sub (sub.id)}
 				<li>
 					<Collapsible
 						open={expandedSubItemId === sub.id}
@@ -85,11 +145,6 @@
 									<ChevronRightIcon class="size-4 shrink-0 text-muted-foreground" />
 								{/if}
 								<span class="flex-1">{sub.title}</span>
-								{#if sub.polls?.length}
-									<span class="text-xs text-muted-foreground">
-										{sub.polls.length} omröstning{sub.polls.length === 1 ? '' : 'ar'}
-									</span>
-								{/if}
 							</CollapsibleTrigger>
 							{#if expandedSubItemId !== sub.id}
 								<Button
@@ -107,15 +162,7 @@
 								variant="ghost"
 								size="sm"
 								class="text-destructive hover:bg-destructive/10 hover:text-destructive"
-								onclick={() =>
-									confirm({
-										title: 'Ta bort underpunkt?',
-										description: 'Är du säker på att du vill ta bort denna underpunkt?',
-										onConfirm: () =>
-											meeting.adminMutate(api.admin.agenda.removeAgendaItem, {
-												agendaItemId: sub.id,
-											}),
-									})}
+								onclick={() => removeAgendaItemWithChoice(sub.id)}
 							>
 								<Trash2Icon class="size-4" />
 							</Button>

@@ -6,5 +6,6 @@ export const getActiveHeartbeats = admin.query().public(async ({ ctx }) => {
 		.query('heartbeats')
 		.withIndex('by_lastSeenAt', (q) => q.gt('lastSeenAt', Date.now() - INACTIVE_THRESHOLD_MS))
 		.collect();
+
 	return heartbeats;
 });

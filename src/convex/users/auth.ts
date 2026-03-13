@@ -1,9 +1,9 @@
 import { authed, withMe } from '$convex/helpers/auth';
-import { incParticipants } from '$convex/helpers/meetingCounters';
 import { getMeetingByCode, getMeetingParticipant } from '$convex/helpers/meeting';
 import { MeetingCode } from '$lib/validation';
 import { zid } from 'convex-helpers/server/zod4';
 import { pickParticipantData } from '$convex/helpers/users';
+import { getParticipantCounter } from '$convex/helpers/counters';
 
 export const getUserData = withMe
 	.input({ meetingId: zid('meetings') })
@@ -40,7 +40,7 @@ export const connect = authed
 				returnRequestedAt: 0,
 			});
 
-			await incParticipants(ctx, meeting._id);
+			await getParticipantCounter(meeting._id).inc(ctx);
 		}
 
 		return meeting._id;

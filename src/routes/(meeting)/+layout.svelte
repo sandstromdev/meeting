@@ -1,5 +1,5 @@
 <script lang="ts">
-	import ConfirmDialog from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
+	import PollDialog from '$lib/components/blocks/poll-dialog.svelte';
 	import { getMeetingContext } from '$lib/context.svelte';
 	import { usePageState } from '$lib/page-state.svelte.js';
 	import AdminView from '$lib/views/admin-view.svelte';
@@ -37,6 +37,7 @@
 
 {#if meetingDataResult.data}
 	<MeetingContext data={meetingDataResult.data}>
+		<PollDialog />
 		{@render children()}
 	</MeetingContext>
 {:else}

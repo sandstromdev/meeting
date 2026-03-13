@@ -1,14 +1,13 @@
 <script lang="ts">
-	import { ABSTAIN_OPTION_LABEL } from '$convex/helpers/poll';
 	import { Button } from '$lib/components/ui/button';
 	import Checkbox from '$lib/components/ui/checkbox/checkbox.svelte';
 	import { Input } from '$lib/components/ui/input';
 	import Label from '$lib/components/ui/label/label.svelte';
 	import { NativeSelectOption } from '$lib/components/ui/native-select';
 	import NativeSelect from '$lib/components/ui/native-select/native-select.svelte';
-	import { MAJORITY_LABELS } from '$lib/polls';
+	import { ABSTAIN_OPTION_LABEL, MAJORITY_LABELS } from '$lib/polls';
 	import { cn } from '$lib/utils';
-	import { PollDraftSchema, type PollDraft } from '$lib/validation';
+	import { PollDraftSchema, RefinePollDraftSchema, type PollDraft } from '$lib/validation';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
 	import { useDebounce } from 'runed';
@@ -39,7 +38,7 @@
 	let errors = $state<string>('');
 
 	const validate = useDebounce((poll: PollDraft) => {
-		const result = PollDraftSchema.safeParse(poll);
+		const result = RefinePollDraftSchema.safeParse(poll);
 		if (result.success) {
 			errors = '';
 		} else {

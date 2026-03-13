@@ -5,6 +5,7 @@ import shardedCounter from '@convex-dev/sharded-counter/convex.config.js';
 const app = defineApp();
 
 app.use(betterAuth);
-app.use(shardedCounter);
+app.use(shardedCounter, { name: 'participantCounter' });
+app.use(shardedCounter, { name: 'absentCounter' });
 
 export default app;

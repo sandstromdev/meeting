@@ -94,6 +94,7 @@ export class AppError<ErrorCode extends AppErrorCode> extends ConvexError<
 		return new AppError<ErrorCode>(err.data);
 	}
 }
+
 export function isAppError(err: unknown): err is ConvexError<ClientErrorObject<AppErrorCode>>;
 export function isAppError<ErrorCode extends AppErrorCode>(
 	err: unknown,
