@@ -20,8 +20,6 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
 
 		database: authComponent.adapter(ctx),
 
-		trustedOrigins: ['http://localhost:4000', 'http://192.168.0.169:4000'],
-
 		emailAndPassword: {
 			enabled: true,
 			requireEmailVerification: false,
