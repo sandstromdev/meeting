@@ -13,7 +13,7 @@ export const GET: RequestHandler = async ({ fetch, locals }) => {
 		.then((response) => ({ response }))
 		.catch((error) => ({ error }));
 
-	const response2 = await fetch(`${PUBLIC_CONVsEX_SITE_URL}/api/test`)
+	const response2 = await fetch(`${PUBLIC_CONVEX_SITE_URL}/api/test`)
 		.then(async (response) => ({
 			response: await response.text(),
 			status: response.status,
