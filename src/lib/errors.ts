@@ -1,4 +1,4 @@
-import { isAppErrorCode, type AppErrorMessages } from '$convex/helpers/error';
+import { type AppErrorMessages } from '$convex/helpers/error';
 
 export const ErrorMessages = {
 	unauthorized: () => 'Oauktoriserad.',
