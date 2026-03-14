@@ -1,5 +1,5 @@
 import { api } from '$convex/_generated/api';
-import { createAuth } from '$convex/better-auth';
+import { createAuth } from '$convex/auth';
 import { getAppError } from '$convex/helpers/error';
 import { deleteMeetingCookie } from '$lib/server/meeting-cookie';
 import { getAuthState } from '@mmailaender/convex-better-auth-svelte/sveltekit';

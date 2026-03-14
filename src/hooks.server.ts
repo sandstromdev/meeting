@@ -1,4 +1,4 @@
-import { createAuth } from '$convex/better-auth';
+import { createAuth } from '$convex/auth';
 import { env } from '$env/dynamic/public';
 import { getMeetingCookie } from '$lib/server/meeting-cookie';
 import { getToken } from '@mmailaender/convex-better-auth-svelte/sveltekit';

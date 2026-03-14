@@ -1,5 +1,5 @@
 import { query } from './_generated/server';
-import { authComponent } from './better-auth';
+import { authComponent } from './auth';
 
 export const getCurrentUser = query({
 	args: {},
