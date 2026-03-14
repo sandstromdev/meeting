@@ -16,15 +16,6 @@ const handler = (async ({ request, fetch }) => {
 	newRequest.headers.set('host', new URL(nextUrl).host);
 	newRequest.headers.set('accept-encoding', 'application/json');
 
-	console.log({
-		originalUrl: request.url,
-		nextUrl,
-		newRequest: {
-			headers: newRequest.headers,
-			method: newRequest.method,
-		},
-	});
-
 	return await fetch(newRequest, { method: request.method, redirect: 'manual' });
 }) satisfies RequestHandler;
 

@@ -1,10 +1,10 @@
 import { authClient } from '$lib/auth-client';
+import { deleteMeetingCookie } from '$lib/server/meeting-cookie';
 import { redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { deleteMeetingCookie } from '$lib/server/meeting-cookie';
 
-export const GET = (async ({ fetch, getClientAddress, url, request }) => {
-	await authClient.signOut({ fetchOptions: { customFetchImpl: fetch } });
+export const GET = (async ({ fetch }) => {
+	await authClient(fetch).signOut();
 
 	deleteMeetingCookie();
 

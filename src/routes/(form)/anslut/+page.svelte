@@ -17,6 +17,8 @@
 
 	let { data } = $props();
 
+	let loading = $state(false);
+
 	const { meetingCode } = connectForm.fields;
 
 	$effect(() => {
@@ -28,7 +30,18 @@
 
 <div class="flex max-w-[266px] flex-col gap-4">
 	<div class="rounded-md border px-6 py-5">
-		<form {...connectForm.preflight(ConnectFormSchema)}>
+		<form
+			{...connectForm.preflight(ConnectFormSchema).enhance(async ({ submit }) => {
+				try {
+					loading = true;
+					await submit();
+				} catch (e) {
+					console.error(e);
+				} finally {
+					loading = false;
+				}
+			})}
+		>
 			<Field.Set class="gap-4">
 				<Field.Legend class="text-xl font-semibold">Anslut till möte</Field.Legend>
 
@@ -55,7 +68,7 @@
 
 				<Field.Error errors={connectForm.fields.issues()} />
 
-				<Button type="submit">Anslut till mötet</Button>
+				<Button type="submit" {loading}>Anslut till mötet</Button>
 
 				<Separator />
 

@@ -1,45 +1,5 @@
-import { createClient, type GenericCtx } from '@convex-dev/better-auth';
-import { convex } from '@convex-dev/better-auth/plugins';
-import { betterAuth } from 'better-auth/minimal';
-import { components } from './_generated/api';
-import type { DataModel } from './_generated/dataModel';
 import { query } from './_generated/server';
-import authConfig from './auth.config';
-
-export const authComponent = createClient<DataModel>(components.betterAuth, {
-	verbose: true,
-});
-
-export const createAuth = (ctx: GenericCtx<DataModel>) => {
-	const siteUrl = process.env.PUBLIC_SITE_URL;
-
-	if (!siteUrl) {
-		console.error('SITE_URL is not set');
-	}
-
-	return betterAuth({
-		baseURL: siteUrl,
-
-		database: authComponent.adapter(ctx),
-
-		trustedOrigins: [
-			siteUrl,
-			process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined,
-			process.env.VERCEL_PROJECT_PRODUCTION_URL
-				? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-				: undefined,
-			process.env.PUBLIC_CONVEX_SITE_URL,
-		].filter(Boolean) as string[],
-
-		emailAndPassword: {
-			enabled: true,
-			requireEmailVerification: false,
-			minPasswordLength: 4,
-		},
-
-		plugins: [convex({ authConfig })],
-	});
-};
+import { authComponent } from './better-auth';
 
 export const getCurrentUser = query({
 	args: {},

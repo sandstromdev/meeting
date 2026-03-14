@@ -4,10 +4,10 @@ import { ErrorMessages } from '$lib/errors';
 import { invalid } from '@sveltejs/kit';
 import { SignInSchema, SignUpSchema } from './schema';
 
-export const signIn = form(SignInSchema, async () => {
-	/* const event = getRequestEvent();
+export const signIn = form(SignInSchema, async ({ email, _password }) => {
+	const event = getRequestEvent();
 
-	const { error } = await authClient.signIn.email({
+	const { error } = await authClient(event.fetch).signIn.email({
 		email,
 		password: _password,
 		fetchOptions: { customFetchImpl: event.fetch },
@@ -17,7 +17,7 @@ export const signIn = form(SignInSchema, async () => {
 		invalid(ErrorMessages.invalid_credentials());
 	} else if (error) {
 		console.error(error);
-	} */
+	}
 
 	return { success: true };
 });
@@ -25,35 +25,18 @@ export const signIn = form(SignInSchema, async () => {
 export const signUp = form(SignUpSchema, async ({ name, email, _password }, issue) => {
 	const event = getRequestEvent();
 
-	console.log({
+	const { error } = await authClient(event.fetch).signUp.email({
 		name,
 		email,
-		_password,
+		password: _password,
 	});
 
-	let e;
-
-	try {
-		const { data, error } = await authClient(event.fetch).signUp.email({
-			name,
-			email,
-			password: _password,
-		});
-
-		console.log({ data, error });
-
-		e = error;
-	} catch (e) {
-		console.error(e);
-		invalid(ErrorMessages.internal_error());
-	}
-
-	if (e) {
-		if (e.code === 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL') {
+	if (error) {
+		if (error.code === 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL') {
 			invalid(issue.email(ErrorMessages.email_exists()));
 		}
 
-		console.error(e);
+		console.error(error);
 		invalid(ErrorMessages.internal_error());
 	}
 

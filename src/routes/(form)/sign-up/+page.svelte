@@ -1,7 +1,5 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { page } from '$app/state';
-	import { authClient } from '$lib/auth-client';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import * as Field from '$lib/components/ui/field';
 	import Input from '$lib/components/ui/input/input.svelte';
@@ -28,27 +26,7 @@
 
 				await submit();
 
-				/* const { data: d, error: err } = await authClient.signUp.email({
-					email: fd.email,
-					password: fd._password,
-					name: fd.name,
-				});
-
-				console.log({ d, err });
-
-				if (err) {
-					if (err.code === 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL') {
-						error = 'E-postadressen är redan i bruk.';
-					} else {
-						error = 'Ett fel har inträffat.';
-					}
-				} */
 				if (signUp.result?.success) {
-					console.log({
-						redirect: data.redirect,
-						validateRedirect: validateRedirect(data.redirect),
-					});
-
 					if (validateRedirect(data.redirect)) {
 						window.location.pathname = data.redirect;
 					} else {
