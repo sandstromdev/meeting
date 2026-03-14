@@ -8,7 +8,7 @@ export function getConvexClient(event?: Pick<RequestEvent, 'locals' | 'fetch'>) 
 
 	const client = new ConvexHttpClient(PUBLIC_CONVEX_URL, {
 		fetch,
-		logger: true,
+		// logger: true,
 	});
 
 	if (locals.token) {

@@ -1,4 +1,7 @@
-import { form } from '$app/server';
+import { form, getRequestEvent } from '$app/server';
+import { authClient } from '$lib/auth-client';
+import { ErrorMessages } from '$lib/errors';
+import { invalid } from '@sveltejs/kit';
 import { SignInSchema, SignUpSchema } from './schema';
 
 export const signIn = form(SignInSchema, async () => {
@@ -19,8 +22,8 @@ export const signIn = form(SignInSchema, async () => {
 	return { success: true };
 });
 
-export const signUp = form(SignUpSchema, async () => {
-	/* const event = getRequestEvent();
+export const signUp = form(SignUpSchema, async ({ name, email, _password }, issue) => {
+	const event = getRequestEvent();
 
 	console.log({
 		name,
@@ -48,12 +51,12 @@ export const signUp = form(SignUpSchema, async () => {
 
 	if (e) {
 		if (e.code === 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL') {
-			invalid(ErrorMessages.email_exists());
+			invalid(issue.email(ErrorMessages.email_exists()));
 		}
 
 		console.error(e);
 		invalid(ErrorMessages.internal_error());
-	} */
+	}
 
 	return { success: true };
 });

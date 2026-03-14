@@ -7,7 +7,7 @@ import { query } from './_generated/server';
 import authConfig from './auth.config';
 
 export const authComponent = createClient<DataModel>(components.betterAuth, {
-	verbose: true,
+	// verbose: true,
 });
 
 export const createAuth = (ctx: GenericCtx<DataModel>) => {
@@ -23,6 +23,7 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
 		database: authComponent.adapter(ctx),
 
 		trustedOrigins: [
+			'https://m.lsnd.se',
 			'https://meeting-six-zeta.vercel.app',
 			'https://grand-marmot-786.eu-west-1.convex.site',
 		],

@@ -28,7 +28,7 @@
 
 				await submit();
 
-				const { data: d, error: err } = await authClient.signUp.email({
+				/* const { data: d, error: err } = await authClient.signUp.email({
 					email: fd.email,
 					password: fd._password,
 					name: fd.name,
@@ -42,15 +42,15 @@
 					} else {
 						error = 'Ett fel har inträffat.';
 					}
-				}
+				} */
 
 				console.log({ redirect: data.redirect, validateRedirect: validateRedirect(data.redirect) });
 
-				/* if (validateRedirect(data.redirect)) {
+				if (validateRedirect(data.redirect)) {
 					window.location.pathname = data.redirect;
 				} else {
 					window.location.pathname = '/anslut';
-				} */
+				}
 			} catch (e) {
 				loading = false;
 				console.error(e);
@@ -81,7 +81,7 @@
 
 			<Field.Error {errors} />
 
-			<Button type="submit">Skapa konto</Button>
+			<Button type="submit" {loading}>Skapa konto</Button>
 
 			<Separator />
 
