@@ -1,10 +1,10 @@
 import { createAuthClient } from 'better-auth/svelte';
 import { convexClient } from '@convex-dev/better-auth/client/plugins';
-import { PUBLIC_SITE_URL } from '$env/static/public';
+import { env } from '$env/dynamic/public';
 
-export const authClient = (customFetchImpl: typeof fetch) =>
+export const authClient = (customFetchImpl: typeof fetch = fetch) =>
 	createAuthClient({
 		plugins: [convexClient()],
 		fetchOptions: { customFetchImpl },
-		baseURL: PUBLIC_SITE_URL,
+		baseURL: env.PUBLIC_SITE_URL,
 	});

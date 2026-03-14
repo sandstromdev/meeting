@@ -1,12 +1,12 @@
+import { env } from '$env/dynamic/public';
 import {
 	decodeConvexLoad,
 	encodeConvexLoad,
 	initConvex,
 } from '@mmailaender/convex-svelte/sveltekit';
-import { PUBLIC_CONVEX_URL } from '$env/static/public';
 import type { Transport } from '@sveltejs/kit';
 
-initConvex(PUBLIC_CONVEX_URL);
+initConvex(env.PUBLIC_CONVEX_URL);
 
 export const transport = {
 	ConvexLoadResult: {

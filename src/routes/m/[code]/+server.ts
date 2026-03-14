@@ -1,7 +1,7 @@
 import { api } from '$convex/_generated/api';
 import { getAppError } from '$convex/helpers/error';
 
-import { PUBLIC_SITE_URL } from '$env/static/public';
+import { env } from '$env/dynamic/public';
 import { getConvexClient } from '$lib/server/convex';
 import { setMeetingCookie } from '$lib/server/meeting-cookie';
 import { MeetingCode } from '$lib/validation';
@@ -12,13 +12,16 @@ export const GET: RequestHandler = async (event) => {
 	const { params, locals } = event;
 
 	if (!locals.token) {
-		redirect(303, `${PUBLIC_SITE_URL}/sign-in?redirect=${encodeURIComponent(`/m/${params.code}`)}`);
+		redirect(
+			303,
+			`${env.PUBLIC_SITE_URL}/sign-in?redirect=${encodeURIComponent(`/m/${params.code}`)}`,
+		);
 	}
 
 	const parsed = MeetingCode.safeParse(params.code);
 
 	if (!parsed.success) {
-		redirect(303, `${PUBLIC_SITE_URL}/anslut?error=invalid_meeting_code&m=${params.code}`);
+		redirect(303, `${env.PUBLIC_SITE_URL}/anslut?error=invalid_meeting_code&m=${params.code}`);
 	}
 
 	const convex = getConvexClient(event);
@@ -33,7 +36,7 @@ export const GET: RequestHandler = async (event) => {
 		const err = getAppError(e);
 
 		if (err) {
-			redirect(303, `${PUBLIC_SITE_URL}/anslut?error=${err.code}&m=${parsed.data}`);
+			redirect(303, `${env.PUBLIC_SITE_URL}/anslut?error=${err.code}&m=${parsed.data}`);
 		}
 
 		console.log(e);

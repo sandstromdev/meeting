@@ -8,7 +8,7 @@ import { AgendaState } from './agenda.svelte';
 import { SpeakerQueue } from './speaker-queue.svelte';
 import type { DefaultFunctionArgs, FunctionReference } from 'convex/server';
 import type { UseQueryOptions, UseQueryReturn } from '$lib/types';
-import { PUBLIC_SITE_URL } from '$env/static/public';
+import { env } from '$env/dynamic/public';
 
 export type MeetingData = typeof api.users.meeting.getData._returnType;
 
@@ -331,7 +331,7 @@ export class MeetingState {
 	}
 
 	get url() {
-		return `${PUBLIC_SITE_URL}/m/${this.meeting.code}`;
+		return `${env.PUBLIC_SITE_URL}/m/${this.meeting.code}`;
 	}
 }
 
