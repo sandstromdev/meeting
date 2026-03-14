@@ -9,7 +9,7 @@
 
 	let { children, data } = $props();
 
-	createSvelteAuthClient({ authClient, getServerState: () => data.authState });
+	createSvelteAuthClient({ authClient: authClient(fetch), getServerState: () => data.authState });
 
 	// svelte-ignore state_referenced_locally
 	// setupAuth(() => authClient, { initialState: data.authState });

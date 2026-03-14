@@ -10,9 +10,20 @@ const handler = (async ({ request, fetch }) => {
 	}
 
 	const nextUrl = `${convexSiteUrl}${requestUrl.pathname}${requestUrl.search}`;
+
 	const newRequest = new Request(nextUrl, request);
+
 	newRequest.headers.set('host', new URL(nextUrl).host);
 	newRequest.headers.set('accept-encoding', 'application/json');
+
+	console.log({
+		originalUrl: request.url,
+		nextUrl,
+		newRequest: {
+			headers: newRequest.headers,
+			method: newRequest.method,
+		},
+	});
 
 	return await fetch(newRequest, { method: request.method, redirect: 'manual' });
 }) satisfies RequestHandler;

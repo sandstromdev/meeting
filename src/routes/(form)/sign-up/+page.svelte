@@ -43,18 +43,23 @@
 						error = 'Ett fel har inträffat.';
 					}
 				} */
+				if (signUp.result?.success) {
+					console.log({
+						redirect: data.redirect,
+						validateRedirect: validateRedirect(data.redirect),
+					});
 
-				console.log({ redirect: data.redirect, validateRedirect: validateRedirect(data.redirect) });
-
-				if (validateRedirect(data.redirect)) {
-					window.location.pathname = data.redirect;
-				} else {
-					window.location.pathname = '/anslut';
+					if (validateRedirect(data.redirect)) {
+						window.location.pathname = data.redirect;
+					} else {
+						window.location.pathname = '/anslut';
+					}
 				}
 			} catch (e) {
-				loading = false;
 				console.error(e);
 				error = 'Ett fel har inträffat.';
+			} finally {
+				loading = false;
 			}
 		})}
 	>

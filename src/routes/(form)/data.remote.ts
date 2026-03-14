@@ -34,11 +34,10 @@ export const signUp = form(SignUpSchema, async ({ name, email, _password }, issu
 	let e;
 
 	try {
-		const { data, error } = await authClient.signUp.email({
+		const { data, error } = await authClient(event.fetch).signUp.email({
 			name,
 			email,
 			password: _password,
-			fetchOptions: { customFetchImpl: event.fetch },
 		});
 
 		console.log({ data, error });
