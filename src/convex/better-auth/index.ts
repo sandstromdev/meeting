@@ -5,7 +5,6 @@ import { components } from '../_generated/api';
 import type { DataModel } from '../_generated/dataModel';
 import authConfig from '../auth.config';
 import schema from './schema';
-import { dash } from '@better-auth/infra';
 
 export const authComponent = createClient<DataModel, typeof schema>(components.betterAuth, {
 	local: { schema },
@@ -40,7 +39,7 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
 			disableSignUp: true,
 		},
 
-		plugins: [convex({ authConfig }), dash({ apiKey: process.env.BETTER_AUTH_API_KEY })],
+		plugins: [convex({ authConfig })],
 	} satisfies BetterAuthOptions;
 };
 
