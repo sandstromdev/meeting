@@ -5,9 +5,15 @@ import { admin } from '$convex/helpers/auth';
 import { getVotersCounter, getVotesCounter } from '$convex/helpers/counters';
 import { AppError, errors } from '$convex/helpers/error';
 import { assertPollEditable, assertPollInMeeting, getPollOrThrow } from '$convex/helpers/poll';
+import { ABSTAIN_OPTION_LABEL } from '$lib/polls';
 import { FullPollSchema, PollBaseSchema, PollDraftSchema, PollTypeSchema } from '$lib/validation';
 import { zid } from 'convex-helpers/server/zod4';
 import { z } from 'zod';
+
+function optionsWithAbstainLast(options: string[], allowsAbstain: boolean): string[] {
+	const withoutAbstain = options.filter((o) => o !== ABSTAIN_OPTION_LABEL);
+	return allowsAbstain ? [...withoutAbstain, ABSTAIN_OPTION_LABEL] : withoutAbstain;
+}
 
 export const createPoll = admin
 	.mutation()
@@ -31,6 +37,8 @@ export const createPoll = admin
 			isOpen: false,
 			updatedAt: Date.now(),
 		};
+
+		draft.options = optionsWithAbstainLast(draft.options, draft.allowsAbstain);
 
 		const validated = PollBaseSchema.omit({ _id: true, _creationTime: true })
 			.and(PollTypeSchema)
@@ -68,13 +76,15 @@ export const editPoll = admin
 
 		const nextAllowsAbstain = args.edits.allowsAbstain ?? poll.allowsAbstain;
 		const rawOptions = args.edits.options ?? poll.options;
-		const optionsCount = nextAllowsAbstain ? rawOptions.length : rawOptions.length - 1;
+		const options = optionsWithAbstainLast(rawOptions, nextAllowsAbstain);
+		const userOptionsCount =
+			options[options.length - 1] === ABSTAIN_OPTION_LABEL ? options.length - 1 : options.length;
 
-		if (optionsCount < 1 || (optionsCount < 2 && !nextAllowsAbstain)) {
+		if (userOptionsCount < 1 || (userOptionsCount < 2 && !nextAllowsAbstain)) {
 			throw new AppError(
 				errors.invalid_poll_vote_limit({
 					maxVotesPerVoter: 1,
-					optionsCount,
+					optionsCount: userOptionsCount,
 				}),
 			);
 		}
@@ -82,6 +92,7 @@ export const editPoll = admin
 		let updatedFields = {
 			...poll,
 			...args.edits,
+			options,
 		};
 
 		updatedFields.updatedAt = Date.now();

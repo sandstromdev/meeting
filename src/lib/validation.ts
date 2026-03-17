@@ -1,7 +1,10 @@
 import { zid } from 'convex-helpers/server/zod4';
-import { z } from 'zod';
+import * as z from 'zod';
 import { MAJORITY_RULES, POLL_TYPES } from './polls';
 import { ROLES } from './roles';
+import { sv } from 'zod/v4/locales';
+
+z.config(sv());
 
 export const MeetingCode = z
 	.string()
@@ -45,14 +48,16 @@ export const RefinePollDraftSchema = PollDraftSchema.superRefine((data, ctx) => 
 		if (data.winningCount !== 1) {
 			ctx.addIssue({
 				code: 'custom',
-				message: 'Winning count must be 1 for single winner polls',
+				path: ['winningCount'],
+				message: 'Antal vinnare måste vara 1 för omröstningar med endast en vinnare',
 			});
 		}
 
 		if (!data.majorityRule) {
 			ctx.addIssue({
 				code: 'custom',
-				message: 'Majority rule is required for single winner polls',
+				path: ['majorityRule'],
+				message: 'Majoritetsregel är obligatorisk för omröstningar med endast en vinnare',
 			});
 		}
 	}
@@ -60,12 +65,14 @@ export const RefinePollDraftSchema = PollDraftSchema.superRefine((data, ctx) => 
 		if (!data.winningCount) {
 			ctx.addIssue({
 				code: 'custom',
-				message: 'Winning count is required for multi winner polls',
+				path: ['winningCount'],
+				message: 'Antal vinnare är obligatoriskt för omröstningar med flera vinnare',
 			});
 		} else if (data.winningCount < 1 || data.winningCount > data.options.length) {
 			ctx.addIssue({
 				code: 'custom',
-				message: 'Winning count must be between 1 and the number of options',
+				path: ['winningCount'],
+				message: 'Antal vinnare måste vara mellan 1 och antal alternativ',
 			});
 		}
 	}
@@ -73,14 +80,16 @@ export const RefinePollDraftSchema = PollDraftSchema.superRefine((data, ctx) => 
 	if (data.maxVotesPerVoter > data.options.length) {
 		ctx.addIssue({
 			code: 'custom',
-			message: 'Max votes per voter must be between 1 and the number of options',
+			path: ['maxVotesPerVoter'],
+			message: 'Max röster per deltagare måste vara mellan 1 och antal alternativ',
 		});
 	}
 
 	if (data.options.length < 2 && !data.allowsAbstain) {
 		ctx.addIssue({
 			code: 'custom',
-			message: 'At least 2 options are required when vacant option is not included',
+			path: ['options'],
+			message: 'Minst 2 alternativ är obligatoriskt när avstår-alternativet inte inkluderas',
 		});
 	}
 
@@ -89,7 +98,8 @@ export const RefinePollDraftSchema = PollDraftSchema.superRefine((data, ctx) => 
 	if (set.size !== data.options.length) {
 		ctx.addIssue({
 			code: 'custom',
-			message: 'Options must be unique',
+			path: ['options'],
+			message: 'Alternativ måste vara unika',
 		});
 	}
 });

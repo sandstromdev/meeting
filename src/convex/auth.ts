@@ -26,19 +26,22 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
 		// console.error('PUBLIC_SITE_URL is not set');
 	}
 
+	const trustedOrigins = [
+		siteUrl,
+		process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined,
+		process.env.VERCEL_PROJECT_PRODUCTION_URL
+			? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+			: undefined,
+		process.env.PUBLIC_CONVEX_SITE_URL,
+		process.env.TRUSTED_ORIGINS?.split(';').map((origin) => origin.trim()),
+	].filter(Boolean) as string[];
+
 	return {
 		baseURL: siteUrl,
 
 		database: authComponent.adapter(ctx),
 
-		trustedOrigins: [
-			siteUrl,
-			process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined,
-			process.env.VERCEL_PROJECT_PRODUCTION_URL
-				? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-				: undefined,
-			process.env.PUBLIC_CONVEX_SITE_URL,
-		].filter(Boolean) as string[],
+		trustedOrigins,
 
 		emailAndPassword: {
 			enabled: true,

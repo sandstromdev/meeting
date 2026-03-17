@@ -123,6 +123,7 @@ export const nextSpeaker = moderator.mutation().public(async ({ ctx }) => {
 			name: nextEntry.name,
 			startTime: now,
 		},
+		lastConsumedCt: nextEntry._creationTime,
 	});
 });
 

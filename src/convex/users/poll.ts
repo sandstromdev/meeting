@@ -25,13 +25,6 @@ export const vote = withMe
 		AppError.assert(ctx.me.absentSince <= 0, errors.illegal_while_absent('vote'));
 		AppError.assert(poll.isOpen, errors.illegal_poll_action('vote_while_closed'));
 
-		const hasVoted = await ctx.db
-			.query('pollVotes')
-			.withIndex('by_poll_user', (q) => q.eq('pollId', args.pollId).eq('userId', ctx.me._id))
-			.first();
-
-		AppError.assert(!hasVoted, errors.illegal_poll_action('already_voted'));
-
 		const uniqueOptionIndexes = [...new Set(args.optionIndexes)];
 
 		AppError.assert(
@@ -54,6 +47,16 @@ export const vote = withMe
 			);
 		}
 
+		const existingVotes = await ctx.db
+			.query('pollVotes')
+			.withIndex('by_poll_user', (q) => q.eq('pollId', args.pollId).eq('userId', ctx.me._id))
+			.collect();
+
+		if (existingVotes.length > 0) {
+			await Promise.all(existingVotes.map((v) => ctx.db.delete('pollVotes', v._id)));
+			await getVotesCounter(ctx.meeting._id, args.pollId).subtract(ctx, existingVotes.length);
+		}
+
 		await Promise.all(
 			uniqueOptionIndexes.map((optionIndex) =>
 				ctx.db.insert('pollVotes', {
@@ -65,10 +68,42 @@ export const vote = withMe
 			),
 		);
 
-		await Promise.all([
+		const counterUpdates: Promise<unknown>[] = [
 			getVotesCounter(ctx.meeting._id, args.pollId).add(ctx, uniqueOptionIndexes.length),
-			getVotersCounter(ctx.meeting._id, args.pollId).inc(ctx),
-		]);
+		];
+		if (existingVotes.length === 0) {
+			counterUpdates.push(getVotersCounter(ctx.meeting._id, args.pollId).inc(ctx));
+		}
+		await Promise.all(counterUpdates);
+
+		return true;
+	});
+
+export const retractVote = withMe
+	.mutation()
+	.input({
+		pollId: zid('polls'),
+	})
+	.public(async ({ ctx, args }) => {
+		const poll = await getPollOrThrow(ctx.db, args.pollId);
+
+		assertPollInMeeting(poll, ctx.meeting._id);
+
+		AppError.assert(ctx.me.absentSince <= 0, errors.illegal_while_absent('vote'));
+		AppError.assert(poll.isOpen, errors.illegal_poll_action('vote_while_closed'));
+
+		const existingVotes = await ctx.db
+			.query('pollVotes')
+			.withIndex('by_poll_user', (q) => q.eq('pollId', args.pollId).eq('userId', ctx.me._id))
+			.collect();
+
+		if (existingVotes.length === 0) {
+			return true;
+		}
+
+		await Promise.all(existingVotes.map((v) => ctx.db.delete('pollVotes', v._id)));
+		await getVotesCounter(ctx.meeting._id, args.pollId).subtract(ctx, existingVotes.length);
+		await getVotersCounter(ctx.meeting._id, args.pollId).dec(ctx);
 
 		return true;
 	});

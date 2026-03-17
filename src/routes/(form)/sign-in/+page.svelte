@@ -30,6 +30,8 @@
 
 				await submit();
 
+				console.log('signIn.result', signIn.result);
+
 				if (signIn.result?.success) {
 					if (validateRedirect(data.redirect)) {
 						window.location.pathname = data.redirect;
