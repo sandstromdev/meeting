@@ -1,21 +1,29 @@
-import { createClient, type GenericCtx } from '@convex-dev/better-auth';
+import { createClient, type AuthFunctions, type GenericCtx } from '@convex-dev/better-auth';
 import { convex } from '@convex-dev/better-auth/plugins';
 import { betterAuth, type BetterAuthOptions } from 'better-auth/minimal';
-import { components } from '../_generated/api';
-import type { DataModel } from '../_generated/dataModel';
-import authConfig from '../auth.config';
-import schema from './schema';
+import { admin } from 'better-auth/plugins';
+import { components, internal } from './_generated/api';
+import type { DataModel } from './_generated/dataModel';
+import authConfig from './auth.config';
+import authSchema from './betterAuth/schema';
 
-export const authComponent = createClient<DataModel, typeof schema>(components.betterAuth, {
-	local: { schema },
+const authFunctions: AuthFunctions = internal.auth;
+
+export const authComponent = createClient<DataModel, typeof authSchema>(components.betterAuth, {
+	local: {
+		schema: authSchema,
+	},
 	verbose: false,
+	authFunctions,
 });
+
+export const { onCreate, onUpdate, onDelete } = authComponent.triggersApi();
 
 export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
 	const siteUrl = process.env.PUBLIC_SITE_URL;
 
 	if (!siteUrl) {
-		console.error('SITE_URL is not set');
+		// console.error('PUBLIC_SITE_URL is not set');
 	}
 
 	return {
@@ -39,7 +47,7 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
 			disableSignUp: true,
 		},
 
-		plugins: [convex({ authConfig })],
+		plugins: [convex({ authConfig }), admin()],
 	} satisfies BetterAuthOptions;
 };
 

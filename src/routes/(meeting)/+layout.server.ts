@@ -7,7 +7,7 @@ import { convexLoad } from '@mmailaender/convex-svelte/sveltekit';
 import { error, redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
 
-export const load = (async ({ locals, cookies }) => {
+export const load = (async ({ locals, cookies, url }) => {
 	const authState = await getAuthState(createAuth, cookies);
 
 	if (!authState.isAuthenticated) {
@@ -18,15 +18,14 @@ export const load = (async ({ locals, cookies }) => {
 		redirect(307, '/anslut');
 	}
 
+	let meeting;
+
 	try {
-		return {
-			meeting: await convexLoad(
-				api.users.meeting.getData,
-				{ meetingId: locals.meetingId },
-				{ token: locals.token },
-			),
-			meetingId: locals.meetingId,
-		};
+		meeting = await convexLoad(
+			api.users.meeting.getData,
+			{ meetingId: locals.meetingId },
+			{ token: locals.token },
+		);
 	} catch (e) {
 		const err = getAppError(e);
 
@@ -40,4 +39,21 @@ export const load = (async ({ locals, cookies }) => {
 
 		error(500);
 	}
+
+	if (url.pathname === '/' && meeting.data) {
+		const role = meeting.data.me.role;
+
+		if (role === 'admin') {
+			redirect(307, '/admin');
+		}
+
+		if (role === 'moderator') {
+			redirect(307, '/moderator');
+		}
+	}
+
+	return {
+		meeting,
+		meetingId: locals.meetingId,
+	};
 }) satisfies LayoutServerLoad;

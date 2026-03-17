@@ -43,9 +43,9 @@ export const connect = authed
 			});
 
 			await getParticipantCounter(meeting._id).inc(ctx);
-			await getAbsentCounter(meeting._id).inc(ctx);
 
 			if (meeting.isOpen) {
+				await getAbsentCounter(meeting._id).inc(ctx);
 				await ctx.db.insert('absenceEntries', {
 					meetingId: meeting._id,
 					userId: id,

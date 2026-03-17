@@ -8,7 +8,7 @@ declare global {
 		// interface Error {}
 		interface Locals {
 			token?: string;
-			currentUser?: typeof api.auth.getCurrentUser._returnType;
+			currentUser?: typeof api.me.getCurrentUser._returnType;
 			meetingId?: Id<'meetings'>;
 		}
 		// interface PageData {}

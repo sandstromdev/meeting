@@ -2,6 +2,7 @@ import { ConvexError } from 'convex/values';
 import type { Id } from '$convex/_generated/dataModel';
 import { ErrorMessages } from '$lib/errors';
 import { z } from 'zod';
+import type { MaybePromise } from './builder/types';
 
 export const errors = {
 	unauthorized: { code: 'unauthorized' },
@@ -99,6 +100,19 @@ export class AppError<ErrorCode extends AppErrorCode> extends ConvexError<
 		err: ConvexError<Data>,
 	) {
 		return new AppError<ErrorCode>(err.data);
+	}
+
+	static assert(pred: boolean, error: AppErrorObject) {
+		if (!pred) {
+			throw new AppError(error);
+		}
+	}
+
+	static async assertFn(pred: () => MaybePromise<boolean>, error: AppErrorObject) {
+		const result = await pred();
+		if (!result) {
+			throw new AppError(error);
+		}
 	}
 }
 

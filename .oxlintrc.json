@@ -169,7 +169,7 @@
 		} */
 	],
 	"globals": {},
-	"ignorePatterns": [".svelte-kit/**", "src/convex/_generated/**"],
+	"ignorePatterns": [".svelte-kit/**", "**/_generated/**"],
 	"overrides": [
 		{
 			"files": ["**/*.svelte", "**/*.svelte.ts"],

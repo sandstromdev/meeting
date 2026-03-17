@@ -167,6 +167,12 @@ export const Heartbeat = v.object({
 	lastSeenAt: v.number(),
 });
 
+export const User = v.object({
+	email: v.string(),
+	role: v.union(v.literal('admin'), v.literal('user')),
+	userId: v.id('user'),
+});
+
 export default defineSchema(
 	{
 		meetingParticipants: defineTable(MeetingParticipant)

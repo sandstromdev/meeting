@@ -23,7 +23,8 @@
 	const isCurrentSpeaker = $derived(meeting.data.meeting.currentSpeaker?.userId === meeting.me._id);
 
 	const canJoinQueue = $derived(
-		!meeting.me.absentSince &&
+		meeting.isOpen &&
+			!meeting.me.absentSince &&
 			!meeting.me.isInSpeakerQueue &&
 			meeting.meeting.break?.type !== 'accepted' &&
 			meeting.meeting.pointOfOrder?.type !== 'accepted' &&

@@ -4,20 +4,32 @@
 	import { getMeetingContext } from '$lib/context.svelte';
 	import { usePageState } from '$lib/page-state.svelte';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
+	import { Checkbox } from '$lib/components/ui/checkbox';
+	import { SvelteSet } from 'svelte/reactivity';
+	import { useQuery } from '@mmailaender/convex-svelte';
 
 	const meeting = getMeetingContext();
 	const ps = usePageState();
 	const currentPoll = meeting.query(api.users.poll.getCurrentPoll);
 
 	let isSubmitting = $state(false);
-	let selectedOptionIndexes = $state<number[]>([]);
+	let selectedOptionIndexes = new SvelteSet<number>();
 
 	const poll = $derived(currentPoll.data ?? null);
+	const pollResults = useQuery(api.users.poll.getPollResultsById, () => {
+		if (!meeting.id || !poll) {
+			return 'skip';
+		}
+		return { meetingId: meeting.id, pollId: poll.id };
+	});
+	const results = $derived(pollResults.data ?? null);
 	const effectiveSelection = $derived(
 		poll
 			? selectedOptionIndexes
+					.values()
 					.filter((optionIndex) => optionIndex >= 0 && optionIndex < poll.options.length)
-					.slice(0, poll.maxVotesPerVoter)
+					.take(poll.maxVotesPerVoter)
+					.toArray()
 			: [],
 	);
 	const isDialogOpen = $derived(!ps.isProjector && !!poll);
@@ -29,21 +41,16 @@
 			effectiveSelection.length <= poll.maxVotesPerVoter,
 	);
 
-	function toggleOption(optionIndex: number) {
+	function toggleOption(optionIndex: number, checked: boolean) {
 		if (!poll || poll.hasVoted || !poll.isOpen) {
 			return;
 		}
 
-		if (selectedOptionIndexes.includes(optionIndex)) {
-			selectedOptionIndexes = selectedOptionIndexes.filter((i) => i !== optionIndex);
-			return;
+		if (!checked) {
+			selectedOptionIndexes.delete(optionIndex);
+		} else if (selectedOptionIndexes.size < poll.maxVotesPerVoter) {
+			selectedOptionIndexes.add(optionIndex);
 		}
-
-		if (selectedOptionIndexes.length >= poll.maxVotesPerVoter) {
-			return;
-		}
-
-		selectedOptionIndexes = [...selectedOptionIndexes, optionIndex];
 	}
 
 	async function submitVote() {
@@ -57,7 +64,7 @@
 				pollId: poll.id,
 				optionIndexes: effectiveSelection,
 			});
-			selectedOptionIndexes = [];
+			selectedOptionIndexes.clear();
 		} finally {
 			isSubmitting = false;
 		}
@@ -77,7 +84,7 @@
 							Sluten omröstning pågår. Röstande: {poll.votersCount}/{poll.eligibleVoters}. Röster:
 							{poll.votesCount}.
 						{:else}
-							Omröstning stangd. Röstande: {poll.votersCount}/{poll.eligibleVoters}. Röster:
+							Omröstning stängd. Röstande: {poll.votersCount}/{poll.eligibleVoters}. Röster:
 							{poll.votesCount}.
 						{/if}
 					</AlertDialog.Description>
@@ -102,10 +109,9 @@
 							</p>
 							{#each poll.options as option, optionIndex (optionIndex)}
 								<label class="flex items-center gap-2 rounded-md border p-3 text-sm">
-									<input
-										type="checkbox"
+									<Checkbox
 										checked={effectiveSelection.includes(optionIndex)}
-										onchange={() => toggleOption(optionIndex)}
+										onCheckedChange={(checked) => toggleOption(optionIndex, checked)}
 									/>
 									<span>{option}</span>
 								</label>
@@ -119,23 +125,23 @@
 						</div>
 					{/if}
 				{:else}
-					{#if poll.winnerOptionIndexes?.length !== undefined}
+					{#if results?.winnerOptionIndexes?.length !== undefined}
 						<p class="text-sm font-medium">
-							{#if poll.winnerOptionIndexes.length === 0}
-								Ingen vinnare (ingen nadde majoriteten).
-							{:else if poll.isTie}
-								Oavgjort: {poll.winnerOptionIndexes.map((i) => poll.options[i]).join(', ')}
-							{:else if poll.winnerOptionIndexes.length === 1}
-								Vinnare: {poll.options[poll.winnerOptionIndexes[0]]}
+							{#if results.winnerOptionIndexes.length === 0}
+								Ingen vinnare (ingen nådde majoriteten).
+							{:else if results.isTie}
+								Oavgjort: {results.winnerOptionIndexes.map((i) => poll.options[i]).join(', ')}
+							{:else if results.winnerOptionIndexes.length === 1}
+								Vinnare: {poll.options[results.winnerOptionIndexes[0]]}
 							{:else}
-								Vinnare: {poll.winnerOptionIndexes.map((i) => poll.options[i]).join(', ')}
+								Vinnare: {results.winnerOptionIndexes.map((i) => poll.options[i]).join(', ')}
 							{/if}
 						</p>
 					{/if}
 
-					{#if poll.optionTotals}
+					{#if results?.optionTotals}
 						<ul class="space-y-1 text-sm text-muted-foreground">
-							{#each poll.optionTotals as option (option.optionIndex)}
+							{#each results.optionTotals as option (option.optionIndex)}
 								<li>
 									{option.option}: {option.votes} ({(
 										(option.votes / (poll.votesCount || 1)) *
@@ -146,10 +152,11 @@
 						</ul>
 					{:else}
 						<p class="text-sm text-muted-foreground">
-							Resultatet visas endast for administratörer.
+							Resultatet visas endast för administratörer.
 						</p>
 					{/if}
 				{/if}
+
 				{#if meeting.isAdmin}
 					<div class="mt-auto flex items-center gap-2">
 						{#if poll.isOpen}
@@ -157,6 +164,11 @@
 								onclick={() =>
 									meeting.adminMutate(api.admin.poll.closePollAndShowResults, { pollId: poll.id })}
 								>Stäng och visa resultat</Button
+							>
+							<Button
+								variant="destructive"
+								onclick={() => meeting.adminMutate(api.admin.poll.cancelPoll, { pollId: poll.id })}
+								>Avbryt</Button
 							>
 						{:else if meeting.meeting.currentPollId === poll.id}
 							<Button onclick={() => meeting.adminMutate(api.admin.poll.clearCurrentPollId)}

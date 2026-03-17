@@ -1,5 +1,6 @@
 <script lang="ts">
 	import PollDialog from '$lib/components/blocks/poll-dialog.svelte';
+	import ConfirmDialog from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import Delayed from '$lib/components/ui/delayed.svelte';
 	import MessageLayout from '$lib/components/ui/message-layout.svelte';
@@ -7,22 +8,17 @@
 	import AlertTriangleIcon from '@lucide/svelte/icons/alert-triangle';
 	import LoadingIcon from '@lucide/svelte/icons/loader-circle';
 	import type { LayoutProps } from './$types';
+	import UserControls from '$lib/components/blocks/user-controls.svelte';
 
 	let { data, children }: LayoutProps = $props();
-
-	/* const meetingResult = useQuery(
-		api.users.meeting.getData,
-		() => (auth.isAuthenticated ? { meetingId: data.meetingId } : 'skip'),
-		{
-			initialData: data.meeting,
-		},
-	); */
 </script>
 
 {#if data.meeting.data}
 	<MeetingContext data={data.meeting.data}>
 		<PollDialog />
+		<ConfirmDialog />
 		{@render children()}
+		<UserControls />
 	</MeetingContext>
 {:else}
 	<MessageLayout>

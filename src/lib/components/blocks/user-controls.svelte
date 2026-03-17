@@ -6,8 +6,12 @@
 	import { resolve } from '$app/paths';
 	import LogOutIcon from '@lucide/svelte/icons/log-out';
 	import DoorOpenIcon from '@lucide/svelte/icons/door-open';
+	import { confirm } from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
+	import { usePageState } from '$lib/page-state.svelte';
 
 	const meeting = getMeetingContext();
+
+	const ps = usePageState();
 
 	async function leaveMeetingThen(path: '/api/leave-meeting' | '/sign-out') {
 		try {
@@ -23,31 +27,41 @@
 		}
 	}
 
+	function leaveMeeting() {
+		confirm({
+			title: 'Lämna mötet?',
+			description:
+				'Du kommer att lämna mötet. Om du vill komma tillbaka måste en administratör godkänna dig.',
+			confirm: { text: 'Lämna möte' },
+			onConfirm: () => leaveMeetingThen('/api/leave-meeting'),
+		});
+	}
+
+	function signOut() {
+		confirm({
+			title: 'Logga ut?',
+			description:
+				'Du kommer att lämna mötet och loggas ut från ditt konto. Om du vill komma tillbaka måste en administratör godkänna dig.',
+			confirm: { text: 'Logga ut' },
+			onConfirm: () => leaveMeetingThen('/sign-out'),
+		});
+	}
+
 	const canLeave = $derived(!meeting.isCurrentSpeaker);
 </script>
 
-<nav
-	class="flex flex-wrap items-center justify-end gap-2 border-t pt-4"
-	aria-label="Användarinställningar"
->
-	<Button
-		type="button"
-		variant="outline"
-		size="sm"
-		disabled={!canLeave}
-		onclick={async () => await leaveMeetingThen('/api/leave-meeting')}
+{#if !ps.isProjector}
+	<nav
+		class="flex flex-wrap items-center justify-end gap-2 border-t pt-4"
+		aria-label="Användarinställningar"
 	>
-		<DoorOpenIcon class="size-4" />
-		Lämna möte
-	</Button>
-	<Button
-		type="button"
-		variant="outline"
-		size="sm"
-		disabled={!canLeave}
-		onclick={async () => await leaveMeetingThen('/sign-out')}
-	>
-		<LogOutIcon class="size-4" />
-		Logga ut
-	</Button>
-</nav>
+		<Button type="button" variant="outline" size="sm" disabled={!canLeave} onclick={leaveMeeting}>
+			<DoorOpenIcon class="size-4" />
+			Lämna möte
+		</Button>
+		<Button type="button" variant="outline" size="sm" disabled={!canLeave} onclick={signOut}>
+			<LogOutIcon class="size-4" />
+			Logga ut
+		</Button>
+	</nav>
+{/if}

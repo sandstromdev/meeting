@@ -1,14 +1,39 @@
 import type { Id } from '$convex/_generated/dataModel';
-import { ShardedCounter } from '@convex-dev/sharded-counter';
+import type { QueryCtx } from '$convex/_generated/server';
+import { ShardedCounter } from '$convex/counter/client';
 import { components } from '../_generated/api';
 
-const absentCounter = new ShardedCounter<Id<'meetings'>>(components.absentCounter);
-const participantCounter = new ShardedCounter<Id<'meetings'>>(components.participantCounter);
+type Counters =
+	| 'participants'
+	| 'absent'
+	| `voters:${Id<'polls'>}`
+	| `votes:${Id<'polls'>}`
+	| undefined;
+
+const counter = new ShardedCounter<string, Counters>(components.counters);
 
 export function getParticipantCounter(meetingId: Id<'meetings'>) {
-	return participantCounter.for(meetingId);
+	return counter.for(meetingId, `participants`);
 }
 
 export function getAbsentCounter(meetingId: Id<'meetings'>) {
-	return absentCounter.for(meetingId);
+	return counter.for(meetingId, `absent`);
+}
+
+export function getVotersCounter(meetingId: Id<'meetings'>, pollId: Id<'polls'>) {
+	return counter.for(meetingId, `voters:${pollId}`);
+}
+
+export function getVotesCounter(meetingId: Id<'meetings'>, pollId: Id<'polls'>) {
+	return counter.for(meetingId, `votes:${pollId}`);
+}
+
+export function getAllCounters(meetingId: Id<'meetings'>) {
+	return {
+		all: (ctx: QueryCtx) => counter.for(meetingId, undefined).countAll(ctx),
+		participants: getParticipantCounter(meetingId),
+		absent: getAbsentCounter(meetingId),
+		voters: (pollId: Id<'polls'>) => getVotersCounter(meetingId, pollId),
+		votes: (pollId: Id<'polls'>) => getVotesCounter(meetingId, pollId),
+	};
 }

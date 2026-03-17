@@ -1,6 +1,7 @@
 import { zid } from 'convex-helpers/server/zod4';
 import { z } from 'zod';
 import { MAJORITY_RULES, POLL_TYPES } from './polls';
+import { ROLES } from './roles';
 
 export const MeetingCode = z
 	.string()
@@ -95,31 +96,33 @@ export const RefinePollDraftSchema = PollDraftSchema.superRefine((data, ctx) => 
 
 export type PollDraft = z.infer<typeof PollDraftSchema>;
 
-export const PollSchema = z
-	.object({
-		_id: zid('polls'),
-		_creationTime: z.number(),
-		title: z.string().trim().min(1),
-		options: z.array(z.string().trim().min(1)).min(1),
-		isResultPublic: z.boolean(),
-		allowsAbstain: z.boolean(),
-		maxVotesPerVoter: z.number().min(1),
-		meetingId: zid('meetings'),
-		agendaItemId: z.string().optional(),
-		isOpen: z.boolean(),
-		openedAt: z.number().optional(),
-		closedAt: z.number().optional(),
-		updatedAt: z.number(),
-	})
-	.and(
-		z.discriminatedUnion('type', [
-			z.object({
-				type: z.literal('multi_winner'),
-				winningCount: z.number().min(1),
-			}),
-			z.object({
-				type: z.literal('single_winner'),
-				majorityRule: z.enum(MAJORITY_RULES),
-			}),
-		]),
-	);
+export const PollBaseSchema = z.object({
+	_id: zid('polls'),
+	_creationTime: z.number(),
+	title: z.string().trim().min(1),
+	options: z.array(z.string().trim().min(1)).min(1),
+	isResultPublic: z.boolean(),
+	allowsAbstain: z.boolean(),
+	maxVotesPerVoter: z.number().min(1),
+	meetingId: zid('meetings'),
+	agendaItemId: z.string().optional(),
+	isOpen: z.boolean(),
+	openedAt: z.number().optional(),
+	closedAt: z.number().optional(),
+	updatedAt: z.number(),
+});
+
+export const PollTypeSchema = z.discriminatedUnion('type', [
+	z.object({
+		type: z.literal('multi_winner'),
+		winningCount: z.number().min(1),
+	}),
+	z.object({
+		type: z.literal('single_winner'),
+		majorityRule: z.enum(MAJORITY_RULES),
+	}),
+]);
+
+export const FullPollSchema = PollBaseSchema.and(PollTypeSchema);
+
+export const RoleSchema = z.enum(ROLES);

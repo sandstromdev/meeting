@@ -308,6 +308,10 @@ export class MeetingState {
 		};
 	}
 
+	get isOpen() {
+		return this.meeting.isOpen;
+	}
+
 	get role() {
 		return this.data?.me.role;
 	}

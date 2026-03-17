@@ -1,7 +1,13 @@
 import { withMe } from '$convex/helpers/auth';
 import { AppError, errors } from '$convex/helpers/error';
 import { assertPollInMeeting, computeWinners, getPollOrThrow } from '$convex/helpers/poll';
-import { getAbsentCounter, getParticipantCounter } from '$convex/helpers/counters';
+import {
+	getAbsentCounter,
+	getParticipantCounter,
+	getVotesCounter,
+	getVotersCounter,
+	getAllCounters,
+} from '$convex/helpers/counters';
 import { zid } from 'convex-helpers/server/zod4';
 import { z } from 'zod';
 
@@ -15,40 +21,37 @@ export const vote = withMe
 		const poll = await getPollOrThrow(ctx.db, args.pollId);
 
 		assertPollInMeeting(poll, ctx.meeting._id);
-		if (ctx.me.absentSince) {
-			throw new AppError(errors.illegal_while_absent('vote'));
-		}
 
-		if (!poll.isOpen) {
-			throw new AppError(errors.illegal_poll_action('vote_while_closed'));
-		}
+		AppError.assert(ctx.me.absentSince <= 0, errors.illegal_while_absent('vote'));
+		AppError.assert(poll.isOpen, errors.illegal_poll_action('vote_while_closed'));
 
-		const existingVote = await ctx.db
+		const hasVoted = await ctx.db
 			.query('pollVotes')
 			.withIndex('by_poll_user', (q) => q.eq('pollId', args.pollId).eq('userId', ctx.me._id))
 			.first();
 
-		if (existingVote) {
-			throw new AppError(errors.illegal_poll_action('already_voted'));
-		}
+		AppError.assert(!hasVoted, errors.illegal_poll_action('already_voted'));
 
 		const uniqueOptionIndexes = [...new Set(args.optionIndexes)];
 
-		if (uniqueOptionIndexes.length !== args.optionIndexes.length) {
-			throw new AppError(errors.illegal_poll_action('duplicate_vote_option'));
-		}
+		AppError.assert(
+			uniqueOptionIndexes.length === args.optionIndexes.length,
+			errors.illegal_poll_action('duplicate_vote_option'),
+		);
 
 		const maxVotesPerVoter =
 			poll.type === 'multi_winner' ? poll.winningCount : poll.maxVotesPerVoter;
 
-		if (uniqueOptionIndexes.length > maxVotesPerVoter) {
-			throw new AppError(errors.illegal_poll_action('too_many_votes'));
-		}
+		AppError.assert(
+			uniqueOptionIndexes.length <= maxVotesPerVoter,
+			errors.illegal_poll_action('too_many_votes'),
+		);
 
 		for (const optionIndex of uniqueOptionIndexes) {
-			if (optionIndex < 0 || optionIndex >= poll.options.length) {
-				throw new AppError(errors.invalid_poll_option(optionIndex));
-			}
+			AppError.assert(
+				optionIndex >= 0 && optionIndex < poll.options.length,
+				errors.invalid_poll_option(optionIndex),
+			);
 		}
 
 		await Promise.all(
@@ -62,23 +65,10 @@ export const vote = withMe
 			),
 		);
 
-		/* const eligibleVoters = Math.max(0, (ctx.meeting.participants ?? 0) - (ctx.meeting.absent ?? 0));
-
-		if (eligibleVoters > 0) {
-			const votes = await ctx.db
-				.query('pollVotes')
-				.withIndex('by_poll', (q) => q.eq('pollId', args.pollId))
-				.collect();
-			const votersCount = new Set(votes.map((vote) => vote.userId)).size;
-			if (votersCount >= eligibleVoters) {
-				const now = Date.now();
-				await ctx.db.patch('polls', args.pollId, {
-					isOpen: false,
-					closedAt: now,
-					updatedAt: now,
-				});
-			}
-		} */
+		await Promise.all([
+			getVotesCounter(ctx.meeting._id, args.pollId).add(ctx, uniqueOptionIndexes.length),
+			getVotersCounter(ctx.meeting._id, args.pollId).inc(ctx),
+		]);
 
 		return true;
 	});
@@ -104,10 +94,20 @@ export const getPollsByAgendaItemId = withMe
 
 		return Promise.all(
 			polls.map(async (poll) => {
-				const votes = await ctx.db
-					.query('pollVotes')
-					.withIndex('by_poll', (q) => q.eq('pollId', poll._id))
-					.collect();
+				const [votesCount, votersCount, myVotes] = await Promise.all([
+					getVotesCounter(ctx.meeting._id, poll._id).count(ctx),
+					getVotersCounter(ctx.meeting._id, poll._id).count(ctx),
+					ctx.db
+						.query('pollVotes')
+						.withIndex('by_poll_user', (q) => q.eq('pollId', poll._id).eq('userId', ctx.me._id))
+						.collect(),
+				]);
+
+				const myVoteOptionIndexes = myVotes.map((v) => v.optionIndex);
+				const hasVoted = myVoteOptionIndexes.length > 0;
+
+				const pollMaxVotes =
+					poll.type === 'single_winner' ? eligibleVoters : eligibleVoters * poll.maxVotesPerVoter;
 
 				const optionTotals = poll.options.map((option, optionIndex) => ({
 					optionIndex,
@@ -115,26 +115,9 @@ export const getPollsByAgendaItemId = withMe
 					votes: 0,
 				}));
 
-				const voters = new Set<string>();
-				const myVoteOptionIndexes: number[] = [];
-
-				for (const vote of votes) {
-					voters.add(vote.userId);
-					optionTotals[vote.optionIndex].votes += 1;
-					if (vote.userId === ctx.me._id) {
-						myVoteOptionIndexes.push(vote.optionIndex);
-					}
-				}
-
-				const hasVoted = myVoteOptionIndexes.length > 0;
-				const votesCount = votes.length;
-				const votersCount = voters.size;
-
-				const pollMaxVotes =
-					poll.type === 'single_winner' ? eligibleVoters : eligibleVoters * poll.maxVotesPerVoter;
-
-				const winners = computeWinners(poll, optionTotals, votesCount, pollMaxVotes);
-				const canSeeResults = !poll.isOpen && (poll.isResultPublic || ctx.me.role === 'admin');
+				const winners = poll.isOpen
+					? null
+					: computeWinners(poll, optionTotals, votesCount, pollMaxVotes);
 
 				return {
 					id: poll._id,
@@ -147,9 +130,8 @@ export const getPollsByAgendaItemId = withMe
 					eligibleVoters,
 					hasVoted,
 					myVoteOptionIndexes,
-					optionTotals: canSeeResults ? optionTotals : undefined,
-					winnerOptionIndexes: canSeeResults ? winners.winnerOptionIndexes : undefined,
-					isTie: canSeeResults ? winners.isTie : undefined,
+					winnerOptionIndexes: winners?.winnerOptionIndexes,
+					isTie: winners?.isTie,
 				};
 			}),
 		);
@@ -168,42 +150,25 @@ export const getCurrentPoll = withMe.query().public(async ({ ctx }) => {
 		return null;
 	}
 
-	const [participants, absentees, votes] = await Promise.all([
-		getParticipantCounter(ctx.meeting._id).count(ctx),
-		getAbsentCounter(ctx.meeting._id).count(ctx),
-		ctx.db
-			.query('pollVotes')
-			.withIndex('by_poll', (q) => q.eq('pollId', poll._id))
-			.collect(),
+	const counters = getAllCounters(ctx.meeting._id);
+
+	const [participants, absentees, votesCount, votersCount] = await Promise.all([
+		counters.participants.count(ctx),
+		counters.absent.count(ctx),
+		counters.votes(poll._id).count(ctx),
+		counters.voters(poll._id).count(ctx),
 	]);
+
+	let votes = await ctx.db
+		.query('pollVotes')
+		.withIndex('by_poll_user', (q) => q.eq('pollId', poll._id).eq('userId', ctx.me._id))
+		.collect();
 
 	const eligibleVoters = Math.max(0, participants - absentees);
 
-	const optionTotals = poll.options.map((option, optionIndex) => ({
-		optionIndex,
-		option,
-		votes: 0,
-	}));
-
-	const voters = new Set<string>();
-	const myVoteOptionIndexes: number[] = [];
-
-	for (const vote of votes) {
-		voters.add(vote.userId);
-		optionTotals[vote.optionIndex].votes += 1;
-		if (vote.userId === ctx.me._id) {
-			myVoteOptionIndexes.push(vote.optionIndex);
-		}
-	}
+	const myVoteOptionIndexes = votes.map((v) => v.optionIndex);
 
 	const hasVoted = myVoteOptionIndexes.length > 0;
-	const votesCount = votes.length;
-	const votersCount = voters.size;
-
-	const pollMaxVotes =
-		poll.type === 'single_winner' ? eligibleVoters : eligibleVoters * poll.maxVotesPerVoter;
-	const winners = computeWinners(poll, optionTotals, votesCount, pollMaxVotes);
-	const canSeeTotals = !poll.isOpen && (poll.isResultPublic || ctx.me.role === 'admin');
 
 	return {
 		id: poll._id,
@@ -217,8 +182,60 @@ export const getCurrentPoll = withMe.query().public(async ({ ctx }) => {
 		eligibleVoters,
 		hasVoted,
 		myVoteOptionIndexes,
-		optionTotals: canSeeTotals ? optionTotals : undefined,
-		winnerOptionIndexes: winners.winnerOptionIndexes,
-		isTie: winners.isTie,
 	};
 });
+
+export const getPollResultsById = withMe
+	.query()
+	.input({
+		pollId: zid('polls'),
+	})
+	.public(async ({ ctx, args }) => {
+		const poll = await getPollOrThrow(ctx.db, args.pollId);
+		assertPollInMeeting(poll, ctx.meeting._id);
+
+		if (poll.isOpen) {
+			return null;
+		}
+
+		const [participants, absentees, votes] = await Promise.all([
+			getParticipantCounter(ctx.meeting._id).count(ctx),
+			getAbsentCounter(ctx.meeting._id).count(ctx),
+			ctx.db
+				.query('pollVotes')
+				.withIndex('by_poll', (q) => q.eq('pollId', poll._id))
+				.collect(),
+		]);
+
+		const eligibleVoters = Math.max(0, participants - absentees);
+		const votesCount = votes.length;
+		const votersCount = new Set(votes.map((v) => v.userId)).size;
+
+		const optionTotals = poll.options.map((option, optionIndex) => ({
+			optionIndex,
+			option,
+			votes: 0,
+		}));
+
+		for (const vote of votes) {
+			if (vote.optionIndex >= 0 && vote.optionIndex < optionTotals.length) {
+				optionTotals[vote.optionIndex].votes += 1;
+			}
+		}
+
+		const pollMaxVotes =
+			poll.type === 'single_winner' ? eligibleVoters : eligibleVoters * poll.maxVotesPerVoter;
+
+		const winners = computeWinners(poll, optionTotals, votesCount, pollMaxVotes);
+
+		const canSeeOptionTotals = poll.isResultPublic || ctx.me.role === 'admin';
+
+		return {
+			pollId: poll._id,
+			votesCount,
+			votersCount,
+			winnerOptionIndexes: winners.winnerOptionIndexes,
+			isTie: winners.isTie,
+			optionTotals: canSeeOptionTotals ? optionTotals : undefined,
+		};
+	});

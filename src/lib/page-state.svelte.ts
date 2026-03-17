@@ -1,59 +1,40 @@
-import { browser } from '$app/environment';
-import { goto } from '$app/navigation';
+import { resolve } from '$app/paths';
 import { page } from '$app/state';
-import { z } from 'zod';
 
-export function setParam(key: keyof Params, value: Params[keyof Params]) {
-	if (!browser) {
-		return;
-	}
+export type View = 'projector' | 'queue' | 'default';
+export type ProjectorMode = 'intro' | 'meeting';
 
-	const sp = page.url.searchParams;
-	sp.set(key, value);
-
-	// eslint-disable-next-line svelte/no-navigation-without-resolve
-	goto('?' + sp.toString(), {});
-}
 export function usePageState() {
-	const params = $derived(validateSearchParams(page.url));
+	const projectorBase = resolve('/admin/projector');
+	const projectorIntroPath = resolve('/admin/projector/intro');
+	const adminQueuePath = resolve('/admin/queue');
+	const moderatorPath = resolve('/moderator');
 
 	return {
-		get view() {
-			return params.view;
-		},
-		set view(value: View) {
-			setParam('view', value);
+		get view(): View {
+			const p = page.url.pathname;
+			if (p.startsWith(projectorBase)) {
+				return 'projector';
+			}
+			if (p === adminQueuePath || p === moderatorPath) {
+				return 'queue';
+			}
+			return 'default';
 		},
 
-		get projectorMode() {
-			return params.projectorMode;
-		},
-		set projectorMode(value: ProjectorMode) {
-			setParam('projectorMode', value);
+		get projectorMode(): ProjectorMode {
+			return page.url.pathname === projectorIntroPath ? 'intro' : 'meeting';
 		},
 
 		get isProjector() {
-			return params.view === 'projector';
+			return page.url.pathname.startsWith(projectorBase);
 		},
 		get isQueue() {
-			return params.view === 'queue';
+			const p = page.url.pathname;
+			return p === adminQueuePath || p === moderatorPath;
 		},
 		get isDefault() {
-			return params.view === 'default';
+			return !this.isProjector && !this.isQueue;
 		},
 	};
 }
-
-export function validateSearchParams(url: URL) {
-	const parsed = ParamsSchema.safeParse(Object.fromEntries(url.searchParams.entries()));
-	return parsed.success ? parsed.data : ParamsSchema.parse({});
-}
-
-export const ParamsSchema = z.object({
-	view: z.enum(['projector', 'queue', 'default']).catch('default'),
-	projectorMode: z.enum(['intro', 'meeting']).catch('meeting'),
-});
-
-export type Params = z.infer<typeof ParamsSchema>;
-export type View = Params['view'];
-export type ProjectorMode = Params['projectorMode'];

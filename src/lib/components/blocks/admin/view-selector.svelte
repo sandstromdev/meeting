@@ -1,15 +1,15 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
+	import { page } from '$app/state';
+	import type { Pathname } from '$app/types';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import DropdownMenuContent from '$lib/components/ui/dropdown-menu/dropdown-menu-content.svelte';
 	import DropdownMenuGroup from '$lib/components/ui/dropdown-menu/dropdown-menu-group.svelte';
+	import DropdownMenuItem from '$lib/components/ui/dropdown-menu/dropdown-menu-item.svelte';
 	import DropdownMenuLabel from '$lib/components/ui/dropdown-menu/dropdown-menu-label.svelte';
-	import DropdownMenuRadioGroup from '$lib/components/ui/dropdown-menu/dropdown-menu-radio-group.svelte';
-	import DropdownMenuRadioItem from '$lib/components/ui/dropdown-menu/dropdown-menu-radio-item.svelte';
 	import DropdownMenuSeparator from '$lib/components/ui/dropdown-menu/dropdown-menu-separator.svelte';
 	import DropdownMenuTrigger from '$lib/components/ui/dropdown-menu/dropdown-menu-trigger.svelte';
 	import DropdownMenu from '$lib/components/ui/dropdown-menu/dropdown-menu.svelte';
-	import { usePageState } from '$lib/page-state.svelte';
-	import type { View } from '$lib/page-state.svelte';
 	import { cn } from '$lib/utils';
 	import ListOrderedIcon from '@lucide/svelte/icons/list-ordered';
 	import MonitorIcon from '@lucide/svelte/icons/monitor';
@@ -17,102 +17,99 @@
 	import SettingsIcon from '@lucide/svelte/icons/settings';
 	import UsersIcon from '@lucide/svelte/icons/users';
 
-	let {
-		compact = false,
-		triggerClass = 'absolute top-8 right-8',
-	}: { compact?: boolean; triggerClass?: string } = $props();
+	let { triggerClass = 'absolute top-8 right-8' }: { triggerClass?: string } = $props();
 
-	const ps = usePageState();
+	const routes = {
+		admin: resolve('/admin'),
+		queue: resolve('/admin/queue'),
+		projector: resolve('/admin/projector'),
+		projectorIntro: resolve('/admin/projector/intro'),
+	};
 
-	type MenuItem = { value: string; label: string; icon: typeof MonitorIcon };
+	type MenuItem = {
+		href: Pathname;
+		label: string;
+		icon: typeof MonitorIcon;
+		isSelected?: () => boolean;
+	};
 	type MenuGroup = {
 		condition?: () => boolean;
-		label?: string;
-		bindKey: 'view' | 'projectorMode';
+		label: string;
 		items: MenuItem[];
 	};
 
-	const menuGroups = [
+	const menuGroups: MenuGroup[] = [
 		{
 			label: 'View',
-			bindKey: 'view',
 			items: [
-				{ value: 'projector', label: 'Projektor', icon: MonitorIcon },
-				{ value: 'queue', label: 'Talarkö', icon: ListOrderedIcon },
-				{ value: 'default', label: 'Admin', icon: SettingsIcon },
+				{
+					href: '/admin/projector',
+					label: 'Projektor',
+					icon: MonitorIcon,
+					isSelected: () => page.url.pathname.startsWith('/admin/projector'),
+				},
+				{ href: '/admin/queue', label: 'Talarkö', icon: ListOrderedIcon },
+				{ href: '/admin', label: 'Admin', icon: SettingsIcon },
 			],
 		},
 		{
-			condition: () => ps.isProjector,
+			condition: () => isProjector,
 			label: 'Projector',
-			bindKey: 'projectorMode',
 			items: [
-				{ value: 'intro', label: 'Intro mode', icon: PresentationIcon },
-				{ value: 'meeting', label: 'Meeting mode', icon: UsersIcon },
+				{
+					href: '/admin/projector/intro',
+					label: 'Intro mode',
+					icon: PresentationIcon,
+				},
+				{
+					href: '/admin/projector',
+					label: 'Meeting mode',
+					icon: UsersIcon,
+				},
 			],
 		},
-	] satisfies MenuGroup[];
+	];
+
+	const isProjector = $derived(page.url.pathname.startsWith(routes.projector));
 
 	const shownMenuGroups = $derived(menuGroups.filter((group) => group.condition?.() !== false));
 </script>
 
-{#snippet radioGroup(group: MenuGroup)}
-	<DropdownMenuRadioGroup bind:value={ps[group.bindKey]}>
-		{#each group.items as { value, label, icon: Icon } (value)}
-			<DropdownMenuRadioItem variant="fill" {value}>
-				<Icon class="size-4 shrink-0" />
-				{label}
-			</DropdownMenuRadioItem>
+<DropdownMenu>
+	<DropdownMenuTrigger class={triggerClass}>
+		{#snippet child({ props })}
+			<Button variant="outline" size="icon" {...props}>
+				<MonitorIcon class="size-4" />
+			</Button>
+		{/snippet}
+	</DropdownMenuTrigger>
+	<DropdownMenuContent align="end">
+		{#each shownMenuGroups as group, i (i)}
+			{#if i > 0}
+				<DropdownMenuSeparator />
+			{/if}
+			<DropdownMenuGroup>
+				<DropdownMenuLabel>{group.label}</DropdownMenuLabel>
+				{#each group.items as { href, label, icon: Icon, isSelected } (href)}
+					<DropdownMenuItem>
+						{#snippet child({ props })}
+							<a
+								href={resolve(href)}
+								aria-current={isSelected?.() ?? page.url.pathname === href}
+								{...props}
+								class={cn(
+									props.class as string,
+									(isSelected?.() ?? page.url.pathname === href) &&
+										'bg-muted text-muted-foreground',
+								)}
+							>
+								<Icon class="size-4 shrink-0" />
+								{label}
+							</a>
+						{/snippet}
+					</DropdownMenuItem>
+				{/each}
+			</DropdownMenuGroup>
 		{/each}
-	</DropdownMenuRadioGroup>
-{/snippet}
-
-{#if compact}
-	<DropdownMenu>
-		<DropdownMenuTrigger class={triggerClass}>
-			{#snippet child({ props })}
-				<Button variant="outline" size="icon" {...props}>
-					<MonitorIcon class="size-4" />
-				</Button>
-			{/snippet}
-		</DropdownMenuTrigger>
-		<DropdownMenuContent align="end">
-			{#each shownMenuGroups as group, i (group.bindKey)}
-				{#if i > 0}
-					<DropdownMenuSeparator />
-				{/if}
-				{#if group.label}
-					<DropdownMenuGroup>
-						<DropdownMenuLabel>{group.label}</DropdownMenuLabel>
-						{@render radioGroup(group)}
-					</DropdownMenuGroup>
-				{:else}
-					{@render radioGroup(group)}
-				{/if}
-			{/each}
-		</DropdownMenuContent>
-	</DropdownMenu>
-{:else}
-	<div class={cn('flex gap-2', compact ? 'flex-row' : 'flex-col px-4 py-3')}>
-		{#if !compact}
-			<h2 class="font-semibold">Vy</h2>
-		{/if}
-		<div class="grid grid-cols-3 gap-2">
-			{#each menuGroups[0].items as { value, label, icon: Icon } (value)}
-				<Button
-					type="button"
-					variant={ps.view === value ? 'default' : 'outline'}
-					disabled={ps.view === value}
-					class={cn(
-						'flex items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium transition-colors',
-						ps.view === value ? 'bg-primary text-primary-foreground' : 'hover:bg-muted/50',
-					)}
-					onclick={() => (ps.view = value as View)}
-				>
-					<Icon class="size-4 shrink-0" />
-					{label}
-				</Button>
-			{/each}
-		</div>
-	</div>
-{/if}
+	</DropdownMenuContent>
+</DropdownMenu>

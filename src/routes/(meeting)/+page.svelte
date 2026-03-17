@@ -1,43 +1,32 @@
 <script lang="ts">
-	import ViewSelector from '$lib/components/blocks/admin/view-selector.svelte';
+	import Agenda from '$lib/components/blocks/agenda.svelte';
+	import CurrentAgendaItem from '$lib/components/blocks/current-agenda-item.svelte';
+	import MeetingInfo from '$lib/components/blocks/meeting-info.svelte';
+	import QueueControls from '$lib/components/blocks/queue-controls.svelte';
+	import RequestView from '$lib/components/blocks/request-view.svelte';
+	import SpeakerQueue from '$lib/components/blocks/speaker-queue.svelte';
+	import Timer from '$lib/components/blocks/timer.svelte';
 	import UserControls from '$lib/components/blocks/user-controls.svelte';
-	import ConfirmDialog from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
 	import { getMeetingContext } from '$lib/context.svelte';
-	import { usePageState } from '$lib/page-state.svelte.js';
-	import AdminView from '$lib/views/admin-view.svelte';
-	import ModeratorView from '$lib/views/moderator-view.svelte';
-	import ParticipantView from '$lib/views/participant-view.svelte';
-	import ProjectorView from '$lib/views/projector-view.svelte';
+	import { useNow } from '$lib/now.svelte';
 
-	let { data } = $props();
+	const ctx = getMeetingContext();
 
-	const ps = usePageState();
-	const meeting = getMeetingContext();
+	const now = useNow();
 </script>
 
-<ConfirmDialog />
-
-{#if meeting.isAdmin}
-	<div class="absolute top-8 right-8">
-		<ViewSelector compact triggerClass="" />
+{#if !ctx.meeting.isOpen || !ctx.meeting.startedAt || now.current < ctx.meeting.startedAt}
+	<div class="flex min-h-[50vh] flex-col items-center justify-center gap-4">
+		<p class="text-center text-2xl font-semibold">Mötet har inte börjat ännu</p>
 	</div>
+{:else}
+	<main class="mx-auto max-w-2xl space-y-4 p-4 lg:py-12">
+		<MeetingInfo />
+		<CurrentAgendaItem />
+		<Timer />
+		<Agenda />
+		<RequestView />
+		<QueueControls />
+		<SpeakerQueue />
+	</main>
 {/if}
-
-<div class="mx-auto space-y-8 p-4 lg:py-12">
-	{#if meeting.isParticipant}
-		<ParticipantView />
-	{:else if meeting.role === 'moderator'}
-		<ModeratorView />
-	{:else if meeting.role === 'admin'}
-		{#if ps.isProjector}
-			<ProjectorView />
-		{:else if ps.isQueue}
-			<ModeratorView />
-		{:else}
-			<AdminView />
-		{/if}
-	{/if}
-	{#if !ps.isProjector}
-		<UserControls />
-	{/if}
-</div>

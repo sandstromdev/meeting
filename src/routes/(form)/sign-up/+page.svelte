@@ -15,6 +15,11 @@
 	const errors = $derived([{ message: error }, ...(signUp.fields.issues() ?? [])]);
 
 	const { name, email, _password } = signUp.fields;
+
+	const signInUrl = $derived(
+		resolve('/sign-in') +
+			(validateRedirect(data.redirect) ? `?redirect=${encodeURIComponent(data.redirect)}` : ''),
+	);
 </script>
 
 <div class="max-w-sm rounded-md border px-6 py-5">
@@ -68,7 +73,7 @@
 
 			<Separator />
 
-			<Button href={resolve('/sign-in')} variant="outline">Logga in</Button>
+			<Button href={signInUrl} variant="outline">Logga in</Button>
 		</Field.Set>
 	</form>
 </div>

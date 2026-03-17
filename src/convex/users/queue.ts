@@ -51,9 +51,7 @@ export const getNextSpeakers = withMe.query().public(async ({ ctx }) => {
 	return await ctx.db
 		.query('speakerQueueEntries')
 		.withIndex('by_meeting', (q) =>
-			q
-				.eq('meetingId', ctx.meeting._id)
-				.gt('_creationTime', ctx.meeting.lastConsumedCreationTime ?? -1),
+			q.eq('meetingId', ctx.meeting._id).gt('_creationTime', ctx.meeting.lastConsumedCt ?? -1),
 		)
 		.order('asc')
 		.take(10);
@@ -87,15 +85,12 @@ export const placeInSpeakerQueue = withMe.mutation().public(async ({ ctx }) => {
 
 export const recallSpeakerQueueRequest = withMe.mutation().public(async ({ ctx }) => {
 	const { db, meeting, me } = ctx;
-	const lastConsumedCreationTime = meeting.lastConsumedCreationTime ?? -1;
+	const lastConsumedCt = meeting.lastConsumedCt ?? -1;
 
 	const entries = await db
 		.query('speakerQueueEntries')
 		.withIndex('by_meeting_user', (q) =>
-			q
-				.eq('meetingId', meeting._id)
-				.eq('userId', me._id)
-				.gt('_creationTime', lastConsumedCreationTime),
+			q.eq('meetingId', meeting._id).eq('userId', me._id).gt('_creationTime', lastConsumedCt),
 		)
 		.collect();
 
@@ -135,18 +130,16 @@ export const doneSpeaking = withMe.mutation().public(async ({ ctx }) => {
 		return false;
 	}
 
-	const consumedCreationTime = currentSpeaker.creationTime;
+	const consumedCt = currentSpeaker.ct;
 
 	await logSpeakerSlot(ctx, 'speaker', currentSpeaker, currentSpeaker.startTime, now);
 
 	await db.patch('meetingParticipants', me._id, { isInSpeakerQueue: false });
 
-	if (consumedCreationTime !== undefined) {
+	if (consumedCt !== undefined) {
 		const currentEntry = await db
 			.query('speakerQueueEntries')
-			.withIndex('by_meeting', (q) =>
-				q.eq('meetingId', _id).eq('_creationTime', consumedCreationTime),
-			)
+			.withIndex('by_meeting', (q) => q.eq('meetingId', _id).eq('_creationTime', consumedCt))
 			.first();
 		if (currentEntry) {
 			await db.delete('speakerQueueEntries', currentEntry._id);
@@ -154,25 +147,26 @@ export const doneSpeaking = withMe.mutation().public(async ({ ctx }) => {
 	}
 
 	const previousSpeaker = {
+		ct: consumedCt ?? meeting.lastConsumedCt ?? -1,
 		userId: currentSpeaker.userId,
 		name: currentSpeaker.name,
 		startTime: currentSpeaker.startTime,
-		creationTime: consumedCreationTime ?? meeting.lastConsumedCreationTime ?? -1,
+		creationTime: consumedCt ?? meeting.lastConsumedCt ?? -1,
 	};
 
-	const nextCursor = consumedCreationTime ?? meeting.lastConsumedCreationTime ?? -1;
+	const nextCursor = consumedCt ?? meeting.lastConsumedCt ?? -1;
 
 	if (meeting.pointOfOrder?.type === 'accepted' || meeting.reply?.type === 'accepted') {
 		await db.patch('meetings', _id, {
 			previousSpeaker,
-			lastConsumedCreationTime: nextCursor,
+			lastConsumedCt: nextCursor,
 			currentSpeaker: null,
 		});
 		return true;
 	}
 
-	if (consumedCreationTime !== undefined) {
-		await db.patch('meetings', _id, { lastConsumedCreationTime: consumedCreationTime });
+	if (consumedCt !== undefined) {
+		await db.patch('meetings', _id, { lastConsumedCt: consumedCt });
 	}
 
 	const candidates = await db
@@ -201,10 +195,7 @@ export const doneSpeaking = withMe.mutation().public(async ({ ctx }) => {
 		latestMeeting.currentSpeaker != null
 			? {
 					...latestMeeting.currentSpeaker,
-					creationTime:
-						latestMeeting.currentSpeaker.creationTime ??
-						latestMeeting.lastConsumedCreationTime ??
-						-1,
+					creationTime: latestMeeting.currentSpeaker.ct ?? latestMeeting.lastConsumedCt ?? -1,
 				}
 			: null;
 	await db.patch('meetings', _id, {
@@ -213,7 +204,7 @@ export const doneSpeaking = withMe.mutation().public(async ({ ctx }) => {
 			userId: nextEntry.userId,
 			name: nextEntry.name,
 			startTime: now,
-			creationTime: nextEntry._creationTime,
+			ct: nextEntry._creationTime,
 		},
 	});
 	return true;

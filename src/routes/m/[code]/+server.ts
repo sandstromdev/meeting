@@ -13,7 +13,7 @@ export const GET: RequestHandler = async (event) => {
 
 	if (!locals.token) {
 		redirect(
-			303,
+			307,
 			`${env.PUBLIC_SITE_URL}/sign-in?redirect=${encodeURIComponent(`/m/${params.code}`)}`,
 		);
 	}
@@ -21,7 +21,7 @@ export const GET: RequestHandler = async (event) => {
 	const parsed = MeetingCode.safeParse(params.code);
 
 	if (!parsed.success) {
-		redirect(303, `${env.PUBLIC_SITE_URL}/anslut?error=invalid_meeting_code&m=${params.code}`);
+		redirect(307, `${env.PUBLIC_SITE_URL}/anslut?error=invalid_meeting_code&m=${params.code}`);
 	}
 
 	const convex = getConvexClient(event);
@@ -36,12 +36,12 @@ export const GET: RequestHandler = async (event) => {
 		const err = getAppError(e);
 
 		if (err) {
-			redirect(303, `${env.PUBLIC_SITE_URL}/anslut?error=${err.code}&m=${parsed.data}`);
+			redirect(307, `${env.PUBLIC_SITE_URL}/anslut?error=${err.code}&m=${parsed.data}`);
 		}
 
 		console.log(e);
 		error(500);
 	}
 
-	redirect(303, '/');
+	redirect(307, '/');
 };
