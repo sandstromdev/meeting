@@ -8,7 +8,7 @@
  * @module
  */
 
-import type { FunctionReference } from 'convex/server';
+import type { FunctionReference } from "convex/server";
 
 /**
  * A utility for referencing a Convex component's exposed API.
@@ -21,49 +21,68 @@ import type { FunctionReference } from 'convex/server';
  * }
  * ```
  */
-export type ComponentApi<Name extends string | undefined = string | undefined> = {
-	public: {
-		add: FunctionReference<
-			'mutation',
-			'internal',
-			{
-				count: number;
-				key?: string;
-				name: string;
-				shard?: number;
-				shards?: number;
-			},
-			number,
-			Name
-		>;
-		count: FunctionReference<'query', 'internal', { key?: string; name: string }, number, Name>;
-		countAll: FunctionReference<
-			'query',
-			'internal',
-			{ name: string },
-			Record<string, number>,
-			Name
-		>;
-		estimateCount: FunctionReference<
-			'query',
-			'internal',
-			{
-				key?: string;
-				name: string;
-				readFromShards?: number;
-				shards?: number;
-			},
-			any,
-			Name
-		>;
-		rebalance: FunctionReference<
-			'mutation',
-			'internal',
-			{ key?: string; name: string; shards?: number },
-			any,
-			Name
-		>;
-		reset: FunctionReference<'mutation', 'internal', { key?: string; name: string }, any, Name>;
-		resetAll: FunctionReference<'mutation', 'internal', { name: string }, any, Name>;
-	};
-};
+export type ComponentApi<Name extends string | undefined = string | undefined> =
+  {
+    public: {
+      add: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          count: number;
+          key?: string;
+          name: string;
+          shard?: number;
+          shards?: number;
+        },
+        number,
+        Name
+      >;
+      count: FunctionReference<
+        "query",
+        "internal",
+        { key?: string; name: string },
+        number,
+        Name
+      >;
+      countAll: FunctionReference<
+        "query",
+        "internal",
+        { name: string },
+        Record<string, number>,
+        Name
+      >;
+      estimateCount: FunctionReference<
+        "query",
+        "internal",
+        {
+          key?: string;
+          name: string;
+          readFromShards?: number;
+          shards?: number;
+        },
+        any,
+        Name
+      >;
+      rebalance: FunctionReference<
+        "mutation",
+        "internal",
+        { key?: string; name: string; shards?: number },
+        any,
+        Name
+      >;
+      reset: FunctionReference<
+        "mutation",
+        "internal",
+        { key?: string; name: string },
+        any,
+        Name
+      >;
+      resetAll: FunctionReference<
+        "mutation",
+        "internal",
+        { name: string },
+        any,
+        Name
+      >;
+    };
+  };

@@ -9,4 +9,4 @@ bun.lockb
 /static/
 
 # Convex generated files
-/src/convex/_generated/
+**/_generated/** 
