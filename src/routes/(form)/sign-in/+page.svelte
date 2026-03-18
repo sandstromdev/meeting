@@ -40,9 +40,10 @@
 					}
 				}
 			} catch (e) {
-				loading = false;
 				console.error(e);
 				error = 'Ett fel har inträffat.';
+			} finally {
+				loading = false;
 			}
 		})}
 	>

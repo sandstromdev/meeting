@@ -1,12 +1,22 @@
 import { authClient } from '$lib/auth-client';
-import { deleteMeetingCookie } from '$lib/server/meeting-cookie';
 import { redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { deleteMeetingCookie } from '$lib/server/meeting-cookie';
 
-export const GET = (async ({ cookies }) => {
-	await authClient.signOut();
+export const GET = (async ({ cookies, url, fetch }) => {
+	await authClient.signOut({
+		fetchOptions: {
+			customFetchImpl: fetch,
+		},
+	});
 
 	deleteMeetingCookie(cookies);
 
-	redirect(307, '/sign-in');
+	const redirectUrl = url.searchParams.get('redirect');
+
+	if (redirectUrl) {
+		redirect(307, redirectUrl);
+	}
+
+	return new Response(null, { status: 204 });
 }) satisfies RequestHandler;

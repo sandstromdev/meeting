@@ -1,8 +1,7 @@
 import { deleteMeetingCookie } from '$lib/server/meeting-cookie';
-import { redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
 export const GET = (async ({ cookies }) => {
 	deleteMeetingCookie(cookies);
-	redirect(307, '/anslut');
+	return new Response(null, { status: 204 });
 }) satisfies RequestHandler;

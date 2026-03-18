@@ -13,7 +13,7 @@ export const connectForm = form(ConnectFormSchema, async (data, issue) => {
 	try {
 		const id = await convex.mutation(api.users.auth.connect, data);
 
-		setMeetingCookie(event, id);
+		setMeetingCookie(event.cookies, id);
 	} catch (e) {
 		const err = getAppError(e);
 

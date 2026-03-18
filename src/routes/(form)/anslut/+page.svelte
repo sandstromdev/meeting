@@ -77,8 +77,10 @@
 						Inloggad som <span class="font-semibold text-foreground">{data.currentUser.email}</span
 						>.<br />
 						Inte du?
-						<a class="text-primary underline" href={resolve('/sign-out')} data-sveltekit-reload
-							>Byt konto</a
+						<a
+							class="text-primary underline"
+							href={resolve('/api/sign-out?redirect=/sign-in')}
+							data-sveltekit-reload>Byt konto</a
 						>.
 					</p>
 				{/if}

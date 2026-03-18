@@ -24,7 +24,7 @@ const auth: Handle = async ({ event, resolve }) => {
 	const token = await getToken(createAuth, event.cookies);
 
 	event.locals.token = token;
-	event.locals.meetingId = getMeetingCookie();
+	event.locals.meetingId = getMeetingCookie(event.cookies);
 
 	return withServerConvexToken(token, () => resolve(event));
 };
