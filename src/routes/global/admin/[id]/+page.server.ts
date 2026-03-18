@@ -2,8 +2,8 @@ import { authClient } from '$lib/auth-client';
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
-export const load = (async ({ params, fetch }) => {
-	const { data: user, error: err } = await authClient(fetch).admin.getUser({
+export const load = (async ({ params }) => {
+	const { data: user, error: err } = await authClient.admin.getUser({
 		query: { id: params.id },
 	});
 

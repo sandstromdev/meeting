@@ -2,11 +2,11 @@ import { api } from '$convex/_generated/api';
 import { getAppError } from '$convex/helpers/error';
 
 import { env } from '$env/dynamic/public';
-import { getConvexClient } from '$lib/server/convex';
 import { setMeetingCookie } from '$lib/server/meeting-cookie';
 import { MeetingCode } from '$lib/validation';
 import { error, redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { getConvexClient } from '$lib/server/convex';
 
 export const GET: RequestHandler = async (event) => {
 	const { params, locals } = event;
@@ -24,7 +24,7 @@ export const GET: RequestHandler = async (event) => {
 		redirect(307, `${env.PUBLIC_SITE_URL}/anslut?error=invalid_meeting_code&m=${params.code}`);
 	}
 
-	const convex = getConvexClient(event);
+	const convex = getConvexClient();
 
 	try {
 		const meetingId = await convex.mutation(api.users.auth.connect, {

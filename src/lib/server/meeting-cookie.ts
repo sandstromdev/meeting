@@ -25,8 +25,8 @@ export function getMeetingCookie() {
 	return id as Id<'meetings'> | undefined;
 }
 
-export function deleteMeetingCookie() {
-	const event = getRequestEvent();
+export function deleteMeetingCookie(event?: RequestEvent) {
+	event ??= getRequestEvent();
 
 	event.cookies.set(cookieName, '', {
 		path: '/',
@@ -44,7 +44,9 @@ export async function getMeeting() {
 		return null;
 	}
 
-	return getConvexClient().query(api.meetings.getMeetingById, { meetingId });
+	const convex = getConvexClient();
+
+	return convex.query(api.meetings.getMeetingById, { meetingId });
 }
 
 export async function getMeetingData() {
@@ -54,7 +56,7 @@ export async function getMeetingData() {
 		return null;
 	}
 
-	return getConvexClient(getRequestEvent())
-		.query(api.users.meeting.getData, { meetingId })
-		.catch(() => null);
+	const convex = getConvexClient();
+
+	return convex.query(api.users.meeting.getData, { meetingId }).catch(() => null);
 }

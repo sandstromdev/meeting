@@ -26,10 +26,10 @@
 
 		const results = await Promise.all([
 			role !== (data.user.role ?? 'user')
-				? authClient().admin.setRole({ userId: data.user.id, role })
+				? authClient.admin.setRole({ userId: data.user.id, role })
 				: null,
 			name !== data.user.name
-				? authClient().admin.updateUser({ userId: data.user.id, data: { name } })
+				? authClient.admin.updateUser({ userId: data.user.id, data: { name } })
 				: null,
 		]);
 
@@ -55,7 +55,7 @@
 		loading = true;
 		error = undefined;
 
-		const { error: err } = await authClient().admin.removeUser({
+		const { error: err } = await authClient.admin.removeUser({
 			userId: data.user.id,
 		});
 

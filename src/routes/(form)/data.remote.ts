@@ -1,16 +1,13 @@
-import { form, getRequestEvent } from '$app/server';
+import { form } from '$app/server';
 import { authClient } from '$lib/auth-client';
 import { ErrorMessages } from '$lib/errors';
 import { invalid } from '@sveltejs/kit';
 import { SignInSchema, SignUpSchema } from './schema';
 
 export const signIn = form(SignInSchema, async ({ email, _password }) => {
-	const event = getRequestEvent();
-
-	const { error } = await authClient(event.fetch).signIn.email({
+	const { error } = await authClient.signIn.email({
 		email,
 		password: _password,
-		fetchOptions: { customFetchImpl: event.fetch },
 	});
 
 	if (error?.code === 'INVALID_EMAIL_OR_PASSWORD') {
@@ -23,9 +20,7 @@ export const signIn = form(SignInSchema, async ({ email, _password }) => {
 });
 
 export const signUp = form(SignUpSchema, async ({ name, email, _password }, issue) => {
-	const event = getRequestEvent();
-
-	const { error } = await authClient(event.fetch).signUp.email({
+	const { error } = await authClient.signUp.email({
 		name,
 		email,
 		password: _password,

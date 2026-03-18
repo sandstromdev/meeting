@@ -3,6 +3,7 @@ import { env } from '$env/dynamic/public';
 import { ENVIRONMENT, TRUSTED_ORIGINS } from '$env/static/private';
 import { getMeetingCookie } from '$lib/server/meeting-cookie';
 import { getToken } from '@mmailaender/convex-better-auth-svelte/sveltekit';
+import { withServerConvexToken } from '@mmailaender/convex-svelte/sveltekit/server';
 import { type Handle } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
 
@@ -20,10 +21,12 @@ const auth: Handle = async ({ event, resolve }) => {
 	process.env.TRUSTED_ORIGINS = TRUSTED_ORIGINS;
 	process.env.ENVIRONMENT = ENVIRONMENT;
 
-	event.locals.token = await getToken(createAuth, event.cookies);
+	const token = await getToken(createAuth, event.cookies);
+
+	event.locals.token = token;
 	event.locals.meetingId = getMeetingCookie();
 
-	return resolve(event);
+	return withServerConvexToken(token, () => resolve(event));
 };
 
 export const handle = sequence(auth);

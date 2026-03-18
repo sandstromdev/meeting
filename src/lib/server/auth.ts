@@ -1,8 +1,8 @@
 import { getRequestEvent } from '$app/server';
-import { type RequestEvent } from '@sveltejs/kit';
-import { assertAuthed } from './guards';
-import { getConvexClient } from '$lib/server/convex';
 import { api } from '$convex/_generated/api';
+import { type RequestEvent } from '@sveltejs/kit';
+import { getConvexClient } from './convex';
+import { assertAuthed } from './guards';
 
 export function getAuthedRequestEvent() {
 	const event = getRequestEvent();
@@ -15,8 +15,7 @@ export function getAuthedRequestEvent() {
 }
 
 export async function getCurrentUser() {
-	const event = getAuthedRequestEvent();
-	const client = getConvexClient(event);
+	const client = getConvexClient();
 
 	return await client.query(api.me.getCurrentUser, {}).catch(() => undefined);
 }

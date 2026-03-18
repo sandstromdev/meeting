@@ -19,7 +19,7 @@
 		loading = true;
 		error = undefined;
 
-		const { error: err } = await authClient().admin.createUser({
+		const { error: err } = await authClient.admin.createUser({
 			name,
 			email,
 			password,

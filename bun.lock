@@ -7,8 +7,8 @@
       "dependencies": {
         "@convex-dev/better-auth": "^0.11.2",
         "@fontsource-variable/nunito": "^5.2.7",
-        "@mmailaender/convex-better-auth-svelte": "^0.6.2",
-        "@mmailaender/convex-svelte": "^0.17.1",
+        "@mmailaender/convex-better-auth-svelte": "^0.7.0",
+        "@mmailaender/convex-svelte": "^0.18.0",
         "better-auth": "1.5.3",
         "convex": "^1.33.1",
         "oxlint": "^1.56.0",
@@ -172,9 +172,9 @@
 
     "@mapbox/node-pre-gyp": ["@mapbox/node-pre-gyp@2.0.3", "", { "dependencies": { "consola": "^3.2.3", "detect-libc": "^2.0.0", "https-proxy-agent": "^7.0.5", "node-fetch": "^2.6.7", "nopt": "^8.0.0", "semver": "^7.5.3", "tar": "^7.4.0" }, "bin": { "node-pre-gyp": "bin/node-pre-gyp" } }, "sha512-uwPAhccfFJlsfCxMYTwOdVfOz3xqyj8xYL3zJj8f0pb30tLohnnFPhLuqp4/qoEz8sNxe4SESZedcBojRefIzg=="],
 
-    "@mmailaender/convex-better-auth-svelte": ["@mmailaender/convex-better-auth-svelte@0.6.2", "", { "dependencies": { "is-network-error": "^1.3.0" }, "peerDependencies": { "@convex-dev/better-auth": ">=0.10.10", "@mmailaender/convex-svelte": ">=0.15.0", "better-auth": "^1.4.9", "convex": "^1.31.0", "svelte": "^5.0.0" } }, "sha512-2+1Su6b3Isqx89iEG+V+cJMYBToryWPX1klN/fP2c1V3FmB9BTZ6NpKOvlDEWsO2Ed4OGJ8PBmIVUrci4KTeYA=="],
+    "@mmailaender/convex-better-auth-svelte": ["@mmailaender/convex-better-auth-svelte@0.7.0", "", { "dependencies": { "is-network-error": "^1.3.0" }, "peerDependencies": { "@convex-dev/better-auth": ">=0.10.10", "@mmailaender/convex-svelte": ">=0.15.0", "better-auth": "^1.4.9", "convex": "^1.31.0", "svelte": "^5.0.0" } }, "sha512-mCto5rlnXu8CGqrzSkSMERiExcnD2Fwh3dn0Ujsn1CknQg5tYlMf9s+2rGh2l8hytSnuWhlIh7bqWjuit30dWg=="],
 
-    "@mmailaender/convex-svelte": ["@mmailaender/convex-svelte@0.17.1", "", { "dependencies": { "esm-env": "^1.2.2", "runed": "^0.37.1" }, "peerDependencies": { "convex": ">1.10.0", "svelte": ">=5.36.0" } }, "sha512-ZeqcSP6swk6v0wbkxw/tBVY4Nms5oNHtPVPhGSvGI1S0RvhsRuTi7sQeIP+F8gMSMNxdg+k5UJyLWgJ2m7RIKg=="],
+    "@mmailaender/convex-svelte": ["@mmailaender/convex-svelte@0.18.0", "", { "dependencies": { "esm-env": "^1.2.2", "runed": "^0.37.1" }, "peerDependencies": { "convex": ">1.10.0", "svelte": ">=5.36.0" } }, "sha512-2dv4cQjThk2Hs9BRrvKv8xc/Z6GqZP428uV9OTzVYBHih65uTF+/r3cqnEnDJv34H2Rr7TOHrfpCu/9aXP2yUg=="],
 
     "@napi-rs/wasm-runtime": ["@napi-rs/wasm-runtime@1.1.1", "", { "dependencies": { "@emnapi/core": "^1.7.1", "@emnapi/runtime": "^1.7.1", "@tybys/wasm-util": "^0.10.1" } }, "sha512-p64ah1M1ld8xjWv3qbvFwHiFVWrq1yFvV4f7w+mzaqiR4IlSgkqhcRdHwsGgomwzBH51sRY4NEowLxnaBjcW/A=="],
 
