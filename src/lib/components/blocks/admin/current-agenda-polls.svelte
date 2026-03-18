@@ -3,6 +3,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { confirm } from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
 	import { getMeetingContext } from '$lib/context.svelte';
+	import { ABSTAIN_OPTION_LABEL, getVoteShare } from '$lib/polls';
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
 
 	const meeting = getMeetingContext();
@@ -11,6 +12,15 @@
 	const pollsResult = meeting.adminQuery(api.admin.poll.getPollsByAgendaItemId, () =>
 		currentAgendaItem ? { agendaItemId: currentAgendaItem.id } : 'skip',
 	);
+
+	function isWinningOption(
+		winners: {
+			optionIndex: number;
+		}[],
+		optionIndex: number,
+	) {
+		return winners.some((winner) => winner.optionIndex === optionIndex);
+	}
 </script>
 
 <section class="rounded-lg border p-4">
@@ -35,52 +45,107 @@
 									- Visas nu
 								{/if}
 							</p>
+							<p class="mt-1 text-xs text-muted-foreground">
+								Röstande: {poll.votersCount}/{poll.eligibleVoters}. Röster: {poll.votesCount}.
+							</p>
 						</div>
-						{#if poll.isOpen}
-							<Button
-								size="sm"
-								variant="outline"
-								onClickPromise={() =>
-									meeting.adminMutate(api.admin.poll.closePollByAdmin, { pollId: poll._id })}
-							>
-								Stäng
-							</Button>
-						{:else if poll.closedAt != null}
-							<Button
-								size="sm"
-								onClickPromise={() =>
-									meeting.adminMutate(api.admin.poll.showPollResults, { pollId: poll._id })}
-								>Visa resultat</Button
-							>
-							<Button
-								size="sm"
-								variant="outline"
-								onClickPromise={() =>
-									meeting.adminMutate(api.admin.poll.duplicatePoll, { pollId: poll._id })}
-							>
-								Duplicera
-							</Button>
-							<Button
-								size="icon-sm"
-								variant="destructive"
-								onclick={() =>
-									confirm({
-										title: 'Ta bort omröstning?',
-										description: 'Är du säker på att du vill ta bort denna omröstning?',
-										onConfirm: () =>
-											meeting.adminMutate(api.admin.poll.removePoll, { pollId: poll._id }),
-									})}
-							>
-								<Trash2Icon class="size-4" />
-							</Button>
-						{:else}
-							<Button
-								size="sm"
-								onClickPromise={() =>
-									meeting.adminMutate(api.admin.poll.openPoll, { pollId: poll._id })}>Öppna</Button
-							>
-						{/if}
+						<div class="flex shrink-0 flex-wrap items-center justify-end gap-2">
+							{#if poll.isOpen}
+								<Button
+									size="sm"
+									variant="outline"
+									onClickPromise={() =>
+										meeting.adminMutate(api.admin.poll.closePollByAdmin, { pollId: poll._id })}
+								>
+									Stäng
+								</Button>
+							{:else if poll.closedAt != null}
+								<Button
+									size="sm"
+									onClickPromise={() =>
+										meeting.adminMutate(api.admin.poll.showPollResults, { pollId: poll._id })}
+									>Visa resultat</Button
+								>
+								<Button
+									size="sm"
+									variant="outline"
+									onClickPromise={() =>
+										meeting.adminMutate(api.admin.poll.duplicatePoll, { pollId: poll._id })}
+								>
+									Duplicera
+								</Button>
+								<Button
+									size="icon-sm"
+									variant="destructive"
+									onclick={() =>
+										confirm({
+											title: 'Ta bort omröstning?',
+											description: 'Är du säker på att du vill ta bort denna omröstning?',
+											onConfirm: () =>
+												meeting.adminMutate(api.admin.poll.removePoll, { pollId: poll._id }),
+										})}
+								>
+									<Trash2Icon class="size-4" />
+								</Button>
+							{:else}
+								<Button
+									size="sm"
+									onClickPromise={() =>
+										meeting.adminMutate(api.admin.poll.openPoll, { pollId: poll._id })}
+									>Öppna</Button
+								>
+							{/if}
+						</div>
 					</div>
+
+					{#if poll.closedAt != null && poll.results}
+						<div class="mt-3 space-y-2">
+							<p class="text-xs font-medium text-muted-foreground">
+								{#if poll.results.winners.length === 0}
+									Ingen vinnare.
+								{:else if poll.results.isTie}
+									Oavgjort mellan {poll.results.winners.length} alternativ.
+								{:else}
+									{poll.results.winners.length} vinnande alternativ.
+								{/if}
+							</p>
+							<div class="grid gap-2 md:grid-cols-2">
+								{#each poll.results.optionTotals as option (option.optionIndex)}
+									<div
+										class={`rounded-md border p-3 ${
+											isWinningOption(poll.results.winners, option.optionIndex)
+												? 'border-primary bg-primary/5'
+												: 'bg-background'
+										}`}
+									>
+										<div class="flex items-start justify-between gap-3">
+											<div class="min-w-0">
+												<p class="text-sm font-medium">{option.option}</p>
+												<p class="text-xs text-muted-foreground">
+													{option.votes} röster •
+													{getVoteShare(
+														option.votes,
+														option.option === ABSTAIN_OPTION_LABEL
+															? poll.results.counts.totalVotes
+															: poll.results.counts.usableVotes,
+													)}%
+												</p>
+											</div>
+											{#if isWinningOption(poll.results.winners, option.optionIndex)}
+												<span class="text-xs font-medium text-primary">Vinnare</span>
+											{/if}
+										</div>
+									</div>
+								{/each}
+							</div>
+							<p class="text-xs text-muted-foreground">
+								Komplett resultat: {poll.complete ? 'ja' : 'nej'}. Avstår: {getVoteShare(
+									poll.results.counts.abstain,
+									poll.results.counts.totalVotes,
+								)}%.
+							</p>
+						</div>
+					{/if}
 				</div>
 			{/each}
 		</div>

@@ -1,11 +1,25 @@
 import { internal } from '$convex/_generated/api';
+import type { Id } from '$convex/_generated/dataModel';
 import { c } from '$convex/helpers';
 import { findAgendaItemById, setPollIdsForItem } from '$convex/helpers/agenda';
 import { admin } from '$convex/helpers/auth';
-import { getVotersCounter, getVotesCounter } from '$convex/helpers/counters';
+import {
+	getAbsentCounter,
+	getParticipantCounter,
+	getVotersCounter,
+	getVotesCounter,
+} from '$convex/helpers/counters';
 import { AppError, errors } from '$convex/helpers/error';
-import { assertPollEditable, assertPollInMeeting, getPollOrThrow } from '$convex/helpers/poll';
-import { ABSTAIN_OPTION_LABEL } from '$lib/polls';
+import {
+	assertPollEditable,
+	assertPollInMeeting,
+	buildPollResultSnapshot,
+	stripAbstain,
+	getLatestPollResultSnapshot,
+	getPollOrThrow,
+	type OptionTotal,
+} from '$convex/helpers/poll';
+import { ABSTAIN_OPTION_LABEL, minimumVotesForMajority } from '$lib/polls';
 import { FullPollSchema, PollBaseSchema, PollDraftSchema, PollTypeSchema } from '$lib/validation';
 import { zid } from 'convex-helpers/server/zod4';
 import { z } from 'zod';
@@ -127,6 +141,9 @@ export const openPoll = admin
 					closedAt: now,
 					updatedAt: now,
 				});
+				await ctx.scheduler.runAfter(0, internal.admin.poll.createPollResultSnapshotAction, {
+					pollId: currentPoll._id,
+				});
 				didChange = true;
 			}
 		}
@@ -188,6 +205,9 @@ export const closePollByAdmin = admin
 				closedAt: now,
 				updatedAt: now,
 			});
+			await ctx.scheduler.runAfter(0, internal.admin.poll.createPollResultSnapshotAction, {
+				pollId: args.pollId,
+			});
 			didChange = true;
 		}
 
@@ -214,10 +234,15 @@ export const closePollAndShowResults = admin
 			return false;
 		}
 
+		const now = Date.now();
 		await ctx.db.patch('polls', args.pollId, {
 			isOpen: false,
-			closedAt: Date.now(),
-			updatedAt: Date.now(),
+			closedAt: now,
+			updatedAt: now,
+		});
+
+		await ctx.scheduler.runAfter(0, internal.admin.poll.createPollResultSnapshotAction, {
+			pollId: args.pollId,
 		});
 
 		return true;
@@ -332,12 +357,57 @@ export const getPollsByAgendaItemId = admin
 		agendaItemId: z.string(),
 	})
 	.public(async ({ ctx, args }) => {
-		return ctx.db
-			.query('polls')
-			.withIndex('by_meeting_agendaItem', (q) =>
-				q.eq('meetingId', ctx.meeting._id).eq('agendaItemId', args.agendaItemId),
-			)
-			.collect();
+		const [participants, absentees, polls] = await Promise.all([
+			getParticipantCounter(ctx.meeting._id).count(ctx),
+			getAbsentCounter(ctx.meeting._id).count(ctx),
+			ctx.db
+				.query('polls')
+				.withIndex('by_meeting_agendaItem', (q) =>
+					q.eq('meetingId', ctx.meeting._id).eq('agendaItemId', args.agendaItemId),
+				)
+				.collect(),
+		]);
+
+		const eligibleVoters = Math.max(0, participants - absentees);
+
+		return Promise.all(
+			polls.map(async (poll) => {
+				const [votesCount, votersCount] = await Promise.all([
+					getVotesCounter(ctx.meeting._id, poll._id).count(ctx),
+					getVotersCounter(ctx.meeting._id, poll._id).count(ctx),
+				]);
+
+				const latestResult = poll.closedAt
+					? await getLatestPollResultSnapshot(ctx.db, poll._id)
+					: null;
+
+				if (poll.isOpen || poll.closedAt == null) {
+					return Object.assign({}, poll, {
+						votesCount,
+						votersCount,
+						eligibleVoters,
+						complete: undefined,
+						results: undefined,
+						winnerOptionIndexes: undefined,
+						isTie: undefined,
+						winners: undefined,
+						optionTotals: undefined,
+					});
+				}
+
+				return Object.assign({}, poll, {
+					votesCount,
+					votersCount,
+					eligibleVoters,
+					complete: latestResult?.complete,
+					results: latestResult?.results,
+					winnerOptionIndexes: latestResult?.results.winners.map((winner) => winner.optionIndex),
+					isTie: latestResult?.results.isTie,
+					winners: latestResult?.results.winners,
+					optionTotals: latestResult?.results.optionTotals,
+				});
+			}),
+		);
 	});
 
 export const duplicatePoll = admin
@@ -408,4 +478,151 @@ export const cancelPoll = admin
 		}
 
 		return true;
+	});
+
+export const insertPollResultSnapshot = c
+	.mutation()
+	.input({
+		poll: FullPollSchema,
+		complete: z.boolean(),
+		results: z.object({
+			optionTotals: z.array(
+				z.object({
+					optionIndex: z.number(),
+					option: z.string(),
+					votes: z.number(),
+				}),
+			),
+			winners: z.array(
+				z.object({
+					optionIndex: z.number(),
+					option: z.string(),
+					votes: z.number(),
+				}),
+			),
+			isTie: z.boolean(),
+			majorityRule: z.enum(['simple', 'two_thirds', 'three_quarters', 'unanimous']).optional(),
+			counts: z.object({
+				totalVotes: z.number(),
+				eligibleVoters: z.number(),
+				usableVotes: z.number(),
+				abstain: z.number(),
+			}),
+		}),
+	})
+	.internal(async ({ ctx, args }) => {
+		if (args.poll.closedAt == null) {
+			return false;
+		}
+
+		const latestSnapshot = await getLatestPollResultSnapshot(ctx.db, args.poll._id);
+
+		if (latestSnapshot?.closedAt === args.poll.closedAt) {
+			return false;
+		}
+
+		await ctx.db.insert('pollResults', buildPollResultSnapshot(args));
+
+		return true;
+	});
+
+export const createPollResultSnapshotAction = c
+	.action()
+	.input({ pollId: zid('polls') })
+	.internal(async ({ ctx, args }): Promise<boolean> => {
+		const results = await ctx.runQuery(internal.admin.poll.getPollResults, { pollId: args.pollId });
+
+		if (results.poll.isOpen || results.poll.closedAt == null) {
+			return false;
+		}
+
+		return ctx.runMutation(internal.admin.poll.insertPollResultSnapshot, results);
+	});
+
+export const getPollResults = c
+	.query()
+	.input({ pollId: zid('polls') })
+	.internal(async ({ ctx, args }) => {
+		const poll = await getPollOrThrow(ctx.db, args.pollId);
+
+		const [participants, absentees, votes] = await Promise.all([
+			getParticipantCounter(poll.meetingId).count(ctx),
+			getAbsentCounter(poll.meetingId).count(ctx),
+			ctx.db
+				.query('pollVotes')
+				.withIndex('by_poll', (q) => q.eq('pollId', poll._id))
+				.collect(),
+		]);
+
+		let complete = true;
+
+		const eligibleVoters = Math.max(0, participants - absentees);
+
+		const optionTotals = poll.options.map((option, optionIndex) => ({
+			optionIndex,
+			option,
+			votes: 0,
+		}));
+
+		const uniqueVoters = new Set<Id<'meetingParticipants'>>();
+
+		for (const vote of votes) {
+			uniqueVoters.add(vote.userId);
+			if (vote.optionIndex >= 0 && vote.optionIndex < optionTotals.length) {
+				optionTotals[vote.optionIndex].votes += 1;
+			}
+		}
+
+		if (eligibleVoters !== uniqueVoters.size) {
+			console.warn(
+				`Eligible voter count ${eligibleVoters} does not match unique voter count ${uniqueVoters.size}`,
+			);
+			complete = false;
+		}
+
+		const options = stripAbstain(optionTotals, poll.allowsAbstain).toSorted(
+			(a, b) => b.votes - a.votes,
+		);
+		const usableVotes = options.reduce((acc, o) => acc + o.votes, 0);
+
+		let winners: OptionTotal[];
+		let isTie: boolean;
+		let majorityRule = undefined;
+
+		if (poll.type === 'multi_winner') {
+			const wc = Math.max(1, Math.min(poll.winningCount, options.length));
+			const thresholdVotes = options[wc - 1]?.votes ?? 0;
+			winners = options.filter((o) => o.votes >= thresholdVotes);
+			const lastWinnerVotes = winners[wc - 1]?.votes;
+			isTie =
+				lastWinnerVotes != null && options.filter((o) => o.votes === lastWinnerVotes).length > 1;
+		} else {
+			const minVotes = minimumVotesForMajority(poll.majorityRule, usableVotes);
+			const topVotes = options[0]?.votes;
+			winners = options.filter((o) => o.votes >= minVotes && o.votes === topVotes);
+			isTie = winners.length > 1;
+			majorityRule = poll.majorityRule;
+		}
+
+		const votesWithoutAbstain = options.reduce((acc, o) => acc + o.votes, 0);
+
+		return {
+			poll,
+
+			complete,
+
+			results: {
+				optionTotals,
+				winners,
+				isTie,
+				majorityRule,
+
+				counts: {
+					totalVotes: votes.length,
+					eligibleVoters,
+					usableVotes,
+					abstain: votes.length - votesWithoutAbstain,
+				},
+			},
+		};
 	});

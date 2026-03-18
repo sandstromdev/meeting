@@ -9,6 +9,7 @@
 	import XIcon from '@lucide/svelte/icons/x';
 	import { useQuery } from '@mmailaender/convex-svelte';
 	import { api } from '$convex/_generated/api';
+	import Request from '$lib/components/blocks/admin/request.svelte';
 
 	const meeting = getMeetingContext();
 	const now = useNow();
@@ -20,72 +21,26 @@
 	const returnRequests = $derived(returnRequestsResult.data ?? []);
 </script>
 
-{#snippet request(
-	text: string,
-	duration: number | null,
-	variant: 'default' | 'warning' | 'destructive',
-	approve: () => Promise<void>,
-	deny: () => Promise<void>,
-)}
-	<div
-		class={cn(
-			'flex items-center gap-2 rounded-md border border-current/10 py-2 pr-1 pl-3 text-sm',
-			variant === 'default' && 'bg-card text-card-foreground',
-			variant === 'warning' && 'bg-yellow-50 text-yellow-800',
-			variant === 'destructive' && 'bg-red-50 text-red-800',
-		)}
-	>
-		<div>
-			<p>{text}</p>
-			{#if duration}
-				<p class="text-xs text-current/80">
-					{formatDuration(now.since(duration))}
-				</p>
-			{/if}
-		</div>
-		<div class="ml-auto flex gap-0.5">
-			<Button
-				variant="ghost"
-				size="icon"
-				onClickPromise={() => approve()}
-				type="button"
-				class="hover:bg-current/5"
-			>
-				<CheckIcon class="size-4 text-green-500" />
-			</Button>
-			<Button
-				variant="ghost"
-				size="icon"
-				onClickPromise={() => deny()}
-				type="button"
-				class="hover:bg-current/5"
-			>
-				<XIcon class="size-4 text-red-500" />
-			</Button>
-		</div>
-	</div>
-{/snippet}
-
 {#if returnRequests.length > 0}
 	<div class="space-y-2 p-4">
 		<div class="font-medium">Återkomstbegäran</div>
 		<div class="space-y-2">
 			{#each returnRequests as req (req.userId)}
-				{@render request(
-					req.name,
-					req.requestedAt,
-					'warning',
-					async () => {
+				<Request
+					text={req.name}
+					duration={req.requestedAt}
+					variant="warning"
+					approve={async () => {
 						await meeting.adminMutate(api.admin.meeting.approveReturnRequest, {
 							userId: req.userId,
 						});
-					},
-					async () => {
+					}}
+					deny={async () => {
 						await meeting.adminMutate(api.admin.meeting.denyReturnRequest, {
 							userId: req.userId,
 						});
-					},
-				)}
+					}}
+				/>
 			{/each}
 		</div>
 	</div>
@@ -100,17 +55,17 @@
 		</p>
 
 		{#if meeting.meeting.break.type === 'requested'}
-			{@render request(
-				'Acceptera streck?',
-				null,
-				'warning',
-				async () => {
+			<Request
+				text="Acceptera streck?"
+				duration={null}
+				variant="warning"
+				approve={async () => {
 					await meeting.adminMutate(api.admin.meeting.acceptBreak);
-				},
-				async () => {
+				}}
+				deny={async () => {
 					await meeting.adminMutate(api.admin.meeting.clearBreak);
-				},
-			)}
+				}}
+			/>
 		{:else}
 			<Button
 				variant="outline"
@@ -132,17 +87,17 @@
 			<strong>{meeting.meeting.pointOfOrder.by.name}</strong> har begärt ordningsfråga.
 		</p>
 		{#if meeting.meeting.pointOfOrder.type === 'requested'}
-			{@render request(
-				'Acceptera ordningsfråga?',
-				null,
-				'warning',
-				async () => {
+			<Request
+				text="Acceptera ordningsfråga?"
+				duration={null}
+				variant="warning"
+				approve={async () => {
 					await meeting.adminMutate(api.admin.meeting.acceptPointOfOrder);
-				},
-				async () => {
+				}}
+				deny={async () => {
 					await meeting.adminMutate(api.admin.meeting.clearPointOfOrder);
-				},
-			)}
+				}}
+			/>
 		{:else}
 			<Button
 				variant="outline"
@@ -164,17 +119,17 @@
 			<strong>{meeting.meeting.reply.by.name}</strong> har begärt replik.
 		</p>
 		{#if meeting.meeting.reply.type === 'requested'}
-			{@render request(
-				'Acceptera replik?',
-				null,
-				'warning',
-				async () => {
+			<Request
+				text="Acceptera replik?"
+				duration={null}
+				variant="warning"
+				approve={async () => {
 					await meeting.adminMutate(api.admin.meeting.acceptReply);
-				},
-				async () => {
+				}}
+				deny={async () => {
 					await meeting.adminMutate(api.admin.meeting.clearReply);
-				},
-			)}
+				}}
+			/>
 		{:else}
 			<Button
 				variant="outline"

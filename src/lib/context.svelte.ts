@@ -145,11 +145,11 @@ export class MeetingState {
 	): UseQueryReturn<T>;
 	query<T extends FunctionReference<'query', 'public', { meetingId: Id<'meetings'> }, unknown>>(
 		fn: T,
-		args?: Getter<Omit<T['_args'], 'meetingId'>>,
+		args?: ArgsGetter<T>,
 	): UseQueryReturn<T>;
 	query<T extends FunctionReference<'query', 'public', { meetingId: Id<'meetings'> }, unknown>>(
 		fn: T,
-		args?: Getter<Omit<T['_args'], 'meetingId'>>,
+		args?: ArgsGetter<T>,
 		opts?: UseQueryOptions<T>,
 	): UseQueryReturn<T>;
 	query<
@@ -159,11 +159,17 @@ export class MeetingState {
 			{ meetingId: Id<'meetings'> } & DefaultFunctionArgs,
 			unknown
 		>,
-	>(fn: T, args?: Getter<Omit<T['_args'], 'meetingId'>>, opts?: UseQueryOptions<T>) {
-		const getter = () => ({
-			meetingId: this.id,
-			...args?.(),
-		});
+	>(fn: T, args?: ArgsGetter<T>, opts?: UseQueryOptions<T>) {
+		const getter = () => {
+			const a = args?.();
+			if (a === 'skip') {
+				return 'skip';
+			}
+			return {
+				meetingId: this.id,
+				...a,
+			};
+		};
 
 		return useQuery(fn, getter, opts);
 	}
@@ -336,6 +342,14 @@ export class MeetingState {
 
 	get url() {
 		return `${env.PUBLIC_SITE_URL}/m/${this.meeting.code}`;
+	}
+
+	get isAbsent() {
+		return this.me.absentSince > 0;
+	}
+
+	get isPollOpen() {
+		return this.meeting.currentPollId !== undefined;
 	}
 }
 

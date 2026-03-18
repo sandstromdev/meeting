@@ -1,20 +1,27 @@
 <script lang="ts">
 	import { api } from '$convex/_generated/api';
-	import { Button } from '$lib/components/ui/button';
-	import { getMeetingContext } from '$lib/context.svelte';
-	import { usePageState } from '$lib/page-state.svelte';
+	import Requests from '$lib/components/blocks/poll-dialog/requests.svelte';
+	import Results from '$lib/components/blocks/poll-dialog/results.svelte';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
+	import { Button } from '$lib/components/ui/button';
 	import * as CheckboxBlock from '$lib/components/ui/checkbox-block';
-	import { SvelteSet } from 'svelte/reactivity';
-	import { useQuery } from '@mmailaender/convex-svelte';
+	import { confirm } from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
 	import * as Field from '$lib/components/ui/field';
+	import * as RadioBlock from '$lib/components/ui/radio-block';
 	import RadioGroup from '$lib/components/ui/radio-group/radio-group.svelte';
 	import ScrollArea from '$lib/components/ui/scroll-area/scroll-area.svelte';
-	import * as RadioBlock from '$lib/components/ui/radio-block';
+	import { getMeetingContext } from '$lib/context.svelte';
+	import { usePageState } from '$lib/page-state.svelte';
+	import { SvelteSet } from 'svelte/reactivity';
 
 	const meeting = getMeetingContext();
 	const ps = usePageState();
 	const currentPoll = meeting.query(api.users.poll.getCurrentPoll);
+	const currentPollCounters = meeting.query(api.users.poll.getCurrentPollCounters);
+
+	const counters = $derived(
+		currentPollCounters.data ?? { votersCount: 0, eligibleVoters: 0, votesCount: 0 },
+	);
 
 	let isSubmitting = $state(false);
 	let isRetracting = $state(false);
@@ -37,13 +44,6 @@
 
 	const isMultiWinner = $derived(poll?.type === 'multi_winner');
 
-	const pollResults = useQuery(api.users.poll.getPollResultsById, () => {
-		if (!meeting.id || !poll) {
-			return 'skip';
-		}
-		return { meetingId: meeting.id, pollId: poll.id };
-	});
-	const results = $derived(pollResults.data ?? null);
 	const effectiveSelection = $derived(
 		poll
 			? selectedOptionIndexes
@@ -160,7 +160,7 @@
 	}
 </script>
 
-{#if !ps.isProjector && poll}
+{#if !ps.isProjector && poll && !meeting.isAbsent}
 	<AlertDialog.Root open={isDialogOpen}>
 		<AlertDialog.Content
 			class="!inset-0 !grid !h-[100dvh] !w-screen !max-w-none !translate-x-0 !translate-y-0 !rounded-none !border-0 !p-4 sm:!top-[50%] sm:!left-[50%] sm:!h-max sm:!w-full sm:!max-w-lg sm:!translate-x-[-50%] sm:!translate-y-[-50%] sm:!rounded-lg sm:!border sm:!p-6"
@@ -170,14 +170,18 @@
 					<AlertDialog.Title>{poll.title}</AlertDialog.Title>
 					<AlertDialog.Description>
 						{#if poll.isOpen}
-							Sluten omröstning pågår. Röstande: {poll.votersCount}/{poll.eligibleVoters}. Röster:
-							{poll.votesCount}.
+							Sluten omröstning pågår.
 						{:else}
-							Omröstning stängd. Röstande: {poll.votersCount}/{poll.eligibleVoters}. Röster:
-							{poll.votesCount}.
+							Omröstning stängd.
 						{/if}
+						Röstande: {counters.votersCount}/{counters.eligibleVoters}. Röster:
+						{counters.votesCount}.
 					</AlertDialog.Description>
 				</AlertDialog.Header>
+
+				{#if meeting.isAdmin && poll.isOpen}
+					<Requests />
+				{/if}
 
 				{#if poll.isOpen}
 					{#if poll.hasVoted && !isChangingVote}
@@ -259,36 +263,7 @@
 						</div>
 					{/if}
 				{:else}
-					{#if results?.winnerOptionIndexes?.length !== undefined}
-						<p class="text-sm font-medium">
-							{#if results.winnerOptionIndexes.length === 0}
-								Ingen vinnare (ingen nådde majoriteten).
-							{:else if results.isTie}
-								Oavgjort: {results.winnerOptionIndexes.map((i) => poll.options[i]).join(', ')}
-							{:else if results.winnerOptionIndexes.length === 1}
-								Vinnare: {poll.options[results.winnerOptionIndexes[0]]}
-							{:else}
-								Vinnare: {results.winnerOptionIndexes.map((i) => poll.options[i]).join(', ')}
-							{/if}
-						</p>
-					{/if}
-
-					{#if results?.optionTotals}
-						<ul class="space-y-1 text-sm text-muted-foreground">
-							{#each results.optionTotals as option (option.optionIndex)}
-								<li>
-									{option.option}: {option.votes} ({(
-										(option.votes / (poll.votesCount || 1)) *
-										100
-									).toFixed(1)}%)
-								</li>
-							{/each}
-						</ul>
-					{:else}
-						<p class="text-sm text-muted-foreground">
-							Resultatet visas endast för administratörer.
-						</p>
-					{/if}
+					<Results pollId={poll.id} />
 				{/if}
 
 				{#if meeting.isAdmin}
@@ -296,8 +271,18 @@
 						{#if poll.isOpen}
 							<Button
 								onclick={() =>
-									meeting.adminMutate(api.admin.poll.closePollAndShowResults, { pollId: poll.id })}
-								>Stäng och visa resultat</Button
+									confirm({
+										title: 'Stäng och visa resultat?',
+										description:
+											counters.votersCount +
+											' av ' +
+											counters.eligibleVoters +
+											' har röstat. Är du säker på att du vill stänga omröstningen och visa resultatet?',
+										onConfirm: () =>
+											meeting.adminMutate(api.admin.poll.closePollAndShowResults, {
+												pollId: poll.id,
+											}),
+									})}>Stäng och visa resultat</Button
 							>
 							<Button
 								variant="destructive"

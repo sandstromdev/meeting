@@ -34,12 +34,12 @@
 </script>
 
 <div class={root()}>
-	<dl class="grid grid-cols-3 gap-4 text-center">
+	<div class="grid grid-cols-3 gap-4 text-center">
 		{#each stats as stat (stat.label)}
 			<div>
-				<dd class={number()}>{stat.value}</dd>
-				<dt class={label()}>{stat.label}</dt>
+				<span class={number()}>{stat.value}</span>
+				<span class={label()}>{stat.label}</span>
 			</div>
 		{/each}
-	</dl>
+	</div>
 </div>

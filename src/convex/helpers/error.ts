@@ -1,4 +1,4 @@
-import { ConvexError } from 'convex/values';
+import { ConvexError, type Value } from 'convex/values';
 import type { Id } from '$convex/_generated/dataModel';
 import { ErrorMessages } from '$lib/errors';
 import { z } from 'zod';
@@ -50,6 +50,9 @@ export const errors = {
 
 	zod_error: (issues: z.core.$ZodErrorTree<unknown, string>) =>
 		({ code: 'bad_args', issues }) as const,
+
+	invalid_args: (args: Record<string, Value | undefined>) =>
+		({ code: 'invalid_args', args }) as const,
 } as const;
 
 export const errorCodes = new Set<AppErrorCode>(Object.keys(errors) as AppErrorCode[]);
@@ -102,8 +105,14 @@ export class AppError<ErrorCode extends AppErrorCode> extends ConvexError<
 		return new AppError<ErrorCode>(err.data);
 	}
 
-	static assert(pred: boolean, error: AppErrorObject) {
+	static assert(pred: boolean, error: AppErrorObject): asserts pred is true {
 		if (!pred) {
+			throw new AppError(error);
+		}
+	}
+
+	static assertNotNull<T>(value: T | null | undefined, error: AppErrorObject): asserts value is T {
+		if (value == null) {
 			throw new AppError(error);
 		}
 	}

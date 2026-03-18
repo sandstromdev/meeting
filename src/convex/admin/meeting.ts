@@ -1,4 +1,5 @@
 import { admin } from '$convex/helpers/auth';
+import { internal } from '$convex/_generated/api';
 import { completeReturnToMeeting, logSpeakerSlot } from '$convex/helpers/meeting';
 import { pickParticipantData } from '$convex/helpers/users';
 import { zid } from 'convex-helpers/server/zod4';
@@ -202,7 +203,8 @@ export const clearReply = admin.mutation().public(async ({ ctx }) => {
 	return true;
 });
 
-export const toggleMeeting = admin.mutation().public(async ({ ctx: { db, meeting } }) => {
+export const toggleMeeting = admin.mutation().public(async ({ ctx }) => {
+	const { db, meeting } = ctx;
 	if (meeting.isOpen) {
 		const now = Date.now();
 		if (meeting.currentPollId) {
@@ -212,6 +214,9 @@ export const toggleMeeting = admin.mutation().public(async ({ ctx: { db, meeting
 					isOpen: false,
 					closedAt: now,
 					updatedAt: now,
+				});
+				await ctx.scheduler.runAfter(0, internal.admin.poll.createPollResultSnapshotAction, {
+					pollId: currentPoll._id,
 				});
 			}
 		}

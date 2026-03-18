@@ -1,13 +1,16 @@
 import { withMe } from '$convex/helpers/auth';
-import { AppError, errors } from '$convex/helpers/error';
-import { assertPollInMeeting, computeWinners, getPollOrThrow } from '$convex/helpers/poll';
 import {
 	getAbsentCounter,
 	getParticipantCounter,
-	getVotesCounter,
 	getVotersCounter,
-	getAllCounters,
+	getVotesCounter,
 } from '$convex/helpers/counters';
+import { AppError, errors } from '$convex/helpers/error';
+import {
+	assertPollInMeeting,
+	getLatestPollResultSnapshot,
+	getPollOrThrow,
+} from '$convex/helpers/poll';
 import { zid } from 'convex-helpers/server/zod4';
 import { z } from 'zod';
 
@@ -141,18 +144,10 @@ export const getPollsByAgendaItemId = withMe
 				const myVoteOptionIndexes = myVotes.map((v) => v.optionIndex);
 				const hasVoted = myVoteOptionIndexes.length > 0;
 
-				const pollMaxVotes =
-					poll.type === 'single_winner' ? eligibleVoters : eligibleVoters * poll.maxVotesPerVoter;
-
-				const optionTotals = poll.options.map((option, optionIndex) => ({
-					optionIndex,
-					option,
-					votes: 0,
-				}));
-
-				const winners = poll.isOpen
-					? null
-					: computeWinners(poll, optionTotals, votesCount, pollMaxVotes);
+				const latestResult =
+					!poll.isOpen && poll.closedAt != null
+						? await getLatestPollResultSnapshot(ctx.db, poll._id)
+						: null;
 
 				return {
 					id: poll._id,
@@ -165,8 +160,8 @@ export const getPollsByAgendaItemId = withMe
 					eligibleVoters,
 					hasVoted,
 					myVoteOptionIndexes,
-					winnerOptionIndexes: winners?.winnerOptionIndexes,
-					isTie: winners?.isTie,
+					winnerOptionIndexes: latestResult?.results.winners.map((winner) => winner.optionIndex),
+					isTie: latestResult?.results.isTie,
 				};
 			}),
 		);
@@ -185,21 +180,10 @@ export const getCurrentPoll = withMe.query().public(async ({ ctx }) => {
 		return null;
 	}
 
-	const counters = getAllCounters(ctx.meeting._id);
-
-	const [participants, absentees, votesCount, votersCount] = await Promise.all([
-		counters.participants.count(ctx),
-		counters.absent.count(ctx),
-		counters.votes(poll._id).count(ctx),
-		counters.voters(poll._id).count(ctx),
-	]);
-
 	let votes = await ctx.db
 		.query('pollVotes')
 		.withIndex('by_poll_user', (q) => q.eq('pollId', poll._id).eq('userId', ctx.me._id))
 		.collect();
-
-	const eligibleVoters = Math.max(0, participants - absentees);
 
 	const myVoteOptionIndexes = votes.map((v) => v.optionIndex);
 
@@ -212,11 +196,32 @@ export const getCurrentPoll = withMe.query().public(async ({ ctx }) => {
 		isOpen: poll.isOpen,
 		maxVotesPerVoter: poll.maxVotesPerVoter,
 		type: poll.type,
-		votesCount,
-		votersCount,
-		eligibleVoters,
 		hasVoted,
 		myVoteOptionIndexes,
+	};
+});
+
+export const getCurrentPollCounters = withMe.query().public(async ({ ctx }) => {
+	if (!ctx.meeting.currentPollId) {
+		return null;
+	}
+
+	const poll = await getPollOrThrow(ctx.db, ctx.meeting.currentPollId);
+	assertPollInMeeting(poll, ctx.meeting._id);
+
+	const [participants, absentees, votersCount, votesCount] = await Promise.all([
+		getParticipantCounter(ctx.meeting._id).count(ctx),
+		getAbsentCounter(ctx.meeting._id).count(ctx),
+		getVotersCounter(ctx.meeting._id, poll._id).count(ctx),
+		getVotesCounter(ctx.meeting._id, poll._id).count(ctx),
+	]);
+
+	const eligibleVoters = Math.max(0, participants - absentees);
+
+	return {
+		votersCount,
+		eligibleVoters,
+		votesCount,
 	};
 });
 
@@ -229,48 +234,34 @@ export const getPollResultsById = withMe
 		const poll = await getPollOrThrow(ctx.db, args.pollId);
 		assertPollInMeeting(poll, ctx.meeting._id);
 
-		if (poll.isOpen) {
+		if (poll.isOpen || poll.closedAt == null) {
+			return null;
+		}
+		const result = await getLatestPollResultSnapshot(ctx.db, poll._id);
+
+		if (!result) {
 			return null;
 		}
 
-		const [participants, absentees, votes] = await Promise.all([
-			getParticipantCounter(ctx.meeting._id).count(ctx),
-			getAbsentCounter(ctx.meeting._id).count(ctx),
-			ctx.db
-				.query('pollVotes')
-				.withIndex('by_poll', (q) => q.eq('pollId', poll._id))
-				.collect(),
-		]);
-
-		const eligibleVoters = Math.max(0, participants - absentees);
-		const votesCount = votes.length;
-		const votersCount = new Set(votes.map((v) => v.userId)).size;
-
-		const optionTotals = poll.options.map((option, optionIndex) => ({
-			optionIndex,
-			option,
-			votes: 0,
-		}));
-
-		for (const vote of votes) {
-			if (vote.optionIndex >= 0 && vote.optionIndex < optionTotals.length) {
-				optionTotals[vote.optionIndex].votes += 1;
-			}
-		}
-
-		const pollMaxVotes =
-			poll.type === 'single_winner' ? eligibleVoters : eligibleVoters * poll.maxVotesPerVoter;
-
-		const winners = computeWinners(poll, optionTotals, votesCount, pollMaxVotes);
-
 		const canSeeOptionTotals = poll.isResultPublic || ctx.me.role === 'admin';
+
+		const winners = canSeeOptionTotals
+			? result.results.winners
+			: result.results.winners.map((winner) => ({
+					optionIndex: winner.optionIndex,
+					option: winner.option,
+					votes: undefined,
+				}));
 
 		return {
 			pollId: poll._id,
-			votesCount,
-			votersCount,
-			winnerOptionIndexes: winners.winnerOptionIndexes,
-			isTie: winners.isTie,
-			optionTotals: canSeeOptionTotals ? optionTotals : undefined,
+			complete: result.complete,
+			results: {
+				optionTotals: canSeeOptionTotals ? result.results.optionTotals : undefined,
+				winners,
+				isTie: result.results.isTie,
+				majorityRule: result.results.majorityRule,
+				counts: result.results.counts,
+			},
 		};
 	});

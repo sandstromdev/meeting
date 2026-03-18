@@ -41,3 +41,6 @@ export type AdminQuery = {
 		opts?: UseQueryOptions<T>,
 	): UseQueryReturn<T>;
 };
+export type StripSystemFields<T> = T extends { _id: unknown; _creationTime: unknown }
+	? Omit<T, '_id' | '_creationTime'>
+	: never;

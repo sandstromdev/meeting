@@ -48,4 +48,5 @@ export const ErrorMessages = {
 	email_exists: () => 'En användare med den e-postadressen finns redan.',
 	invalid_credentials: () => 'Felaktig e-post eller lösenord.',
 	zod_error: (_iss) => 'Ett eller flera argument var felaktiga.',
+	invalid_args: ({ args }) => `Ett eller flera argument var felaktiga: ${JSON.stringify(args)}.`,
 } satisfies AppErrorMessages;

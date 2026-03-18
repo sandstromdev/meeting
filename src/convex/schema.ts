@@ -122,6 +122,38 @@ export const PollVote = v.object({
 	optionIndex: v.number(),
 });
 
+export const PollResultOptionTotal = v.object({
+	optionIndex: v.number(),
+	option: v.string(),
+	votes: v.number(),
+});
+
+export const PollResult = {
+	meetingId: v.id('meetings'),
+	pollId: v.id('polls'),
+	closedAt: v.number(),
+	poll: Poll,
+	complete: v.boolean(),
+	results: v.object({
+		optionTotals: v.array(PollResultOptionTotal),
+		winners: v.array(
+			v.object({
+				optionIndex: v.number(),
+				option: v.string(),
+				votes: v.number(),
+			}),
+		),
+		isTie: v.boolean(),
+		majorityRule: v.optional(majorityRule),
+		counts: v.object({
+			totalVotes: v.number(),
+			eligibleVoters: v.number(),
+			usableVotes: v.number(),
+			abstain: v.number(),
+		}),
+	}),
+};
+
 export const PointOfOrderEntry = v.object({
 	meetingId: v.id('meetings'),
 	userId: v.id('meetingParticipants'),
@@ -207,6 +239,10 @@ export default defineSchema(
 		pollVotes: defineTable(PollVote)
 			.index('by_poll', ['pollId'])
 			.index('by_poll_user', ['pollId', 'userId']),
+
+		pollResults: defineTable(PollResult)
+			.index('by_poll_and_closedAt', ['pollId', 'closedAt'])
+			.index('by_meeting_and_poll_and_closedAt', ['meetingId', 'pollId', 'closedAt']),
 
 		heartbeats: defineTable(Heartbeat)
 			.index('by_token', ['tokenIdentifier'])

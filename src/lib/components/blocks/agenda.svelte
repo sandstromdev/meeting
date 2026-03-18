@@ -200,10 +200,10 @@
 </Collapsible>
 
 {#snippet itemRow(item: (typeof agenda)[number], index: number)}
-	<li class="">
+	<li class="not-last:border-b">
 		<div
 			class={cn(
-				'flex gap-2 border-b px-2 py-2 text-sm',
+				'flex gap-2 px-2 py-2 text-sm',
 				hasBeenCompleted(index) && 'bg-muted/50 text-muted-foreground',
 				item.id === as.currentAgendaItemId && 'bg-sky-100 text-sky-500',
 			)}

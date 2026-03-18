@@ -1,5 +1,5 @@
 <script lang="ts">
-	import PollDialog from '$lib/components/blocks/poll-dialog.svelte';
+	import PollDialog from '$lib/components/blocks/poll-dialog/poll-dialog.svelte';
 	import ConfirmDialog from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import Delayed from '$lib/components/ui/delayed.svelte';
@@ -9,12 +9,14 @@
 	import LoadingIcon from '@lucide/svelte/icons/loader-circle';
 	import type { LayoutProps } from './$types';
 	import UserControls from '$lib/components/blocks/user-controls.svelte';
+	import AbsentDialog from '$lib/components/ui/absent-dialog.svelte';
 
 	let { data, children }: LayoutProps = $props();
 </script>
 
 {#if data.meeting.data}
 	<MeetingContext data={data.meeting.data}>
+		<AbsentDialog />
 		<PollDialog />
 		<ConfirmDialog />
 		{@render children()}

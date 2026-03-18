@@ -100,7 +100,7 @@
 		}
 	});
 
-	const canSubmit = $derived(!!newTitle.trim() && polls.length !== 0);
+	const canSubmit = $derived(!!newTitle.trim());
 
 	function addPollDraft() {
 		polls = [...polls, newPollDraft()];

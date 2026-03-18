@@ -99,7 +99,7 @@
 </script>
 
 <AlertDialog.Root bind:open={dialogState.open}>
-	<AlertDialog.Content>
+	<AlertDialog.Content class="z-1000">
 		<form
 			method="POST"
 			onsubmit={(e) => {
