@@ -30,7 +30,7 @@ export const load = (async ({ locals, cookies, url }) => {
 		const err = getAppError(e);
 
 		if (err?.is('meeting_not_found') || err?.is('meeting_participant_not_found')) {
-			deleteMeetingCookie();
+			deleteMeetingCookie(cookies);
 
 			redirect(307, '/anslut');
 		}

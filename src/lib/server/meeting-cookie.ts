@@ -1,14 +1,13 @@
 import { dev } from '$app/environment';
-import { getRequestEvent } from '$app/server';
 import { api } from '$convex/_generated/api';
 import type { Id } from '$convex/_generated/dataModel';
-import type { RequestEvent } from '@sveltejs/kit';
+import type { Cookies } from '@sveltejs/kit';
 import { getConvexClient } from './convex';
 
 const cookieName = 'meeting-id';
 
-export function setMeetingCookie(event: RequestEvent, meetingId: Id<'meetings'>) {
-	event.cookies.set(cookieName, meetingId, {
+export function setMeetingCookie(cookies: Cookies, meetingId: Id<'meetings'>) {
+	cookies.set(cookieName, meetingId, {
 		path: '/',
 		secure: !dev,
 		httpOnly: true,
@@ -17,18 +16,14 @@ export function setMeetingCookie(event: RequestEvent, meetingId: Id<'meetings'>)
 	});
 }
 
-export function getMeetingCookie() {
-	const event = getRequestEvent();
-
-	const id = event.cookies.get(cookieName);
+export function getMeetingCookie(cookies: Cookies) {
+	const id = cookies.get(cookieName);
 
 	return id as Id<'meetings'> | undefined;
 }
 
-export function deleteMeetingCookie(event?: RequestEvent) {
-	event ??= getRequestEvent();
-
-	event.cookies.set(cookieName, '', {
+export function deleteMeetingCookie(cookies: Cookies) {
+	cookies.set(cookieName, '', {
 		path: '/',
 		secure: !dev,
 		httpOnly: true,
@@ -37,8 +32,8 @@ export function deleteMeetingCookie(event?: RequestEvent) {
 	});
 }
 
-export async function getMeeting() {
-	const meetingId = getMeetingCookie();
+export async function getMeeting(cookies: Cookies) {
+	const meetingId = getMeetingCookie(cookies);
 
 	if (!meetingId) {
 		return null;
@@ -49,8 +44,8 @@ export async function getMeeting() {
 	return convex.query(api.meetings.getMeetingById, { meetingId });
 }
 
-export async function getMeetingData() {
-	const meetingId = getMeetingCookie();
+export async function getMeetingData(cookies: Cookies) {
+	const meetingId = getMeetingCookie(cookies);
 
 	if (!meetingId) {
 		return null;

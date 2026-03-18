@@ -31,7 +31,7 @@ export const GET: RequestHandler = async (event) => {
 			meetingCode: parsed.data,
 		});
 
-		setMeetingCookie(event, meetingId);
+		setMeetingCookie(event.cookies, meetingId);
 	} catch (e) {
 		const err = getAppError(e);
 
