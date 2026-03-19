@@ -195,6 +195,7 @@ export const getCurrentPoll = withMe.query().public(async ({ ctx }) => {
 		options: poll.options,
 		isOpen: poll.isOpen,
 		maxVotesPerVoter: poll.maxVotesPerVoter,
+		isResultPublic: poll.isResultPublic,
 		type: poll.type,
 		hasVoted,
 		myVoteOptionIndexes,

@@ -12,5 +12,5 @@ export const SignUpSchema = z.object({
 });
 
 export function validateRedirect(redirect?: string | null): redirect is string {
-	return !!redirect && (redirect.startsWith('/m/') || redirect === '/');
+	return !!redirect && (redirect.startsWith('/anslut/') || redirect === '/m' || redirect === '/');
 }

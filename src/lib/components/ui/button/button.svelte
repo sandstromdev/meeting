@@ -51,7 +51,7 @@
 
 	export type AnchorElementProps = ButtonPropsWithoutHTML &
 		WithoutChildren<Omit<HTMLAnchorAttributes, 'href' | 'type'>> & {
-			href: HTMLAnchorAttributes['href'];
+			href: /* HTMLAnchorAttributes['href'] */ ResolvedPathname | undefined | null;
 			type?: never;
 			disabled?: HTMLButtonAttributes['disabled'];
 		};
@@ -69,6 +69,7 @@
 <script lang="ts">
 	import { cn } from '$lib/utils.js';
 	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
+	import type { ResolvedPathname } from '$app/types';
 
 	let {
 		ref = $bindable(null),

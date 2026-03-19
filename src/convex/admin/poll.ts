@@ -50,6 +50,8 @@ export const createPoll = admin
 			agendaItemId: args.agendaItemId,
 			isOpen: false,
 			updatedAt: Date.now(),
+			openedAt: null,
+			closedAt: null,
 		};
 
 		draft.options = optionsWithAbstainLast(draft.options, draft.allowsAbstain);
@@ -572,6 +574,8 @@ export const getPollResults = c
 				optionTotals[vote.optionIndex].votes += 1;
 			}
 		}
+
+		optionTotals.sort((a, b) => b.votes - a.votes);
 
 		if (eligibleVoters !== uniqueVoters.size) {
 			console.warn(

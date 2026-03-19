@@ -32,5 +32,5 @@ export const connectForm = form(ConnectFormSchema, async (data, issue) => {
 		error(500);
 	}
 
-	redirect(303, '/');
+	redirect(303, '/m');
 });

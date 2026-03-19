@@ -5,17 +5,21 @@
 	import Progress from '$lib/components/ui/progress/progress.svelte';
 	import Separator from '$lib/components/ui/separator/separator.svelte';
 	import { getMeetingContext } from '$lib/context.svelte';
+	import { usePageState } from '$lib/page-state.svelte';
 	import { ABSTAIN_OPTION_LABEL, getVoteShare } from '$lib/polls';
 	import { cn } from '$lib/utils';
 	import type { FunctionReturnType } from 'convex/server';
 
 	type Poll = NonNullable<FunctionReturnType<typeof api.users.poll.getCurrentPoll>>;
 
-	const { pollId }: { pollId: Id<'polls'> } = $props();
+	const { poll }: { poll: Poll | null } = $props();
 
 	const meeting = getMeetingContext();
+	const ps = usePageState();
 
-	const pollResults = meeting.query(api.users.poll.getPollResultsById, () => ({ pollId }));
+	const pollResults = meeting.query(api.users.poll.getPollResultsById, () =>
+		poll ? { pollId: poll.id } : 'skip',
+	);
 
 	const results = $derived(pollResults.data ?? null);
 
@@ -45,12 +49,18 @@
 		<div class="text-xl font-semibold">
 			{#if winners.length === 0}
 				Ingen nådde majoriteten.
+			{:else if winners.length === 1}
+				{winners[0].option}
 			{:else}
-				{winners.map((winner) => winner.option).join(', ')}
+				<ul>
+					{#each winners as winner (winner.optionIndex)}
+						<li>{winner.option}</li>
+					{/each}
+				</ul>
 			{/if}
 		</div>
 	</div>
-	{#if meeting.isAdmin && optionTotals.length > 0}
+	{#if poll?.isResultPublic || (!ps.isProjector && meeting.isAdmin && optionTotals.length > 0)}
 		<div class="space-y-4">
 			<div class="grid w-max grid-cols-2 gap-x-4 text-sm text-muted-foreground">
 				<span>Total mängd röster</span>

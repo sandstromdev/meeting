@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { api } from '$convex/_generated/api';
+	import PollDialogProjector from '$lib/components/blocks/poll-dialog/poll-dialog-projector.svelte';
 	import Requests from '$lib/components/blocks/poll-dialog/requests.svelte';
 	import Results from '$lib/components/blocks/poll-dialog/results.svelte';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
@@ -54,6 +55,7 @@
 			: [],
 	);
 	const isDialogOpen = $derived(!ps.isProjector && !!poll);
+
 	const hasSelectionChanged = $derived(
 		(() => {
 			const current = isChangingVote
@@ -160,148 +162,153 @@
 	}
 </script>
 
-{#if !ps.isProjector && poll && !meeting.isAbsent}
-	<AlertDialog.Root open={isDialogOpen}>
-		<AlertDialog.Content
-			class="!inset-0 !grid !h-[100dvh] !w-screen !max-w-none !translate-x-0 !translate-y-0 !rounded-none !border-0 !p-4 sm:!top-[50%] sm:!left-[50%] sm:!h-max sm:!w-full sm:!max-w-lg sm:!translate-x-[-50%] sm:!translate-y-[-50%] sm:!rounded-lg sm:!border sm:!p-6"
-		>
-			<div class="flex max-h-[100dvh] flex-col gap-4 overflow-y-auto">
-				<AlertDialog.Header>
-					<AlertDialog.Title>{poll.title}</AlertDialog.Title>
-					<AlertDialog.Description>
-						{#if poll.isOpen}
-							Sluten omröstning pågår.
-						{:else}
-							Omröstning stängd.
-						{/if}
-						Röstande: {counters.votersCount}/{counters.eligibleVoters}. Röster:
-						{counters.votesCount}.
-					</AlertDialog.Description>
-				</AlertDialog.Header>
-
-				{#if meeting.isAdmin && poll.isOpen}
-					<Requests />
-				{/if}
-
-				{#if poll.isOpen}
-					{#if poll.hasVoted && !isChangingVote}
-						<p class="text-sm text-muted-foreground">
-							Du har röstat ({poll.myVoteOptionIndexes.length}/{poll.maxVotesPerVoter}).
-						</p>
-						<p class="text-xs text-muted-foreground">
-							Dina röster: {poll.myVoteOptionIndexes.map((i) => poll.options[i]).join(', ')}
-						</p>
-						<div class="mt-auto">
-							<Button
-								variant="outline"
-								onclick={enterChangeMode}
-								loading={isRetracting}
-								disabled={isRetracting}
-							>
-								Ändra röst
-							</Button>
-						</div>
-					{:else}
-						<Field.Set>
-							<Field.Legend>Välj alternativ</Field.Legend>
-							<Field.Description
-								>{isMultiWinner
-									? 'Välj upp till ' + poll.maxVotesPerVoter + ' alternativ.'
-									: 'Välj ett alternativ.'}</Field.Description
-							>
-							<Field.Content>
-								<ScrollArea class="h-[30vh]">
-									{#if isMultiWinner}
-										<div class="flex flex-col gap-2">
-											{#each poll.options as option, optionIndex (optionIndex)}
-												<CheckboxBlock.Root>
-													<CheckboxBlock.Checkbox
-														checked={selectedOptionIndexes.has(optionIndex)}
-														onCheckedChange={(checked) => toggleOption(optionIndex, checked)}
-														disabled={isOptionDisabled(optionIndex)}
-													/>
-													<CheckboxBlock.Content>
-														<CheckboxBlock.Title>{option}</CheckboxBlock.Title>
-													</CheckboxBlock.Content>
-												</CheckboxBlock.Root>
-											{/each}
-										</div>
-									{:else}
-										<RadioGroup
-											class="gap-2"
-											value={effectiveSelection[0]?.toString()}
-											onValueChange={(value) => toggleOption(Number(value), true)}
-										>
-											{#each poll.options as option, optionIndex (optionIndex)}
-												<RadioBlock.Root>
-													<RadioBlock.Item
-														value={optionIndex.toString()}
-														disabled={isOptionDisabled(optionIndex)}
-													/>
-													<RadioBlock.Content>
-														<RadioBlock.Title>{option}</RadioBlock.Title>
-													</RadioBlock.Content>
-												</RadioBlock.Root>
-											{/each}
-										</RadioGroup>
-									{/if}
-								</ScrollArea>
-							</Field.Content>
-						</Field.Set>
-						<div class="mt-auto flex items-center gap-2">
-							<Button onclick={submitVote} loading={isSubmitting} disabled={!canVote}>
-								{isChangingVote ? 'Ändra röst' : 'Rösta'}
-							</Button>
-							{#if isChangingVote}
-								<Button variant="ghost" onclick={cancelChangeMode} disabled={isSubmitting}>
-									Avbryt
-								</Button>
+{#if poll}
+	{#if ps.isProjector}
+		<PollDialogProjector {poll} {counters} />
+	{:else if !meeting.isAbsent}
+		<AlertDialog.Root open={isDialogOpen}>
+			<AlertDialog.Content
+				class="!inset-0 !grid !h-[100dvh] !w-screen !max-w-none !translate-x-0 !translate-y-0 !rounded-none !border-0 !p-4 sm:!top-[50%] sm:!left-[50%] sm:!h-max sm:!w-full sm:!max-w-lg sm:!translate-x-[-50%] sm:!translate-y-[-50%] sm:!rounded-lg sm:!border sm:!p-6"
+			>
+				<div class="flex max-h-[100dvh] flex-col gap-4 overflow-y-auto">
+					<AlertDialog.Header>
+						<AlertDialog.Title>{poll.title}</AlertDialog.Title>
+						<AlertDialog.Description>
+							{#if poll.isOpen}
+								Sluten omröstning pågår.
+							{:else}
+								Omröstning stängd.
 							{/if}
-							<span class="text-xs text-muted-foreground">
-								Valt {effectiveSelection.length} av {poll.maxVotesPerVoter}
-							</span>
+							Röstande: {counters.votersCount}/{counters.eligibleVoters}. Röster:
+							{counters.votesCount}.
+						</AlertDialog.Description>
+					</AlertDialog.Header>
+
+					{#if meeting.isAdmin && poll.isOpen}
+						<Requests />
+					{/if}
+
+					{#if poll.isOpen}
+						{#if poll.hasVoted && !isChangingVote}
+							<p class="text-sm text-muted-foreground">
+								Du har röstat ({poll.myVoteOptionIndexes.length}/{poll.maxVotesPerVoter}).
+							</p>
+							<p class="text-xs text-muted-foreground">
+								Dina röster: {poll.myVoteOptionIndexes.map((i) => poll.options[i]).join(', ')}
+							</p>
+							<div class="mt-auto">
+								<Button
+									variant="outline"
+									onclick={enterChangeMode}
+									loading={isRetracting}
+									disabled={isRetracting}
+								>
+									Ändra röst
+								</Button>
+							</div>
+						{:else}
+							<Field.Set>
+								<Field.Legend>Välj alternativ</Field.Legend>
+								<Field.Description
+									>{isMultiWinner
+										? 'Välj upp till ' + poll.maxVotesPerVoter + ' alternativ.'
+										: 'Välj ett alternativ.'}</Field.Description
+								>
+								<Field.Content>
+									<ScrollArea class="h-[30vh]">
+										{#if isMultiWinner}
+											<div class="flex flex-col gap-2">
+												{#each poll.options as option, optionIndex (optionIndex)}
+													<CheckboxBlock.Root>
+														<CheckboxBlock.Checkbox
+															checked={selectedOptionIndexes.has(optionIndex)}
+															onCheckedChange={(checked) => toggleOption(optionIndex, checked)}
+															disabled={isOptionDisabled(optionIndex)}
+														/>
+														<CheckboxBlock.Content>
+															<CheckboxBlock.Title>{option}</CheckboxBlock.Title>
+														</CheckboxBlock.Content>
+													</CheckboxBlock.Root>
+												{/each}
+											</div>
+										{:else}
+											<RadioGroup
+												class="gap-2"
+												value={effectiveSelection[0]?.toString()}
+												onValueChange={(value) => toggleOption(Number(value), true)}
+											>
+												{#each poll.options as option, optionIndex (optionIndex)}
+													<RadioBlock.Root>
+														<RadioBlock.Item
+															value={optionIndex.toString()}
+															disabled={isOptionDisabled(optionIndex)}
+														/>
+														<RadioBlock.Content>
+															<RadioBlock.Title>{option}</RadioBlock.Title>
+														</RadioBlock.Content>
+													</RadioBlock.Root>
+												{/each}
+											</RadioGroup>
+										{/if}
+									</ScrollArea>
+								</Field.Content>
+							</Field.Set>
+							<div class="mt-auto flex items-center gap-2">
+								<Button onclick={submitVote} loading={isSubmitting} disabled={!canVote}>
+									{isChangingVote ? 'Ändra röst' : 'Rösta'}
+								</Button>
+								{#if isChangingVote}
+									<Button variant="ghost" onclick={cancelChangeMode} disabled={isSubmitting}>
+										Avbryt
+									</Button>
+								{/if}
+								<span class="text-xs text-muted-foreground">
+									Valt {effectiveSelection.length} av {poll.maxVotesPerVoter}
+								</span>
+							</div>
+						{/if}
+					{:else}
+						<Results {poll} />
+					{/if}
+
+					{#if meeting.isAdmin}
+						<div class="mt-auto flex items-center gap-2">
+							{#if poll.isOpen}
+								<Button
+									onclick={() =>
+										confirm({
+											title: 'Stäng och visa resultat?',
+											description:
+												counters.votersCount +
+												' av ' +
+												counters.eligibleVoters +
+												' har röstat. Är du säker på att du vill stänga omröstningen och visa resultatet?',
+											onConfirm: () =>
+												meeting.adminMutate(api.admin.poll.closePollAndShowResults, {
+													pollId: poll.id,
+												}),
+										})}>Stäng och visa resultat</Button
+								>
+								<Button
+									variant="destructive"
+									onclick={() =>
+										meeting.adminMutate(api.admin.poll.cancelPoll, { pollId: poll.id })}
+									>Avbryt</Button
+								>
+							{:else if meeting.meeting.currentPollId === poll.id}
+								<Button onclick={() => meeting.adminMutate(api.admin.poll.clearCurrentPollId)}
+									>Stäng</Button
+								>
+							{:else}
+								<Button
+									onclick={() => meeting.adminMutate(api.admin.poll.openPoll, { pollId: poll.id })}
+									>Öppna</Button
+								>
+							{/if}
 						</div>
 					{/if}
-				{:else}
-					<Results pollId={poll.id} />
-				{/if}
-
-				{#if meeting.isAdmin}
-					<div class="mt-auto flex items-center gap-2">
-						{#if poll.isOpen}
-							<Button
-								onclick={() =>
-									confirm({
-										title: 'Stäng och visa resultat?',
-										description:
-											counters.votersCount +
-											' av ' +
-											counters.eligibleVoters +
-											' har röstat. Är du säker på att du vill stänga omröstningen och visa resultatet?',
-										onConfirm: () =>
-											meeting.adminMutate(api.admin.poll.closePollAndShowResults, {
-												pollId: poll.id,
-											}),
-									})}>Stäng och visa resultat</Button
-							>
-							<Button
-								variant="destructive"
-								onclick={() => meeting.adminMutate(api.admin.poll.cancelPoll, { pollId: poll.id })}
-								>Avbryt</Button
-							>
-						{:else if meeting.meeting.currentPollId === poll.id}
-							<Button onclick={() => meeting.adminMutate(api.admin.poll.clearCurrentPollId)}
-								>Stäng</Button
-							>
-						{:else}
-							<Button
-								onclick={() => meeting.adminMutate(api.admin.poll.openPoll, { pollId: poll.id })}
-								>Öppna</Button
-							>
-						{/if}
-					</div>
-				{/if}
-			</div>
-		</AlertDialog.Content>
-	</AlertDialog.Root>
+				</div>
+			</AlertDialog.Content>
+		</AlertDialog.Root>
+	{/if}
 {/if}

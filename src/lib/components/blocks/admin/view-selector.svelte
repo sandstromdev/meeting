@@ -20,10 +20,10 @@
 	let { triggerClass = 'absolute top-8 right-8' }: { triggerClass?: string } = $props();
 
 	const routes = {
-		admin: resolve('/admin'),
-		queue: resolve('/admin/queue'),
-		projector: resolve('/admin/projector'),
-		projectorIntro: resolve('/admin/projector/intro'),
+		admin: resolve('/m/admin'),
+		queue: resolve('/m/admin/queue'),
+		projector: resolve('/m/admin/projector'),
+		projectorIntro: resolve('/m/admin/projector/intro'),
 	};
 
 	type MenuItem = {
@@ -43,13 +43,13 @@
 			label: 'View',
 			items: [
 				{
-					href: '/admin/projector',
+					href: '/m/admin/projector',
 					label: 'Projektor',
 					icon: MonitorIcon,
-					isSelected: () => page.url.pathname.startsWith('/admin/projector'),
+					isSelected: () => page.url.pathname.startsWith('/m/admin/projector'),
 				},
-				{ href: '/admin/queue', label: 'Talarkö', icon: ListOrderedIcon },
-				{ href: '/admin', label: 'Admin', icon: SettingsIcon },
+				{ href: '/m/admin/queue', label: 'Talarkö', icon: ListOrderedIcon },
+				{ href: '/m/admin', label: 'Admin', icon: SettingsIcon },
 			],
 		},
 		{
@@ -57,12 +57,12 @@
 			label: 'Projector',
 			items: [
 				{
-					href: '/admin/projector/intro',
+					href: '/m/admin/projector/intro',
 					label: 'Intro mode',
 					icon: PresentationIcon,
 				},
 				{
-					href: '/admin/projector',
+					href: '/m/admin/projector',
 					label: 'Meeting mode',
 					icon: UsersIcon,
 				},

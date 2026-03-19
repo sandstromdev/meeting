@@ -15,6 +15,7 @@ import SubContent from './dropdown-menu-sub-content.svelte';
 import SubTrigger from './dropdown-menu-sub-trigger.svelte';
 import GroupHeading from './dropdown-menu-group-heading.svelte';
 import Portal from './dropdown-menu-portal.svelte';
+import Link from './dropdown-menu-link.svelte';
 
 export {
 	CheckboxGroup,
@@ -28,6 +29,7 @@ export {
 	Portal as DropdownMenuPortal,
 	Group as DropdownMenuGroup,
 	Item as DropdownMenuItem,
+	Link as DropdownMenuLink,
 	Label as DropdownMenuLabel,
 	RadioGroup as DropdownMenuRadioGroup,
 	RadioItem as DropdownMenuRadioItem,
@@ -41,6 +43,7 @@ export {
 	Group,
 	GroupHeading,
 	Item,
+	Link,
 	Label,
 	RadioGroup,
 	RadioItem,

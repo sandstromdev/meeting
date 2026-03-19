@@ -6,14 +6,15 @@
 		CollapsibleContent,
 		CollapsibleTrigger,
 	} from '$lib/components/ui/collapsible';
-	import * as Dialog from '$lib/components/ui/dialog';
+	import { confirm } from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
 	import Separator from '$lib/components/ui/separator/separator.svelte';
 	import { getMeetingContext } from '$lib/context.svelte';
+	import { cn } from '$lib/utils';
+	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
 	import LogOutIcon from '@lucide/svelte/icons/log-out';
 	import PlusIcon from '@lucide/svelte/icons/plus';
-	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
-	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
-	import { confirm } from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
+
+	let { noBorder = false, size = 'lg' }: { noBorder?: boolean; size?: 'lg' | 'sm' } = $props();
 
 	const meeting = getMeetingContext();
 	const queue = meeting.speakerQueue;
@@ -38,20 +39,26 @@
 	);
 </script>
 
-<div class="flex flex-col gap-4 rounded-lg border p-4">
+<div
+	class={cn(
+		'flex flex-col p-4',
+		!noBorder && 'rounded-lg border',
+		size === 'sm' ? 'gap-2' : 'gap-4',
+	)}
+>
 	<div class="flex">
 		{#if queue.isCurrentSpeaker}
 			<Button
-				class="mx-auto h-12 w-full"
-				size="lg"
+				class="mx-auto w-full"
+				{size}
 				onClickPromise={() => meeting.mutate(api.users.queue.doneSpeaking)}
 			>
 				Klar
 			</Button>
 		{:else}
 			<Button
-				class="mx-auto h-12 w-full"
-				size="lg"
+				class="mx-auto w-full"
+				{size}
 				disabled={!isCurrentSpeaker && !canJoinQueue && !isInQueue}
 				onClickPromise={() =>
 					isCurrentSpeaker
@@ -76,17 +83,20 @@
 	{#if !meeting.me.absentSince}
 		<Collapsible class="rounded-lg border">
 			<CollapsibleTrigger
-				class="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-muted/50 data-[state=open]:[&>svg]:rotate-180"
+				class={cn(
+					'flex w-full items-center justify-between px-4 text-left hover:bg-muted/50 data-[state=open]:[&>svg]:rotate-180',
+					size === 'sm' ? 'h-8 text-sm' : 'h-12 text-base',
+				)}
 			>
 				<h2 class="font-semibold">Avancerat</h2>
 				<ChevronDownIcon class="size-4 shrink-0 transition-transform " />
 			</CollapsibleTrigger>
-			<CollapsibleContent>
-				<div class="grid items-center gap-3 border-t p-3 md:grid-cols-3">
+			<CollapsibleContent class="@container">
+				<div class="grid items-center gap-x-3 gap-y-2 border-t p-3 @sm:grid-cols-3">
 					{#if queue.canRequestPointOfOrder}
 						<Button
 							variant="outline"
-							size="lg"
+							{size}
 							onClickPromise={() =>
 								meeting.mutate(api.users.queue.request, { type: 'pointOfOrder' })}
 							type="button"
@@ -96,7 +106,7 @@
 					{:else if queue.canRecallPointOfOrder}
 						<Button
 							variant="outline"
-							size="lg"
+							{size}
 							onClickPromise={() =>
 								meeting.mutate(api.users.queue.recallRequest, { type: 'pointOfOrder' })}
 							type="button"
@@ -107,7 +117,7 @@
 					{#if queue.canRequestReply}
 						<Button
 							variant="outline"
-							size="lg"
+							{size}
 							onClickPromise={() => meeting.mutate(api.users.queue.request, { type: 'reply' })}
 							type="button"
 						>
@@ -116,7 +126,7 @@
 					{:else if queue.canRecallReplyRequest}
 						<Button
 							variant="outline"
-							size="lg"
+							{size}
 							onClickPromise={() =>
 								meeting.mutate(api.users.queue.recallRequest, { type: 'reply' })}
 							type="button"
@@ -128,7 +138,7 @@
 						<Button
 							disabled={!queue.canRequestBreak}
 							variant="outline"
-							size="lg"
+							{size}
 							onClickPromise={() => meeting.mutate(api.users.queue.request, { type: 'break' })}
 							type="button"
 						>
@@ -137,7 +147,7 @@
 					{:else}
 						<Button
 							variant="outline"
-							size="lg"
+							{size}
 							onClickPromise={() =>
 								meeting.mutate(api.users.queue.recallRequest, { type: 'break' })}
 							type="button"
@@ -155,7 +165,7 @@
 	{#if !meeting.isAbsent}
 		<Button
 			variant="outline"
-			size="lg"
+			{size}
 			disabled={!canMarkAbsent}
 			onclick={() =>
 				confirm({

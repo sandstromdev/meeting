@@ -19,8 +19,9 @@
 	const { name, email, _password } = signUp.fields;
 
 	const signInUrl = $derived(
-		resolve('/sign-in') +
-			(validateRedirect(data.redirect) ? `?redirect=${encodeURIComponent(data.redirect)}` : ''),
+		validateRedirect(data.redirect)
+			? resolve(`/sign-in?redirect=${encodeURIComponent(data.redirect)}`)
+			: resolve('/sign-in'),
 	);
 </script>
 

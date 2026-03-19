@@ -1,3 +1,4 @@
+import { authComponent } from '$convex/auth';
 import { admin } from '$convex/helpers/auth';
 import {
 	getAbsentCounter,
@@ -19,6 +20,7 @@ export const getParticipants = admin.query().public(async ({ ctx }) => {
 		_id: p._id,
 		name: p.name,
 		role: p.role,
+		userId: p.userId,
 		absentSince: p.absentSince,
 		isInSpeakerQueue: p.isInSpeakerQueue,
 		returnRequestedAt: p.returnRequestedAt,
@@ -216,4 +218,19 @@ export const addParticipant = admin
 		}
 
 		return true;
+	});
+
+export const getParticipantEmail = admin
+	.query()
+	.input({
+		userId: z.string('user'),
+	})
+	.public(async ({ ctx, args }) => {
+		const user = await authComponent.getAnyUserById(ctx, args.userId);
+
+		if (!user) {
+			return null;
+		}
+
+		return user.email;
 	});

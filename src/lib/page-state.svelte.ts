@@ -5,10 +5,10 @@ export type View = 'projector' | 'queue' | 'default';
 export type ProjectorMode = 'intro' | 'meeting';
 
 export function usePageState() {
-	const projectorBase = resolve('/admin/projector');
-	const projectorIntroPath = resolve('/admin/projector/intro');
-	const adminQueuePath = resolve('/admin/queue');
-	const moderatorPath = resolve('/moderator');
+	const projectorBase = resolve('/m/admin/projector');
+	const projectorIntroPath = resolve('/m/admin/projector/intro');
+	const adminQueuePath = resolve('/m/admin/queue');
+	const moderatorPath = resolve('/m/moderator');
 
 	return {
 		get view(): View {

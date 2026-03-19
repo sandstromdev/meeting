@@ -14,12 +14,20 @@
 	let loading = $state(false);
 	let error = $state<string>();
 
+	$effect(() => {
+		if (data.email) {
+			email.set(data.email);
+		}
+	});
+
 	const errors = $derived([{ message: error }, ...(signIn.fields.issues() ?? [])]);
 
 	const { email, _password } = signIn.fields;
 
 	const signUpUrl = $derived(
-		resolve('/sign-up') + (validateRedirect(data.redirect) ? `?redirect=${data.redirect}` : ''),
+		validateRedirect(data.redirect)
+			? resolve(`/sign-up?redirect=${encodeURIComponent(data.redirect)}`)
+			: resolve('/sign-up'),
 	);
 </script>
 

@@ -141,7 +141,7 @@
 	<CollapsibleContent>
 		<div class="border-t">
 			{#if agenda.length === 0}
-				<p class="text-sm text-muted-foreground">Inga agendapunkter ännu.</p>
+				<p class="px-4 py-3 text-sm text-muted-foreground">Inga agendapunkter ännu.</p>
 			{:else}
 				{#if parts.previous.length > 0}
 					<Collapsible class="">

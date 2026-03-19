@@ -237,7 +237,7 @@ export const toggleMeeting = admin.mutation().public(async ({ ctx }) => {
 	const now = Date.now();
 	await db.patch('meetings', meeting._id, {
 		isOpen: true,
-		startedAt: meeting.startedAt ?? now,
+		startedAt: now,
 	});
 	return true;
 });
@@ -298,7 +298,6 @@ export const resetMeeting = admin.mutation().public(async ({ ctx }) => {
 		lastConsumedCt: -1,
 		currentAgendaItemId: firstItemId ?? null,
 		currentPollId: null,
-		startedAt: null,
 	});
 
 	return true;

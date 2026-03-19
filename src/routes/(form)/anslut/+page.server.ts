@@ -3,7 +3,7 @@ import { redirectIfInMeeting, redirectIfNotAuthed } from '$lib/server/guards';
 import type { PageServerLoad } from './$types';
 
 export const load = (async ({ url }) => {
-	redirectIfInMeeting('/');
+	redirectIfInMeeting('/m');
 	redirectIfNotAuthed('/sign-in');
 
 	return {
