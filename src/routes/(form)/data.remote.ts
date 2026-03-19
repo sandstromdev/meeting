@@ -16,7 +16,7 @@ export const signIn = form(SignInSchema, async ({ email, _password }) => {
 	if (error?.code === 'INVALID_EMAIL_OR_PASSWORD') {
 		invalid(ErrorMessages.invalid_credentials());
 	} else if (error) {
-		console.error(error);
+		console.error('error:', error);
 	}
 
 	return { success: true };

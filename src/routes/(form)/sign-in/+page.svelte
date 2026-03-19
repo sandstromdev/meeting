@@ -1,9 +1,11 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import { authClient } from '$lib/auth-client';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import * as Field from '$lib/components/ui/field';
 	import Input from '$lib/components/ui/input/input.svelte';
 	import Separator from '$lib/components/ui/separator/separator.svelte';
+	import { ErrorMessages } from '$lib/errors';
 	import { signIn } from '../data.remote';
 	import { SignInSchema, validateRedirect } from '../schema';
 
@@ -23,16 +25,21 @@
 
 <div class="max-w-sm rounded-md border px-6 py-5">
 	<form
-		{...signIn.preflight(SignInSchema).enhance(async ({ submit }) => {
+		{...signIn.preflight(SignInSchema).enhance(async ({ data: fd }) => {
 			try {
 				error = undefined;
 				loading = true;
 
-				await submit();
+				const { error: err } = await authClient.signIn.email({
+					email: fd.email,
+					password: fd._password,
+				});
 
-				console.log('signIn.result', signIn.result);
-
-				if (signIn.result?.success) {
+				if (err?.code === 'INVALID_EMAIL_OR_PASSWORD') {
+					error = ErrorMessages.invalid_credentials();
+				} else if (err) {
+					console.error('error:', error);
+				} else {
 					if (validateRedirect(data.redirect)) {
 						window.location.pathname = data.redirect;
 					} else {
