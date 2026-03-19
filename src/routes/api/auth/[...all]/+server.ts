@@ -11,12 +11,21 @@ const handler = (async ({ request, fetch }) => {
 
 	const nextUrl = `${convexSiteUrl}${requestUrl.pathname}${requestUrl.search}`;
 
+	console.log('nextUrl', nextUrl);
+
 	const newRequest = new Request(nextUrl, request);
 
 	newRequest.headers.set('host', new URL(nextUrl).host);
 	newRequest.headers.set('accept-encoding', 'application/json');
 
-	return await fetch(newRequest, { method: request.method, redirect: 'manual' });
+	const response = await fetch(newRequest, { method: request.method, redirect: 'manual' });
+
+	console.log('response', {
+		status: response.status,
+		headers: response.headers,
+	});
+
+	return response;
 }) satisfies RequestHandler;
 
 export const GET = handler;
