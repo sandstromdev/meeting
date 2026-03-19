@@ -11,7 +11,7 @@ const handler = (async ({ request, fetch }) => {
 
 	const nextUrl = `${convexSiteUrl}${requestUrl.pathname}${requestUrl.search}`;
 
-	console.log('nextUrl', nextUrl);
+	// console.log('nextUrl', nextUrl);
 
 	const newRequest = new Request(nextUrl, request);
 
@@ -20,10 +20,10 @@ const handler = (async ({ request, fetch }) => {
 
 	const response = await fetch(newRequest, { method: request.method, redirect: 'manual' });
 
-	console.log('response', {
+	/* console.log('response', {
 		status: response.status,
 		headers: response.headers,
-	});
+	}); */
 
 	return response;
 }) satisfies RequestHandler;
