@@ -152,7 +152,7 @@ export const openPoll = admin
 			await ctx.db.patch('polls', args.pollId, {
 				isOpen: true,
 				openedAt: now,
-				closedAt: undefined,
+				closedAt: null,
 				updatedAt: now,
 			});
 			didChange = true;
@@ -213,7 +213,7 @@ export const closePollByAdmin = admin
 
 		if (ctx.meeting.currentPollId === args.pollId) {
 			await ctx.db.patch('meetings', ctx.meeting._id, {
-				currentPollId: undefined,
+				currentPollId: null,
 			});
 			didChange = true;
 		}
@@ -250,7 +250,7 @@ export const closePollAndShowResults = admin
 
 export const clearCurrentPollId = admin.mutation().public(async ({ ctx }) => {
 	await ctx.db.patch('meetings', ctx.meeting._id, {
-		currentPollId: undefined,
+		currentPollId: null,
 	});
 	return true;
 });
@@ -281,7 +281,7 @@ export const removePoll = admin
 
 		if (ctx.meeting.currentPollId === args.pollId) {
 			await ctx.db.patch('meetings', ctx.meeting._id, {
-				currentPollId: undefined,
+				currentPollId: null,
 			});
 		}
 
@@ -328,7 +328,7 @@ export const cleanupPollAgendaItemIds = c
 		for (const pollId of args.pollIds) {
 			const poll = await ctx.db.get('polls', pollId);
 			if (poll) {
-				await ctx.db.patch('polls', pollId, { agendaItemId: undefined });
+				await ctx.db.patch('polls', pollId, { agendaItemId: null });
 				deleted += 1;
 			}
 		}
@@ -425,8 +425,8 @@ export const duplicatePoll = admin
 			_id: undefined,
 			_creationTime: undefined,
 			isOpen: false,
-			openedAt: undefined,
-			closedAt: undefined,
+			openedAt: null,
+			closedAt: null,
 			updatedAt: Date.now(),
 		};
 
@@ -462,7 +462,7 @@ export const cancelPoll = admin
 
 		await ctx.db.patch('polls', args.pollId, {
 			isOpen: false,
-			closedAt: undefined,
+			closedAt: null,
 			updatedAt: Date.now(),
 		});
 
@@ -473,7 +473,7 @@ export const cancelPoll = admin
 
 		if (ctx.meeting.currentPollId === args.pollId) {
 			await ctx.db.patch('meetings', ctx.meeting._id, {
-				currentPollId: undefined,
+				currentPollId: null,
 			});
 		}
 

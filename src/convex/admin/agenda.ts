@@ -148,7 +148,7 @@ export const removeAgendaItem = admin
 		await ctx.db.patch('meetings', ctx.meeting._id, {
 			agenda: nextAgenda,
 			currentAgendaItemId: newCurrentId,
-			currentPollId: clearsCurrentPoll ? undefined : ctx.meeting.currentPollId,
+			currentPollId: clearsCurrentPoll ? null : ctx.meeting.currentPollId,
 		});
 
 		return true;
@@ -184,7 +184,7 @@ export const setCurrentAgendaItem = admin
 		const agenda = ctx.meeting.agenda;
 		if (!args.agendaItemId) {
 			await ctx.db.patch('meetings', ctx.meeting._id, {
-				currentAgendaItemId: undefined,
+				currentAgendaItemId: null,
 			});
 
 			return true;

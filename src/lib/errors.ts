@@ -49,4 +49,6 @@ export const ErrorMessages = {
 	invalid_credentials: () => 'Felaktig e-post eller lösenord.',
 	zod_error: (_iss) => 'Ett eller flera argument var felaktiga.',
 	invalid_args: ({ args }) => `Ett eller flera argument var felaktiga: ${JSON.stringify(args)}.`,
+	meeting_code_already_exists: ({ meetingCode }) =>
+		`Möteskoden '${meetingCode}' är redan i bruk. Välj en annan kod.`,
 } satisfies AppErrorMessages;

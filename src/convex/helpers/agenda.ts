@@ -307,7 +307,7 @@ export function removeItemKeepChildren(agenda: Agenda, id: AgendaItemId) {
 	};
 }
 
-export function getNextAgendaItem(agenda: Agenda, currentId: AgendaItemId | undefined) {
+export function getNextAgendaItem(agenda: Agenda, currentId: AgendaItemId | null) {
 	if (!currentId) {
 		return agenda.at(0);
 	}
@@ -318,7 +318,7 @@ export function getNextAgendaItem(agenda: Agenda, currentId: AgendaItemId | unde
 	return agenda[index + 1];
 }
 
-export function getPreviousAgendaItem(agenda: Agenda, currentId: AgendaItemId | undefined) {
+export function getPreviousAgendaItem(agenda: Agenda, currentId: AgendaItemId | null) {
 	if (!currentId) {
 		return agenda.at(0);
 	}

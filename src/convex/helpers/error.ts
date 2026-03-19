@@ -53,6 +53,9 @@ export const errors = {
 
 	invalid_args: (args: Record<string, Value | undefined>) =>
 		({ code: 'invalid_args', args }) as const,
+
+	meeting_code_already_exists: (meetingCode: string) =>
+		({ code: 'meeting_code_already_exists', meetingCode }) as const,
 } as const;
 
 export const errorCodes = new Set<AppErrorCode>(Object.keys(errors) as AppErrorCode[]);

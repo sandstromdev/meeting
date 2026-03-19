@@ -27,7 +27,7 @@ export const Request = v.object({
 		userId: v.id('meetingParticipants'),
 		name: v.string(),
 	}),
-	startTime: v.optional(v.number()),
+	startTime: v.nullable(v.number()),
 });
 
 export const Meeting = v.object({
@@ -38,10 +38,10 @@ export const Meeting = v.object({
 	date: v.number(),
 
 	/** When the meeting was started (for duration). */
-	startedAt: v.optional(v.number()),
+	startedAt: v.nullable(v.number()),
 	agenda: v.array(AgendaItem),
-	currentAgendaItemId: v.optional(v.string()),
-	currentPollId: v.optional(v.id('polls')),
+	currentAgendaItemId: v.nullable(v.string()),
+	currentPollId: v.nullable(v.id('polls')),
 
 	isOpen: v.boolean(),
 
@@ -49,7 +49,7 @@ export const Meeting = v.object({
 
 	currentSpeaker: v.nullable(
 		v.object({
-			entryId: v.optional(v.id('speakerQueueEntries')),
+			entryId: v.nullable(v.id('speakerQueueEntries')),
 			ct: v.number(),
 			userId: v.id('meetingParticipants'),
 			name: v.string(),
@@ -85,7 +85,7 @@ export type MajorityRule = typeof majorityRule.type;
 
 const pollBaseFields = {
 	meetingId: v.id('meetings'),
-	agendaItemId: v.optional(v.string()),
+	agendaItemId: v.nullable(v.string()),
 	title: v.string(),
 	options: v.array(v.string()),
 	allowsAbstain: v.boolean(),
@@ -93,8 +93,8 @@ const pollBaseFields = {
 	maxVotesPerVoter: v.number(),
 	/** If true, everyone can see results when poll is closed; if false, only admins can. */
 	isResultPublic: v.boolean(),
-	openedAt: v.optional(v.number()),
-	closedAt: v.optional(v.number()),
+	openedAt: v.nullable(v.number()),
+	closedAt: v.nullable(v.number()),
 	updatedAt: v.number(),
 };
 
@@ -136,6 +136,7 @@ export const PollResult = {
 	complete: v.boolean(),
 	results: v.object({
 		optionTotals: v.array(PollResultOptionTotal),
+		abstainPercentage: v.number(),
 		winners: v.array(
 			v.object({
 				optionIndex: v.number(),
@@ -144,13 +145,7 @@ export const PollResult = {
 			}),
 		),
 		isTie: v.boolean(),
-		majorityRule: v.optional(majorityRule),
-		counts: v.object({
-			totalVotes: v.number(),
-			eligibleVoters: v.number(),
-			usableVotes: v.number(),
-			abstain: v.number(),
-		}),
+		majorityRule: v.nullable(majorityRule),
 	}),
 };
 
@@ -165,7 +160,7 @@ export const PointOfOrderEntry = v.object({
 export const SpeakerLogEntry = v.object({
 	meetingId: v.id('meetings'),
 	type: v.union(v.literal('speaker'), v.literal('point_of_order'), v.literal('reply')),
-	userId: v.optional(v.id('meetingParticipants')),
+	userId: v.nullable(v.id('meetingParticipants')),
 	name: v.string(),
 	startTime: v.number(),
 	endTime: v.number(),
@@ -176,7 +171,7 @@ export const AbsenceEntry = v.object({
 	userId: v.id('meetingParticipants'),
 	name: v.string(),
 	startTime: v.number(),
-	endTime: v.optional(v.number()),
+	endTime: v.nullable(v.number()),
 });
 
 export const MeetingParticipant = v.object({

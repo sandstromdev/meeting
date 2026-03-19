@@ -33,7 +33,7 @@ export async function completeReturnToMeeting(
 		.query('absenceEntries')
 		.withIndex('by_meeting_user', (q) => q.eq('meetingId', meeting._id).eq('userId', userId))
 		.collect();
-	const open = openAbsences.filter((e) => e.endTime === undefined);
+	const open = openAbsences.filter((e) => e.endTime == null);
 	const toClose = [...open].toSorted((a, b) => b.startTime - a.startTime)[0];
 	if (toClose) {
 		await db.patch('absenceEntries', toClose._id, { endTime: now });

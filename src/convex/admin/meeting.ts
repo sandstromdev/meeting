@@ -6,6 +6,7 @@ import { zid } from 'convex-helpers/server/zod4';
 import { z } from 'zod';
 import { MeetingCode } from '$lib/validation';
 import { getAbsentCounter, getParticipantCounter } from '$convex/helpers/counters';
+import { AppError, errors } from '$convex/helpers/error';
 
 export const getPointOfOrderEntries = admin.query().public(async ({ ctx }) => {
 	const entries = await ctx.db
@@ -160,6 +161,7 @@ export const acceptBreak = admin.mutation().public(async ({ ctx: { db, meeting }
 		break: {
 			type: 'accepted',
 			by: meeting.break.by,
+			startTime: meeting.break.startTime ?? Date.now(),
 		},
 	});
 
@@ -223,7 +225,7 @@ export const toggleMeeting = admin.mutation().public(async ({ ctx }) => {
 
 		await db.patch('meetings', meeting._id, {
 			isOpen: false,
-			currentPollId: undefined,
+			currentPollId: null,
 		});
 		return true;
 	}
@@ -289,8 +291,9 @@ export const resetMeeting = admin.mutation().public(async ({ ctx }) => {
 		reply: null,
 		break: null,
 		lastConsumedCt: -1,
-		currentAgendaItemId: firstItemId ?? undefined,
-		currentPollId: undefined,
+		currentAgendaItemId: firstItemId ?? null,
+		currentPollId: null,
+		startedAt: null,
 	});
 
 	return true;
@@ -320,9 +323,7 @@ export const updateMeetingData = admin
 					.query('meetings')
 					.withIndex('by_code', (q) => q.eq('code', newCode))
 					.first();
-				if (existing) {
-					return false;
-				}
+				AppError.assert(!!existing, errors.meeting_code_already_exists(newCode));
 			}
 			updates.code = newCode;
 		}
