@@ -25,6 +25,8 @@
 
 	const agenda = $derived(as.flat);
 
+	const open = $state(meeting.isAdmin ? ps.isDefault : false);
+
 	function hasBeenCompleted(idx: number) {
 		return as.currentIndex >= 0 && as.currentIndex > idx;
 	}
@@ -134,7 +136,7 @@
 	let editingItemId = $state<string | undefined>(undefined);
 </script>
 
-<Collapsible class="rounded-lg border" open={ps.isDefault}>
+<Collapsible class="rounded-lg border" {open}>
 	<CollapsibleTrigger
 		class="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-muted/50 data-[state=open]:[&>svg]:rotate-180"
 	>
@@ -203,7 +205,8 @@
 	<li class="not-last:border-b">
 		<div
 			class={cn(
-				'flex gap-2 px-2 py-2 text-sm',
+				'flex gap-2 p-4 text-sm',
+				meeting.isAdmin && 'p-2',
 				hasBeenCompleted(index) && 'bg-muted/50 text-muted-foreground',
 				item.id === as.currentAgendaItemId && 'bg-sky-100 text-sky-500',
 			)}

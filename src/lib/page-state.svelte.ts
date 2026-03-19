@@ -29,10 +29,12 @@ export function usePageState() {
 		get isProjector() {
 			return page.url.pathname.startsWith(projectorBase);
 		},
+
 		get isQueue() {
 			const p = page.url.pathname;
 			return p === adminQueuePath || p === moderatorPath;
 		},
+
 		get isDefault() {
 			return !this.isProjector && !this.isQueue;
 		},
