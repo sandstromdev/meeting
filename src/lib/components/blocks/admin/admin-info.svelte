@@ -6,9 +6,9 @@
 
 	const meeting = getMeetingContext();
 	const stats = $derived([
-		{ value: meeting.voterRoll, label: 'Röstlängd' },
-		{ value: meeting.participants, label: 'Mötesdeltagare' },
-		{ value: meeting.absent, label: 'Frånvarande' },
+		{ id: 'voterRoll', value: meeting.voterRoll, label: 'Röstlängd' },
+		{ id: 'participants', value: meeting.participants, label: 'Mötesdeltagare' },
+		{ id: 'absent', value: meeting.absent, label: 'Frånvarande' },
 	]);
 
 	const variants = tv({
@@ -37,8 +37,10 @@
 	<div class="grid grid-cols-3 gap-4 text-center">
 		{#each stats as stat (stat.label)}
 			<div>
-				<span class={number()}>{stat.value}</span>
-				<span class={label()}>{stat.label}</span>
+				<div id="{stat.id}-value" aria-labelledby="{stat.id}-label" class={number()}>
+					{stat.value}
+				</div>
+				<div id="{stat.id}-label" class={label()}>{stat.label}</div>
 			</div>
 		{/each}
 	</div>
