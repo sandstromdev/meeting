@@ -1,9 +1,11 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import { authClient } from '$lib/auth-client';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import * as Field from '$lib/components/ui/field';
 	import Input from '$lib/components/ui/input/input.svelte';
 	import Separator from '$lib/components/ui/separator/separator.svelte';
+	import { ErrorMessages } from '$lib/errors';
 	import { signUp } from '../data.remote';
 	import { SignUpSchema, validateRedirect } from '../schema';
 
@@ -29,9 +31,17 @@
 				error = undefined;
 				loading = true;
 
-				await submit();
+				const { error: err } = await authClient.signUp.email({
+					name: fd.name,
+					email: fd.email,
+					password: fd._password,
+				});
 
-				if (signUp.result?.success) {
+				if (err?.code === 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL') {
+					error = ErrorMessages.email_exists();
+				} else if (err) {
+					console.error('error:', error);
+				} else {
 					if (validateRedirect(data.redirect)) {
 						window.location.pathname = data.redirect;
 					} else {

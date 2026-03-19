@@ -14,6 +14,8 @@
 	import AlertTitle from '$lib/components/ui/alert/alert-title.svelte';
 	import AlertDescription from '$lib/components/ui/alert/alert-description.svelte';
 	import AlertTriangle from '@lucide/svelte/icons/alert-triangle';
+	import { signOut } from '$lib/auth-client';
+	import { goto } from '$app/navigation';
 
 	let { data } = $props();
 
@@ -79,7 +81,12 @@
 						Inte du?
 						<a
 							class="text-primary underline"
-							href={resolve('/api/sign-out?redirect=/sign-in')}
+							href={resolve('/sign-in')}
+							onclick={async (e) => {
+								e.preventDefault();
+								await signOut();
+								goto(resolve('/sign-in'));
+							}}
 							data-sveltekit-reload>Byt konto</a
 						>.
 					</p>

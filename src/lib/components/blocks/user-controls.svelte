@@ -8,7 +8,7 @@
 	import DoorOpenIcon from '@lucide/svelte/icons/door-open';
 	import { confirm } from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
 	import { usePageState } from '$lib/page-state.svelte';
-	import { authClient } from '$lib/auth-client';
+	import * as auth from '$lib/auth-client';
 	import { goto } from '$app/navigation';
 
 	const meeting = getMeetingContext();
@@ -18,7 +18,7 @@
 	async function leaveMeeting() {
 		await meeting.mutate(api.users.attendance.leaveMeeting);
 
-		await fetch(resolve('/api/leave-meeting'));
+		await auth.leaveMeeting();
 
 		goto(resolve('/anslut'));
 	}
@@ -26,9 +26,7 @@
 	async function signOut() {
 		await meeting.mutate(api.users.attendance.leaveMeeting);
 
-		await fetch(resolve('/api/leave-meeting'));
-
-		await authClient.signOut();
+		await auth.signOut();
 
 		goto(resolve('/sign-in'));
 	}
