@@ -1,5 +1,4 @@
 import { api } from '$convex/_generated/api';
-import { createAuth } from '$convex/auth';
 import { getAppError } from '$convex/helpers/error';
 import { deleteMeetingCookie } from '$lib/server/meeting-cookie';
 import { getAuthState } from '@mmailaender/convex-better-auth-svelte/sveltekit';
@@ -8,7 +7,7 @@ import { error, redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
 
 export const load = (async ({ locals, cookies, url }) => {
-	const authState = await getAuthState(createAuth, cookies);
+	const authState = getAuthState();
 
 	if (!authState.isAuthenticated) {
 		redirect(307, '/sign-in');
