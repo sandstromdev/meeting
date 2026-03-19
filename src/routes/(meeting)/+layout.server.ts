@@ -28,10 +28,14 @@ export const load = (async ({ locals, cookies, url }) => {
 	} catch (e) {
 		const err = getAppError(e);
 
-		if (err?.is('meeting_not_found') || err?.is('meeting_participant_not_found')) {
+		if (
+			err?.is('meeting_not_found') ||
+			err?.is('meeting_participant_not_found') ||
+			err?.is('participant_banned')
+		) {
 			deleteMeetingCookie(cookies);
 
-			redirect(307, '/anslut');
+			redirect(307, err?.is('participant_banned') ? '/anslut?error=participant_banned' : '/anslut');
 		}
 
 		console.error(e);

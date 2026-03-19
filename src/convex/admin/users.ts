@@ -1,6 +1,11 @@
 import { admin } from '$convex/helpers/auth';
-import { getAbsentCounter, getParticipantCounter } from '$convex/helpers/counters';
+import {
+	getAbsentCounter,
+	getBannedCounter,
+	getParticipantCounter,
+} from '$convex/helpers/counters';
 import { completeReturnToMeeting } from '$convex/helpers/meeting';
+import { ensureParticipantInMeeting } from '$convex/helpers/users';
 import { zid } from 'convex-helpers/server/zod4';
 import { z } from 'zod';
 
@@ -17,6 +22,7 @@ export const getParticipants = admin.query().public(async ({ ctx }) => {
 		absentSince: p.absentSince,
 		isInSpeakerQueue: p.isInSpeakerQueue,
 		returnRequestedAt: p.returnRequestedAt,
+		banned: p.banned ?? false,
 	}));
 });
 
@@ -24,7 +30,7 @@ export const setParticipantRole = admin
 	.mutation()
 	.input({
 		userId: zid('meetingParticipants'),
-		role: z.enum(['admin', 'moderator', 'participant']),
+		role: z.enum(['admin', 'moderator', 'participant', 'adjuster']),
 	})
 	.public(async ({ ctx, args }) => {
 		const p = await ctx.db.get('meetingParticipants', args.userId);
@@ -80,6 +86,7 @@ export const setParticipantAbsent = admin
 				userId: args.userId,
 				name: p.name,
 				startTime: now,
+				endTime: null,
 			});
 
 			await ctx.db.patch('meetingParticipants', args.userId, { absentSince: now });
@@ -151,7 +158,62 @@ export const removeParticipant = admin
 			await getAbsentCounter(ctx.meeting._id).dec(ctx);
 		}
 
+		if (p.banned ?? false) {
+			await getBannedCounter(ctx.meeting._id).dec(ctx);
+		}
+
 		await ctx.db.delete('meetingParticipants', args.userId);
+
+		return true;
+	});
+
+export const setParticipantBanned = admin
+	.mutation()
+	.input({
+		userId: zid('meetingParticipants'),
+		banned: z.boolean(),
+	})
+	.public(async ({ ctx, args }) => {
+		if (args.userId === ctx.me._id) {
+			return false;
+		}
+
+		const p = await ctx.db.get('meetingParticipants', args.userId);
+		if (!p || p.meetingId !== ctx.meeting._id) {
+			return false;
+		}
+
+		const currentlyBanned = p.banned ?? false;
+		if (currentlyBanned !== args.banned) {
+			if (args.banned) {
+				await getBannedCounter(ctx.meeting._id).inc(ctx);
+			} else {
+				await getBannedCounter(ctx.meeting._id).dec(ctx);
+			}
+		}
+
+		await ctx.db.patch('meetingParticipants', args.userId, { banned: args.banned });
+		return true;
+	});
+
+export const addParticipant = admin
+	.mutation()
+	.input({
+		userId: z.string(),
+		name: z.string(),
+		role: z.enum(['admin', 'moderator', 'participant', 'adjuster']),
+	})
+	.public(async ({ ctx, args }) => {
+		const result = await ensureParticipantInMeeting(ctx, {
+			meeting: ctx.meeting,
+			userId: args.userId,
+			name: args.name,
+			role: args.role,
+		});
+
+		if (!result.ok) {
+			return false;
+		}
 
 		return true;
 	});

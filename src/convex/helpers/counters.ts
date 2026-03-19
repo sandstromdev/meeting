@@ -6,6 +6,7 @@ import { components } from '../_generated/api';
 type Counters =
 	| 'participants'
 	| 'absent'
+	| 'banned'
 	| `voters:${Id<'polls'>}`
 	| `votes:${Id<'polls'>}`
 	| undefined;
@@ -18,6 +19,10 @@ export function getParticipantCounter(meetingId: Id<'meetings'>) {
 
 export function getAbsentCounter(meetingId: Id<'meetings'>) {
 	return counter.for(meetingId, `absent`);
+}
+
+export function getBannedCounter(meetingId: Id<'meetings'>) {
+	return counter.for(meetingId, `banned`);
 }
 
 export function getVotersCounter(meetingId: Id<'meetings'>, pollId: Id<'polls'>) {
@@ -33,6 +38,7 @@ export function getAllCounters(meetingId: Id<'meetings'>) {
 		all: (ctx: QueryCtx) => counter.for(meetingId, undefined).countAll(ctx),
 		participants: getParticipantCounter(meetingId),
 		absent: getAbsentCounter(meetingId),
+		banned: getBannedCounter(meetingId),
 		voters: (pollId: Id<'polls'>) => getVotersCounter(meetingId, pollId),
 		votes: (pollId: Id<'polls'>) => getVotesCounter(meetingId, pollId),
 	};

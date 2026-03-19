@@ -205,6 +205,7 @@ export const doneSpeaking = withMe.mutation().public(async ({ ctx }) => {
 			name: nextEntry.name,
 			startTime: now,
 			ct: nextEntry._creationTime,
+			entryId: nextEntry._id,
 		},
 	});
 	return true;

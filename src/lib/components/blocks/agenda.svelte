@@ -8,7 +8,7 @@
 		CollapsibleContent,
 		CollapsibleTrigger,
 	} from '$lib/components/ui/collapsible';
-	import { confirm, confirmAsync } from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
+	import { confirm } from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
 	import { getMeetingContext } from '$lib/context.svelte';
 	import { usePageState } from '$lib/page-state.svelte';
 	import { cn } from '$lib/utils';
@@ -77,7 +77,7 @@
 		return !!current && !!next && next.depth > current.depth;
 	}
 
-	async function removeAgendaItemWithChoice(itemId: string, index: number) {
+	function removeAgendaItemWithChoice(itemId: string, index: number) {
 		if (!hasChildren(index)) {
 			confirm({
 				title: 'Ta bort punkt?',
@@ -91,35 +91,29 @@
 			return;
 		}
 
-		const keepChildren = await confirmAsync({
+		confirm({
 			title: 'Punkten har underpunkter',
 			description: 'Vill du behålla underpunkterna och bara ta bort huvudpunkten?',
 			confirm: { text: 'Behåll underpunkter' },
 			cancel: { text: 'Ta bort allt' },
-		});
-
-		if (keepChildren) {
-			await meeting.adminMutate(api.admin.agenda.removeAgendaItem, {
-				agendaItemId: itemId,
-				deletionMode: 'keep_children',
-			});
-			return;
-		}
-
-		const deleteAll = await confirmAsync({
-			title: 'Ta bort punkt och underpunkter?',
-			description: 'Detta tar bort punkten och alla underpunkter permanent.',
-			confirm: { text: 'Ta bort alla' },
-			cancel: { text: 'Avbryt' },
-		});
-
-		if (!deleteAll) {
-			return;
-		}
-
-		await meeting.adminMutate(api.admin.agenda.removeAgendaItem, {
-			agendaItemId: itemId,
-			deletionMode: 'delete_subtree',
+			onConfirm: () =>
+				meeting.adminMutate(api.admin.agenda.removeAgendaItem, {
+					agendaItemId: itemId,
+					deletionMode: 'keep_children',
+				}),
+			onCancel: () => {
+				confirm({
+					title: 'Ta bort punkt och underpunkter?',
+					description: 'Detta tar bort punkten och alla underpunkter permanent.',
+					confirm: { text: 'Ta bort alla' },
+					cancel: { text: 'Avbryt' },
+					onConfirm: () =>
+						meeting.adminMutate(api.admin.agenda.removeAgendaItem, {
+							agendaItemId: itemId,
+							deletionMode: 'delete_subtree',
+						}),
+				});
+			},
 		});
 	}
 

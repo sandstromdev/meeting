@@ -6,6 +6,7 @@ import { pickParticipantData } from './helpers/users';
 import { z } from 'zod';
 import type { Id } from './_generated/dataModel';
 import type { UserIdentity } from 'convex/server';
+import { hasRole } from '$lib/roles';
 
 export const getCurrentUser = query({
 	args: {},
@@ -24,11 +25,10 @@ async function getMeetingParticipantInner(
 	ctx: QueryCtx & { user: UserIdentity },
 	meetingId: Id<'meetings'>,
 ) {
+	const userId = ctx.user.subject;
 	const me = await ctx.db
 		.query('meetingParticipants')
-		.withIndex('by_token_meeting', (q) =>
-			q.eq('tokenIdentifier', ctx.user.tokenIdentifier).eq('meetingId', meetingId),
-		)
+		.withIndex('by_user_meeting', (q) => q.eq('userId', userId).eq('meetingId', meetingId))
 		.first();
 
 	if (!me) {
@@ -47,7 +47,10 @@ export const getMeetingParticipant = authed
 /** Hierarchical role check: admin satisfies any role, moderator satisfies moderator+participant. */
 export const hasAtLeastRole = authed
 	.query()
-	.input({ meetingId: zid('meetings'), role: z.enum(['admin', 'moderator', 'participant']) })
+	.input({
+		meetingId: zid('meetings'),
+		role: z.enum(['admin', 'moderator', 'participant', 'adjuster']),
+	})
 	.public(async ({ ctx, args }) => {
 		const me = await getMeetingParticipantInner(ctx, args.meetingId);
 
@@ -55,6 +58,5 @@ export const hasAtLeastRole = authed
 			return false;
 		}
 
-		const hierarchy: Record<string, number> = { admin: 2, moderator: 1, participant: 0 };
-		return (hierarchy[me.role] ?? 0) >= (hierarchy[args.role] ?? 0);
+		return hasRole(me.role, args.role);
 	});

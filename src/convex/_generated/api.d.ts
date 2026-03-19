@@ -9,6 +9,7 @@
  */
 
 import type * as admin_agenda from "../admin/agenda.js";
+import type * as admin_global from "../admin/global.js";
 import type * as admin_heartbeat from "../admin/heartbeat.js";
 import type * as admin_meeting from "../admin/meeting.js";
 import type * as admin_poll from "../admin/poll.js";
@@ -45,6 +46,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   "admin/agenda": typeof admin_agenda;
+  "admin/global": typeof admin_global;
   "admin/heartbeat": typeof admin_heartbeat;
   "admin/meeting": typeof admin_meeting;
   "admin/poll": typeof admin_poll;

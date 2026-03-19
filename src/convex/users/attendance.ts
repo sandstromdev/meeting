@@ -41,6 +41,7 @@ export const leaveMeeting = withMe.mutation().public(async ({ ctx }) => {
 		userId: me._id,
 		name: me.name,
 		startTime: now,
+		endTime: now,
 	});
 
 	await db.patch('meetingParticipants', me._id, {

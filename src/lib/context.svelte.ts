@@ -34,6 +34,7 @@ type CurrentSpeaker =
 type AttendanceState = {
 	participants: number;
 	absent: number;
+	banned: number;
 };
 
 export class MeetingState {
@@ -61,6 +62,7 @@ export class MeetingState {
 		this.#attendance = $state({
 			participants: 0,
 			absent: 0,
+			banned: 0,
 		});
 
 		const attendance = this.adminQuery(api.admin.meeting.getAttendance);
@@ -71,6 +73,7 @@ export class MeetingState {
 			this.#attendance = {
 				participants: attendance.data?.participants ?? 0,
 				absent: attendance.data?.absentees ?? 0,
+				banned: attendance.data?.banned ?? 0,
 			};
 		});
 	}
@@ -267,6 +270,10 @@ export class MeetingState {
 		return this.#attendance.absent;
 	}
 
+	get banned() {
+		return this.#attendance.banned;
+	}
+
 	get hasPendingReturnRequest() {
 		return this.me.absentSince > 0 && this.me.returnRequestedAt > 0;
 	}
@@ -331,7 +338,7 @@ export class MeetingState {
 	}
 
 	get isParticipant() {
-		return this.role === 'participant';
+		return this.role === 'participant' || this.role === 'adjuster';
 	}
 
 	get isCurrentSpeaker() {

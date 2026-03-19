@@ -110,6 +110,16 @@
 					><p>Mötet med möteskoden '{data.meetingCode}' hittades inte.</p></AlertDescription
 				>
 			</Alert>
+		{:else if data.error === 'participant_banned'}
+			<Alert variant="destructive">
+				<AlertTriangle class="size-4" />
+				<AlertTitle>Avstängd från mötet</AlertTitle>
+				<AlertDescription
+					><p>
+						Du har blivit avstängd från detta möte och kan inte ansluta igen.
+					</p></AlertDescription
+				>
+			</Alert>
 		{:else}
 			<Alert variant="destructive">
 				<AlertTriangle class="size-4" />

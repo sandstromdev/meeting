@@ -115,10 +115,10 @@ export const PollBaseSchema = z.object({
 	allowsAbstain: z.boolean(),
 	maxVotesPerVoter: z.number().min(1),
 	meetingId: zid('meetings'),
-	agendaItemId: z.string().optional(),
+	agendaItemId: z.string().nullable(),
 	isOpen: z.boolean(),
-	openedAt: z.number().optional(),
-	closedAt: z.number().optional(),
+	openedAt: z.number().nullable(),
+	closedAt: z.number().nullable(),
 	updatedAt: z.number(),
 });
 

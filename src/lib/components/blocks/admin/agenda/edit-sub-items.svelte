@@ -4,7 +4,7 @@
 	import Collapsible from '$lib/components/ui/collapsible/collapsible.svelte';
 	import CollapsibleContent from '$lib/components/ui/collapsible/collapsible-content.svelte';
 	import CollapsibleTrigger from '$lib/components/ui/collapsible/collapsible-trigger.svelte';
-	import { confirm, confirmAsync } from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
+	import { confirm } from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
 	import { Input } from '$lib/components/ui/input';
 	import { getMeetingContext } from '$lib/context.svelte';
 	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
@@ -74,7 +74,7 @@
 		return !!next && next.depth > current.depth;
 	}
 
-	async function removeAgendaItemWithChoice(itemId: string) {
+	function removeAgendaItemWithChoice(itemId: string) {
 		if (!hasChildren(itemId)) {
 			confirm({
 				title: 'Ta bort underpunkt?',
@@ -88,35 +88,29 @@
 			return;
 		}
 
-		const keepChildren = await confirmAsync({
+		confirm({
 			title: 'Underpunkten har egna underpunkter',
 			description: 'Vill du behålla dessa underpunkter och bara ta bort den valda raden?',
 			confirm: { text: 'Behåll underpunkter' },
 			cancel: { text: 'Ta bort allt' },
-		});
-
-		if (keepChildren) {
-			await meeting.adminMutate(api.admin.agenda.removeAgendaItem, {
-				agendaItemId: itemId,
-				deletionMode: 'keep_children',
-			});
-			return;
-		}
-
-		const deleteAll = await confirmAsync({
-			title: 'Ta bort underpunkt och alla underpunkter?',
-			description: 'Detta tar bort allt under denna punkt permanent.',
-			confirm: { text: 'Ta bort alla' },
-			cancel: { text: 'Avbryt' },
-		});
-
-		if (!deleteAll) {
-			return;
-		}
-
-		await meeting.adminMutate(api.admin.agenda.removeAgendaItem, {
-			agendaItemId: itemId,
-			deletionMode: 'delete_subtree',
+			onConfirm: () =>
+				meeting.adminMutate(api.admin.agenda.removeAgendaItem, {
+					agendaItemId: itemId,
+					deletionMode: 'keep_children',
+				}),
+			onCancel: () => {
+				confirm({
+					title: 'Ta bort underpunkt och alla underpunkter?',
+					description: 'Detta tar bort allt under denna punkt permanent.',
+					confirm: { text: 'Ta bort alla' },
+					cancel: { text: 'Avbryt' },
+					onConfirm: () =>
+						meeting.adminMutate(api.admin.agenda.removeAgendaItem, {
+							agendaItemId: itemId,
+							deletionMode: 'delete_subtree',
+						}),
+				});
+			},
 		});
 	}
 </script>

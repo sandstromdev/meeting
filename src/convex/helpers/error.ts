@@ -47,6 +47,7 @@ export const errors = {
 	email_exists: { code: 'email_exists' },
 	invalid_credentials: { code: 'invalid_credentials' },
 	invalid_meeting_code: { code: 'invalid_meeting_code' },
+	participant_banned: { code: 'participant_banned' },
 
 	zod_error: (issues: z.core.$ZodErrorTree<unknown, string>) =>
 		({ code: 'bad_args', issues }) as const,

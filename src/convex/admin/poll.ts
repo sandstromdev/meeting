@@ -32,7 +32,7 @@ function optionsWithAbstainLast(options: string[], allowsAbstain: boolean): stri
 export const createPoll = admin
 	.mutation()
 	.input({
-		agendaItemId: z.string().optional(),
+		agendaItemId: z.string().nullable(),
 		draft: PollDraftSchema,
 	})
 	.public(async ({ ctx, args }) => {
@@ -501,7 +501,7 @@ export const insertPollResultSnapshot = c
 				}),
 			),
 			isTie: z.boolean(),
-			majorityRule: z.enum(['simple', 'two_thirds', 'three_quarters', 'unanimous']).optional(),
+			majorityRule: z.enum(['simple', 'two_thirds', 'three_quarters', 'unanimous']).nullable(),
 			counts: z.object({
 				totalVotes: z.number(),
 				eligibleVoters: z.number(),
@@ -587,7 +587,7 @@ export const getPollResults = c
 
 		let winners: OptionTotal[];
 		let isTie: boolean;
-		let majorityRule = undefined;
+		let majorityRule = null;
 
 		if (poll.type === 'multi_winner') {
 			const wc = Math.max(1, Math.min(poll.winningCount, options.length));

@@ -17,7 +17,11 @@ export const getMe = authed
 export const getData = withMe.query().public(async ({ ctx }) => {
 	const { me, meeting } = ctx;
 
-	if (me.role === 'participant' && meeting.startedAt && meeting.startedAt > Date.now()) {
+	if (
+		(me.role === 'participant' || me.role === 'adjuster') &&
+		meeting.startedAt &&
+		meeting.startedAt > Date.now()
+	) {
 		return {
 			meeting: {
 				...meeting,

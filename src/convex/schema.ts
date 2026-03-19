@@ -136,7 +136,6 @@ export const PollResult = {
 	complete: v.boolean(),
 	results: v.object({
 		optionTotals: v.array(PollResultOptionTotal),
-		abstainPercentage: v.number(),
 		winners: v.array(
 			v.object({
 				optionIndex: v.number(),
@@ -146,6 +145,12 @@ export const PollResult = {
 		),
 		isTie: v.boolean(),
 		majorityRule: v.nullable(majorityRule),
+		counts: v.object({
+			totalVotes: v.number(),
+			eligibleVoters: v.number(),
+			usableVotes: v.number(),
+			abstain: v.number(),
+		}),
 	}),
 };
 
@@ -178,14 +183,22 @@ export const MeetingParticipant = v.object({
 	meetingId: v.id('meetings'),
 	name: v.string(),
 
-	tokenIdentifier: v.string(),
+	userId: v.string(),
 
-	role: v.union(v.literal('admin'), v.literal('moderator'), v.literal('participant')),
+	role: v.union(
+		v.literal('admin'),
+		v.literal('moderator'),
+		v.literal('participant'),
+		v.literal('adjuster'),
+	),
 
 	isInSpeakerQueue: v.boolean(),
 
 	absentSince: v.number(),
 	returnRequestedAt: v.number(),
+
+	/** When true, participant cannot connect or access the meeting. */
+	banned: v.optional(v.boolean()),
 });
 
 /** Tracks participant activity by tokenIdentifier (separate from meetingParticipants). */
@@ -197,14 +210,14 @@ export const Heartbeat = v.object({
 export const User = v.object({
 	email: v.string(),
 	role: v.union(v.literal('admin'), v.literal('user')),
-	userId: v.id('user'),
+	userId: v.string(),
 });
 
 export default defineSchema(
 	{
 		meetingParticipants: defineTable(MeetingParticipant)
-			.index('by_token', ['tokenIdentifier'])
-			.index('by_token_meeting', ['tokenIdentifier', 'meetingId'])
+			.index('by_user', ['userId'])
+			.index('by_user_meeting', ['userId', 'meetingId'])
 			.index('by_meeting', ['meetingId'])
 			.index('by_meeting_absent', ['meetingId', 'absentSince']),
 

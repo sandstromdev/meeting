@@ -37,8 +37,8 @@
 
 				if (err?.code === 'INVALID_EMAIL_OR_PASSWORD') {
 					error = ErrorMessages.invalid_credentials();
-				} else if (err) {
-					console.error('error:', error);
+				} else if (err?.message) {
+					error = err.message;
 				} else {
 					if (validateRedirect(data.redirect)) {
 						window.location.pathname = data.redirect;

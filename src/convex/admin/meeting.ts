@@ -5,7 +5,11 @@ import { pickParticipantData } from '$convex/helpers/users';
 import { zid } from 'convex-helpers/server/zod4';
 import { z } from 'zod';
 import { MeetingCode } from '$lib/validation';
-import { getAbsentCounter, getParticipantCounter } from '$convex/helpers/counters';
+import {
+	getAbsentCounter,
+	getBannedCounter,
+	getParticipantCounter,
+} from '$convex/helpers/counters';
 import { AppError, errors } from '$convex/helpers/error';
 
 export const getPointOfOrderEntries = admin.query().public(async ({ ctx }) => {
@@ -38,12 +42,13 @@ export const getSpeakerLogEntries = admin.query().public(async ({ ctx }) => {
 });
 
 export const getAttendance = admin.query().public(async ({ ctx }) => {
-	const [participants, absentees] = await Promise.all([
+	const [participants, absentees, banned] = await Promise.all([
 		getParticipantCounter(ctx.meeting._id).count(ctx),
 		getAbsentCounter(ctx.meeting._id).count(ctx),
+		getBannedCounter(ctx.meeting._id).count(ctx),
 	]);
 
-	return { participants, absentees };
+	return { participants, absentees, banned };
 });
 
 export const getAbsentees = admin.query().public(async ({ ctx }) => {
@@ -360,3 +365,34 @@ export const logSpeaker = admin
 			endTime,
 		});
 	});
+
+export const recountParticipants = admin.mutation().public(async ({ ctx }) => {
+	const { db, meeting } = ctx;
+	const participants = await db
+		.query('meetingParticipants')
+		.withIndex('by_meeting', (q) => q.eq('meetingId', meeting._id))
+		.collect();
+
+	const counts = participants.reduce(
+		(acc, p) => {
+			if (p.absentSince > 0) {
+				acc.absent++;
+			}
+			acc.total++;
+
+			return acc;
+		},
+		{ absent: 0, total: 0 },
+	);
+
+	const pc = getParticipantCounter(meeting._id);
+	const ac = getAbsentCounter(meeting._id);
+
+	await pc.reset(ctx);
+	await ac.reset(ctx);
+
+	pc.add(ctx, counts.total);
+	ac.add(ctx, counts.absent);
+
+	return true;
+});

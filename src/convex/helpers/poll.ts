@@ -15,7 +15,7 @@ type PollResultSnapshotArgs = {
 		optionTotals: OptionTotal[];
 		winners: OptionTotal[];
 		isTie: boolean;
-		majorityRule?: Doc<'pollResults'>['results']['majorityRule'];
+		majorityRule: Doc<'pollResults'>['results']['majorityRule'] | null;
 		counts: {
 			totalVotes: number;
 			eligibleVoters: number;

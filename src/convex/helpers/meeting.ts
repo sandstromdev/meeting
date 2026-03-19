@@ -46,15 +46,18 @@ export async function getMeetingParticipant(
 	ctx: QueryCtx & { user: UserIdentity },
 	meetingId: Id<'meetings'>,
 ) {
+	const userId = ctx.user.subject;
 	const p = await ctx.db
 		.query('meetingParticipants')
-		.withIndex('by_token_meeting', (q) =>
-			q.eq('tokenIdentifier', ctx.user.tokenIdentifier).eq('meetingId', meetingId),
-		)
+		.withIndex('by_user_meeting', (q) => q.eq('userId', userId).eq('meetingId', meetingId))
 		.first();
 
 	if (!p) {
 		throw new AppError(errors.meeting_participant_not_found(meetingId));
+	}
+
+	if (p.banned) {
+		throw new AppError(errors.participant_banned);
 	}
 
 	return p;

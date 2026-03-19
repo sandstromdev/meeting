@@ -73,24 +73,6 @@
 
 		dialogState.newConfirmation(options);
 	}
-
-	export async function confirmAsync(options: Omit<ConfirmOptions, 'onConfirm' | 'onCancel'>) {
-		if (options.skipConfirmation) {
-			return true;
-		}
-
-		return new Promise((resolve) => {
-			dialogState.newConfirmation({
-				...options,
-				onConfirm: async () => {
-					resolve(true);
-				},
-				onCancel: () => {
-					resolve(false);
-				},
-			});
-		});
-	}
 </script>
 
 <script lang="ts">

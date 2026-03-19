@@ -5,6 +5,8 @@ import { AppError, errors } from './error';
 import { c } from './index';
 import { getMeetingParticipant } from './meeting';
 
+export type Identity = UserIdentity & { name: string; role: 'admin' | 'user' };
+
 export const authMw = c.$context<QueryCtx>().createMiddleware(async ({ ctx, next }) => {
 	const user = await ctx.auth.getUserIdentity();
 
@@ -13,7 +15,7 @@ export const authMw = c.$context<QueryCtx>().createMiddleware(async ({ ctx, next
 		throw new AppError(errors.unauthorized);
 	}
 
-	return next({ ...ctx, user: user as UserIdentity & { name: string } });
+	return next({ ...ctx, user: Object.assign(user, { role: user.role ?? 'user' }) as Identity });
 });
 
 export const authed = c.use(authMw);
@@ -43,7 +45,7 @@ export const withMe = withMeeting.use(async ({ ctx, args, next }) => {
 });
 
 export const moderator = withMe.use(({ ctx, next }) => {
-	if (ctx.me.role === 'participant') {
+	if (ctx.me.role === 'participant' || ctx.me.role === 'adjuster') {
 		throw new AppError(errors.forbidden);
 	}
 

@@ -150,6 +150,7 @@ export const previousSpeaker = moderator.mutation().public(async ({ ctx }) => {
 			userId: prev.userId,
 			name: prev.name,
 			startTime: Date.now(),
+			entryId: null,
 		},
 		lastConsumedCt: prev.ct,
 		previousSpeaker: null,

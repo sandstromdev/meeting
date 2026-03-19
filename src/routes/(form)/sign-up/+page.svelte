@@ -39,7 +39,8 @@
 
 				if (err?.code === 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL') {
 					error = ErrorMessages.email_exists();
-				} else if (err) {
+				} else if (err?.message) {
+					error = err.message;
 					console.error('error:', error);
 				} else {
 					if (validateRedirect(data.redirect)) {
