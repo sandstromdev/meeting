@@ -256,5 +256,5 @@ export default defineSchema(
 			.index('by_token', ['tokenIdentifier'])
 			.index('by_lastSeenAt', ['lastSeenAt']),
 	},
-	{ schemaValidation: false },
+	{ schemaValidation: true },
 );
