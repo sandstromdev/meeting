@@ -13,7 +13,7 @@ export const getCurrentUser = query({
 		const user = await ctx.auth.getUserIdentity();
 
 		if (!user) {
-			return undefined;
+			return null;
 		}
 
 		return authComponent.getAuthUser(ctx);
@@ -32,7 +32,7 @@ async function getMeetingParticipantInner(
 		.first();
 
 	if (!me) {
-		return undefined;
+		return null;
 	}
 
 	return pickParticipantData(me);
