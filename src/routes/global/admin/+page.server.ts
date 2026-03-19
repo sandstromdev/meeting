@@ -2,9 +2,12 @@ import { authClient } from '$lib/auth-client';
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
-export const load = (async () => {
+export const load = (async ({ fetch }) => {
 	const { data, error: err } = await authClient.admin.listUsers({
 		query: { limit: 100, offset: 0 },
+		fetchOptions: {
+			customFetchImpl: fetch,
+		},
 	});
 
 	if (err || !data) {
