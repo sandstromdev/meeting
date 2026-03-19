@@ -1,18 +1,18 @@
 <script lang="ts">
-	import { api } from '$convex/_generated/api';
-	import Button from '$lib/components/ui/button/button.svelte';
-	import { getMeetingContext } from '$lib/context.svelte';
-	import { getAppError } from '$convex/helpers/error';
-	import { resolve } from '$app/paths';
-	import LogOutIcon from '@lucide/svelte/icons/log-out';
-	import DoorOpenIcon from '@lucide/svelte/icons/door-open';
-	import { confirm } from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
-	import { usePageState } from '$lib/page-state.svelte';
-	import * as auth from '$lib/auth-client';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
+	import { api } from '$convex/_generated/api';
+	import * as auth from '$lib/auth-client';
+	import Button from '$lib/components/ui/button/button.svelte';
+	import { confirm } from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
+	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
+	import { getMeetingContext } from '$lib/context.svelte';
+	import { usePageState } from '$lib/page-state.svelte';
+	import DoorOpenIcon from '@lucide/svelte/icons/door-open';
+	import LogOutIcon from '@lucide/svelte/icons/log-out';
+	import UserIcon from '@lucide/svelte/icons/user';
 
 	const meeting = getMeetingContext();
-
 	const ps = usePageState();
 
 	async function leaveMeeting() {
@@ -35,14 +35,29 @@
 </script>
 
 {#if !ps.isProjector}
-	<nav
-		class="flex flex-wrap items-center justify-end gap-2 border-t pt-4"
-		aria-label="Användarinställningar"
-	>
+	<nav class="flex flex-wrap items-center gap-2 border-t p-4" aria-label="Användarinställningar">
+		<DropdownMenu.Root>
+			<DropdownMenu.Trigger>
+				{#snippet child({ props })}
+					<Button type="button" variant="outline" size="sm" {...props}>
+						<UserIcon class="size-4" />
+						{meeting.me.name}
+					</Button>
+				{/snippet}
+			</DropdownMenu.Trigger>
+			<DropdownMenu.Content>
+				<DropdownMenu.Item>
+					<LogOutIcon class="size-4" />
+					Logga ut
+				</DropdownMenu.Item>
+			</DropdownMenu.Content>
+		</DropdownMenu.Root>
+
 		<Button
 			type="button"
 			variant="outline"
 			size="sm"
+			class="ml-auto"
 			disabled={!canLeave}
 			onclick={() =>
 				confirm({
