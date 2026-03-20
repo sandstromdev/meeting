@@ -630,3 +630,13 @@ export const getPollResults = c
 			},
 		};
 	});
+
+export const getAllResults = c
+	.query()
+	.input({ meetingId: zid('meetings') })
+	.public(async ({ ctx, args }) => {
+		return ctx.db
+			.query('pollResults')
+			.withIndex('by_meeting_and_poll_and_closedAt', (q) => q.eq('meetingId', args.meetingId))
+			.collect();
+	});
