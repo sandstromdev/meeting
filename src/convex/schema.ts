@@ -194,6 +194,7 @@ export const MeetingParticipant = v.object({
 
 	isInSpeakerQueue: v.boolean(),
 
+	joinedAt: v.number(),
 	absentSince: v.number(),
 	returnRequestedAt: v.number(),
 
