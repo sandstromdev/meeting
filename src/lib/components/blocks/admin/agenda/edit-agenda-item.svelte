@@ -119,6 +119,20 @@
 		];
 	}
 
+	function addMultiWinnerPollDraft() {
+		polls = [
+			...polls,
+			{
+				...newPollDraft(),
+				type: 'multi_winner',
+				winningCount: 1,
+				majorityRule: 'simple',
+				allowsAbstain: true,
+				options: Array.from({ length: 10 }, (_, i) => ``),
+			},
+		];
+	}
+
 	function movePollUp(index: number) {
 		if (index <= 0) {
 			return;
@@ -318,6 +332,10 @@
 			<Button type="button" variant="outline" size="sm" onclick={addYesOrNoPollDraft}>
 				<PlusIcon class="size-4" />
 				Lägg till ja/nej omröstning
+			</Button>
+			<Button type="button" variant="outline" size="sm" onclick={addMultiWinnerPollDraft}>
+				<PlusIcon class="size-4" />
+				Lägg till fleromröstning
 			</Button>
 			<Button type="submit" class="ml-auto" loading={isLoading} disabled={!canSubmit}>
 				{#if isEditMode}
