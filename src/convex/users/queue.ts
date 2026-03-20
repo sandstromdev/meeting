@@ -11,7 +11,7 @@ export const request = withMe
 		const { meeting, me } = ctx;
 		const { type } = args;
 
-		if (meeting[type]) {
+		if (meeting[type] != null) {
 			return false;
 		}
 
@@ -22,6 +22,7 @@ export const request = withMe
 					userId: me._id,
 					name: me.name,
 				},
+				startTime: null,
 			},
 		});
 		return true;
