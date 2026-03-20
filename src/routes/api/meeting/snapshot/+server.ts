@@ -16,6 +16,16 @@ export const GET = (async ({ locals }) => {
 		return new Response('Meeting not found', { status: 404 });
 	}
 
+	const absenceEntries = await convex
+		.query(api.admin.meeting.getAbsenceEntries, { meetingId: locals.meetingId })
+		.then((e) =>
+			e.map((entry) => ({
+				name: entry.name,
+				startTime: Math.max(entry.startTime, meeting.startedAt ?? 0),
+				endTime: entry.endTime,
+			})),
+		);
+
 	const participants = await convex
 		.query(api.admin.users.getParticipants, {
 			meetingId: locals.meetingId,
@@ -25,6 +35,7 @@ export const GET = (async ({ locals }) => {
 				name: user.name,
 				role: user.role,
 				banned: user.banned,
+				joinedAt: Math.max(user.joinedAt, meeting.startedAt ?? 0),
 			})),
 		);
 
@@ -60,5 +71,6 @@ export const GET = (async ({ locals }) => {
 		},
 		polls,
 		participants,
+		absenceEntries,
 	});
 }) satisfies RequestHandler;
