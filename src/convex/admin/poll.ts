@@ -631,7 +631,7 @@ export const getPollResults = c
 		};
 	});
 
-export const getAllResults = c
+export const getAllResults = admin
 	.query()
 	.input({ meetingId: zid('meetings') })
 	.public(async ({ ctx, args }) => {
