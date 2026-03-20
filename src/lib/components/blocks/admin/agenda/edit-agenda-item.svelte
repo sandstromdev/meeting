@@ -106,6 +106,19 @@
 		polls = [...polls, newPollDraft()];
 	}
 
+	function addYesOrNoPollDraft() {
+		polls = [
+			...polls,
+			{
+				...newPollDraft(),
+				options: ['Ja', 'Nej'],
+				type: 'single_winner',
+				majorityRule: 'simple',
+				allowsAbstain: true,
+			},
+		];
+	}
+
 	function movePollUp(index: number) {
 		if (index <= 0) {
 			return;
@@ -301,6 +314,10 @@
 			<Button type="button" variant="outline" size="sm" onclick={addPollDraft}>
 				<PlusIcon class="size-4" />
 				Lägg till omröstning
+			</Button>
+			<Button type="button" variant="outline" size="sm" onclick={addYesOrNoPollDraft}>
+				<PlusIcon class="size-4" />
+				Lägg till ja/nej omröstning
 			</Button>
 			<Button type="submit" class="ml-auto" loading={isLoading} disabled={!canSubmit}>
 				{#if isEditMode}

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { authClient } from '$lib/auth-client';
 	import Button from '$lib/components/ui/button/button.svelte';
@@ -48,11 +49,9 @@
 				} else if (err?.message) {
 					error = err.message;
 				} else {
-					if (validateRedirect(data.redirect)) {
-						window.location.pathname = data.redirect;
-					} else {
-						window.location.pathname = '/anslut';
-					}
+					const redirect = validateRedirect(data.redirect) ? data.redirect : '/anslut';
+					// eslint-disable-next-line svelte/no-navigation-without-resolve
+					await goto(redirect);
 				}
 			} catch (e) {
 				console.error(e);
