@@ -28,13 +28,23 @@ export const GET = (async ({ locals }) => {
 			})),
 		);
 
-	const polls = await convex.query(api.admin.poll.getAllResults, { meetingId: locals.meetingId });
+	const polls = await convex
+		.query(api.admin.poll.getAllPolls, { meetingId: locals.meetingId })
+		// oxlint-disable-next-line no-unused-vars
+		.then((r) => r.map(({ _creationTime, isOpen, meetingId, updatedAt, ...poll }) => poll));
+
+	const results = await convex.query(api.admin.poll.getAllResults, { meetingId: locals.meetingId });
 
 	const agenda = meeting.agenda.map((item) =>
 		Object.assign(item, {
-			polls: polls.filter(
-				(poll) => poll.poll.agendaItemId === item.id || item.pollIds.includes(poll.pollId),
-			),
+			pollIds: undefined,
+			polls: polls
+				.filter((poll) => poll.agendaItemId === item.id || item.pollIds.includes(poll._id))
+				.map((poll) =>
+					Object.assign(poll, {
+						result: results.find((result) => result.pollId === poll._id) ?? null,
+					}),
+				),
 		}),
 	);
 
@@ -48,6 +58,7 @@ export const GET = (async ({ locals }) => {
 			startedAt: meeting.startedAt,
 			agenda,
 		},
+		polls,
 		participants,
 	});
 }) satisfies RequestHandler;
