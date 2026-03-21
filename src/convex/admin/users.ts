@@ -21,6 +21,7 @@ export const getParticipants = admin.query().public(async ({ ctx }) => {
 		name: p.name,
 		role: p.role,
 		userId: p.userId,
+		joinedAt: p.joinedAt ?? p._creationTime,
 		absentSince: p.absentSince,
 		isInSpeakerQueue: p.isInSpeakerQueue,
 		returnRequestedAt: p.returnRequestedAt,

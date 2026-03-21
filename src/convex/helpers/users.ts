@@ -4,7 +4,10 @@ import type { MutationCtx } from '../_generated/server';
 import { getAbsentCounter, getParticipantCounter } from './counters';
 
 export function pickParticipantData(doc: Doc<'meetingParticipants'>) {
-	return pick(doc, ['_id', 'role', 'absentSince', 'isInSpeakerQueue', 'name']);
+	return {
+		...pick(doc, ['_id', 'role', 'absentSince', 'isInSpeakerQueue', 'name']),
+		joinedAt: doc.joinedAt ?? doc._creationTime,
+	};
 }
 
 export type StrippedMeetingParticipant = ReturnType<typeof pickParticipantData>;
@@ -15,6 +18,8 @@ export type InsertMeetingParticipantArgs = {
 	name: string;
 	role: 'admin' | 'moderator' | 'participant' | 'adjuster';
 	absentSince: number;
+	/** Defaults to Date.now(). */
+	joinedAt?: number;
 };
 
 /** Insert a new meeting participant. Caller is responsible for counters and absence entries if needed. */
@@ -22,12 +27,14 @@ export async function insertMeetingParticipant(
 	ctx: MutationCtx,
 	args: InsertMeetingParticipantArgs,
 ): Promise<Id<'meetingParticipants'>> {
+	const joinedAt = args.joinedAt ?? Date.now();
 	return await ctx.db.insert('meetingParticipants', {
 		meetingId: args.meetingId,
 		userId: args.userId,
 		name: args.name,
 		role: args.role,
 		isInSpeakerQueue: false,
+		joinedAt,
 		absentSince: args.absentSince,
 		returnRequestedAt: 0,
 		banned: false,
@@ -102,6 +109,7 @@ export async function ensureParticipantInMeeting(
 			name: args.name,
 			role: args.role,
 			absentSince: args.meeting.isOpen ? now : 0,
+			joinedAt: now,
 		});
 
 		await applyNewParticipantSideEffects(ctx, {

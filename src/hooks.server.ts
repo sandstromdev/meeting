@@ -21,7 +21,18 @@ const auth: Handle = async ({ event, resolve }) => {
 	process.env.TRUSTED_ORIGINS = TRUSTED_ORIGINS;
 	process.env.ENVIRONMENT = ENVIRONMENT;
 
+	const sessionToken = event.cookies.get('better-auth.session_token');
 	const token = await getToken(createAuth, event.cookies);
+
+	if (!token && sessionToken && event.route.id !== '/api/auth/[...all]') {
+		await event.fetch('/api/auth/get-session', {
+			method: 'GET',
+			headers: {
+				'Content-Type': 'application/json',
+				Accept: 'application/json',
+			},
+		});
+	}
 
 	event.locals.token = token;
 	event.locals.meetingId = getMeetingCookie(event.cookies);

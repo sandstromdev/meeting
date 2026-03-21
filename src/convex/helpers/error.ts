@@ -3,32 +3,44 @@ import type { Id } from '$convex/_generated/dataModel';
 import { ErrorMessages } from '$lib/errors';
 import { z } from 'zod';
 import type { MaybePromise } from './builder/types';
+import { json } from '@sveltejs/kit';
+
+type Shape =
+	| {
+			code: string;
+			status: number;
+			[key: string]: unknown;
+	  }
+	// oxlint-disable-next-line typescript/no-explicit-any
+	| ((...args: any[]) => Shape);
 
 export const errors = {
-	unauthorized: { code: 'unauthorized' },
-	forbidden: { code: 'forbidden' },
-	internal_error: { code: 'internal_error' },
+	unauthorized: { code: 'unauthorized', status: 401 },
+	forbidden: { code: 'forbidden', status: 403 },
+	internal_error: { code: 'internal_error', status: 500 },
 
 	meeting_not_found: (args: { meetingId?: Id<'meetings'>; meetingCode?: string }) =>
-		({ code: 'meeting_not_found', ...args }) as const,
+		({ code: 'meeting_not_found', status: 404, ...args }) as const,
 
 	meeting_participant_not_found: (meetingId: Id<'meetings'>) =>
-		({ code: 'meeting_participant_not_found', meetingId }) as const,
+		({ code: 'meeting_participant_not_found', status: 404, meetingId }) as const,
 
 	agenda_item_not_found: (agendaItemId: string) =>
-		({ code: 'agenda_item_not_found', agendaItemId }) as const,
+		({ code: 'agenda_item_not_found', status: 404, agendaItemId }) as const,
 
-	poll_not_found: (pollId: Id<'polls'>) => ({ code: 'poll_not_found', pollId }) as const,
-	invalid_poll_option: (option: number) => ({ code: 'invalid_poll_option', option }) as const,
+	poll_not_found: (pollId: Id<'polls'>) =>
+		({ code: 'poll_not_found', status: 404, pollId }) as const,
+	invalid_poll_option: (option: number) =>
+		({ code: 'invalid_poll_option', status: 400, option }) as const,
 	invalid_poll_vote_limit: (args: { maxVotesPerVoter: number; optionsCount: number }) =>
-		({ code: 'invalid_poll_vote_limit', ...args }) as const,
+		({ code: 'invalid_poll_vote_limit', status: 400, ...args }) as const,
 	invalid_poll_type_config: (
 		args:
 			| { kind: 'winningCount'; value: number; optionsCount: number }
 			| { kind: 'majorityRule_required' },
-	) => ({ code: 'invalid_poll_type_config', ...args }) as const,
+	) => ({ code: 'invalid_poll_type_config', status: 400, ...args }) as const,
 	invalid_poll_draft: (error: z.ZodError) =>
-		({ code: 'invalid_poll_draft', error: z.treeifyError(error) }) as const,
+		({ code: 'invalid_poll_draft', status: 400, error: z.treeifyError(error) }) as const,
 	illegal_poll_action: (
 		action:
 			| 'edit_while_open'
@@ -37,27 +49,30 @@ export const errors = {
 			| 'agenda_has_poll'
 			| 'too_many_votes'
 			| 'duplicate_vote_option',
-	) => ({ code: 'illegal_poll_action', action }) as const,
+	) => ({ code: 'illegal_poll_action', status: 400, action }) as const,
 
-	illegal_while_absent: (action?: string) => ({ code: 'illegal_while_absent', action }) as const,
+	illegal_while_absent: (action?: string) =>
+		({ code: 'illegal_while_absent', status: 400, action }) as const,
 
-	cannot_delete_current_speaker: () => ({ code: 'cannot_delete_current_speaker' }) as const,
-	cannot_leave_while_speaking: () => ({ code: 'cannot_leave_while_speaking' }) as const,
+	cannot_delete_current_speaker: () =>
+		({ code: 'cannot_delete_current_speaker', status: 400 }) as const,
+	cannot_leave_while_speaking: () =>
+		({ code: 'cannot_leave_while_speaking', status: 400 }) as const,
 
-	email_exists: { code: 'email_exists' },
-	invalid_credentials: { code: 'invalid_credentials' },
-	invalid_meeting_code: { code: 'invalid_meeting_code' },
-	participant_banned: { code: 'participant_banned' },
+	email_exists: { code: 'email_exists', status: 400 },
+	invalid_credentials: { code: 'invalid_credentials', status: 400 },
+	invalid_meeting_code: { code: 'invalid_meeting_code', status: 400 },
+	participant_banned: { code: 'participant_banned', status: 403 },
 
 	zod_error: (issues: z.core.$ZodErrorTree<unknown, string>) =>
-		({ code: 'bad_args', issues }) as const,
+		({ code: 'bad_args', status: 400, issues }) as const,
 
 	invalid_args: (args: Record<string, Value | undefined>) =>
-		({ code: 'invalid_args', args }) as const,
+		({ code: 'invalid_args', status: 400, args }) as const,
 
 	meeting_code_already_exists: (meetingCode: string) =>
-		({ code: 'meeting_code_already_exists', meetingCode }) as const,
-} as const;
+		({ code: 'meeting_code_already_exists', status: 400, meetingCode }) as const,
+} as const satisfies Record<string, Shape>;
 
 export const errorCodes = new Set<AppErrorCode>(Object.keys(errors) as AppErrorCode[]);
 
@@ -102,6 +117,16 @@ export class AppError<ErrorCode extends AppErrorCode> extends ConvexError<
 
 	// oxlint-disable-next-line typescript/no-explicit-any
 	message = ErrorMessages[this.data.code as AppErrorCode](this.data as any);
+
+	get status() {
+		return this.data.status;
+	}
+
+	toResponse(type: 'json' | 'text' = 'json') {
+		return type === 'json'
+			? json({ error: { ...this.data, message: this.message } }, { status: this.status })
+			: new Response(this.message, { status: this.status });
+	}
 
 	static fromConvex<ErrorCode extends AppErrorCode, Data extends ClientErrorObject<ErrorCode>>(
 		err: ConvexError<Data>,
