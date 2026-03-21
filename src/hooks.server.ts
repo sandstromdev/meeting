@@ -22,16 +22,23 @@ const auth: Handle = async ({ event, resolve }) => {
 	process.env.ENVIRONMENT = ENVIRONMENT;
 
 	const sessionToken = event.cookies.get('better-auth.session_token');
-	const token = await getToken(createAuth, event.cookies);
+	let token = await getToken(createAuth, event.cookies);
 
 	if (!token && sessionToken && event.route.id !== '/api/auth/[...all]') {
-		await event.fetch('/api/auth/get-session', {
+		const response = await event.fetch('/api/auth/get-session', {
 			method: 'GET',
 			headers: {
 				'Content-Type': 'application/json',
 				Accept: 'application/json',
 			},
 		});
+
+		if (response.ok) {
+			const cookie = response.headers
+				.getSetCookie()
+				.find((c) => c.startsWith('better-auth.convex_jwt='));
+			token = cookie?.split('=').at(1)?.split(';').at(0);
+		}
 	}
 
 	event.locals.token = token;
