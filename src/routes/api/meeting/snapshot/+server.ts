@@ -20,8 +20,7 @@ export const GET = (async ({ locals }) => {
 		});
 
 		if (!meeting) {
-			const err = appErrors.meeting_not_found({ meetingId: locals.meetingId });
-			return json(err.toJSON(), { status: err.status });
+			return appErrors.meeting_not_found({ meetingId: locals.meetingId }).toJsonResponse();
 		}
 
 		const absenceEntries = await convex

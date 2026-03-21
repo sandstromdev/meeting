@@ -53,6 +53,10 @@ export class AppError<
 		};
 	}
 
+	toJsonResponse() {
+		return Response.json(this.toJSON(), { status: this.status });
+	}
+
 	static fromConvex<P extends {}>(err: ConvexError<AppErrorStored<string, P>>) {
 		const { code, status, data } = err.data;
 		return new AppError(code, status, data ?? {});
