@@ -150,13 +150,15 @@
 			return;
 		}
 
+		const item = editingItem;
+
 		try {
 			await notifyMutation(
 				'Rubriken sparades.',
 				() =>
 					meeting.adminMutate(api.admin.agenda.updateAgendaItem, {
-						agendaItemId: editingItem!.id,
-						title: editingItem!.title,
+						agendaItemId: item.id,
+						title: item.title,
 					}),
 				{ rethrow: true },
 			);
