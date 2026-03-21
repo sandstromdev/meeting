@@ -23,21 +23,14 @@ export const GET = (async ({ locals, fetch }) => {
 			},
 		});
 
-		const text = await res.text();
-
 		if (!res.ok) {
-			return new Response(text, {
+			return new Response(await res.text(), {
 				status: res.status,
 				headers: { 'Content-Type': res.headers.get('content-type') ?? 'application/json' },
 			});
 		}
 
-		let body: unknown;
-		try {
-			body = JSON.parse(text);
-		} catch {
-			return appErrors.internal_error().toJsonResponse();
-		}
+		const body = await res.json();
 
 		const parsed = MeetingSnapshotSchema.safeParse(body);
 
