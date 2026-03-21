@@ -1,7 +1,7 @@
 import { v } from 'convex/values';
-import { internalAction, internalMutation, internalQuery } from './_generated/server';
 import { internal } from './_generated/api';
-import { AppError, errors } from './helpers/error';
+import { internalAction, internalMutation, internalQuery } from './_generated/server';
+import { appErrors } from './helpers/error';
 import { buildMeetingSnapshotPayload } from './helpers/meeting_backup';
 import { checksumPayload } from './helpers/snapshot_checksum';
 
@@ -47,7 +47,7 @@ export const getMeetingSnapshotForExport = internalQuery({
 			)
 			.first();
 		if (!participant || participant.role !== 'admin') {
-			throw new AppError(errors.forbidden);
+			throw appErrors.forbidden();
 		}
 		return await buildMeetingSnapshotPayload(ctx, meeting);
 	},

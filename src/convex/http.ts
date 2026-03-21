@@ -3,7 +3,8 @@ import { internal } from './_generated/api';
 import { httpAction } from './_generated/server';
 import { httpRouter } from 'convex/server';
 import { authComponent, createAuth } from './auth';
-import { AppError, errors, getAppError } from './helpers/error';
+import { appErrors, getAppError } from './helpers/error';
+import { zid } from 'convex-helpers/server/zod4';
 
 const http = httpRouter();
 
@@ -14,53 +15,38 @@ http.route({
 	method: 'GET',
 	handler: httpAction(async (ctx, req) => {
 		const url = new URL(req.url);
-		const meetingIdParam = url.searchParams.get('meetingId');
-		if (!meetingIdParam) {
-			return new Response(
-				JSON.stringify({
-					error: {
-						code: 'invalid_args',
-						status: 400,
-						message: 'meetingId query parameter is required',
-					},
-				}),
-				{ status: 400, headers: { 'Content-Type': 'application/json' } },
-			);
+		const meetingIdParam = zid('meetings').safeParse(url.searchParams.get('meetingId'));
+		if (!meetingIdParam.success) {
+			return appErrors
+				.bad_request({
+					meetingId: meetingIdParam.error.message,
+				})
+				.toJsonResponse();
 		}
+
+		const meetingId = meetingIdParam.data;
 
 		const identity = await ctx.auth.getUserIdentity();
 		if (!identity) {
-			return new Response('Unauthorized', { status: 401 });
+			return appErrors.unauthorized().toJsonResponse();
 		}
 
 		try {
 			const payload = await ctx.runQuery(internal.backup.getMeetingSnapshotForExport, {
-				meetingId: meetingIdParam as Id<'meetings'>,
+				meetingId: meetingId,
 				tokenIdentifier: identity.subject,
 			});
 			if (payload === null) {
-				const err = new AppError(
-					errors.meeting_not_found({ meetingId: meetingIdParam as Id<'meetings'> }),
-				);
-				return new Response(JSON.stringify({ error: { ...err.data, message: err.message } }), {
-					status: err.status,
-					headers: { 'Content-Type': 'application/json' },
-				});
+				return appErrors.meeting_not_found({ meetingId }).toJsonResponse();
 			}
 			return Response.json(payload);
 		} catch (e) {
-			const app = getAppError(e);
-			if (app) {
-				return new Response(JSON.stringify({ error: { ...app.data, message: app.message } }), {
-					status: app.status,
-					headers: { 'Content-Type': 'application/json' },
-				});
+			const err = getAppError(e);
+			if (err) {
+				return err.toJsonResponse();
 			}
-			console.error(e);
-			return new Response(JSON.stringify({ error: { code: 'internal_error', status: 500 } }), {
-				status: 500,
-				headers: { 'Content-Type': 'application/json' },
-			});
+			console.error('Internal error:', e);
+			return appErrors.internal_error().toJsonResponse();
 		}
 	}),
 });
