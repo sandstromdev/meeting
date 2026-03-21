@@ -1,10 +1,12 @@
+import { dev } from '$app/environment';
 import { createAuth } from '$convex/auth';
 import { env } from '$env/dynamic/public';
 import { ENVIRONMENT, TRUSTED_ORIGINS } from '$env/static/private';
+import { authClient } from '$lib/auth-client';
 import { getMeetingCookie } from '$lib/server/meeting-cookie';
 import { getToken } from '@mmailaender/convex-better-auth-svelte/sveltekit';
 import { withServerConvexToken } from '@mmailaender/convex-svelte/sveltekit/server';
-import { type Handle } from '@sveltejs/kit';
+import { json, type Handle } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
 
 const log = false;
@@ -21,7 +23,18 @@ const auth: Handle = async ({ event, resolve }) => {
 	process.env.TRUSTED_ORIGINS = TRUSTED_ORIGINS;
 	process.env.ENVIRONMENT = ENVIRONMENT;
 
+	const sessionToken = event.cookies.get('better-auth.session_token');
 	const token = await getToken(createAuth, event.cookies);
+
+	if (!token && sessionToken && event.route.id !== '/api/auth/[...all]') {
+		await event.fetch('/api/auth/get-session', {
+			method: 'GET',
+			headers: {
+				'Content-Type': 'application/json',
+				Accept: 'application/json',
+			},
+		});
+	}
 
 	event.locals.token = token;
 	event.locals.meetingId = getMeetingCookie(event.cookies);

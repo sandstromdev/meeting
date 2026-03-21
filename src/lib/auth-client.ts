@@ -6,7 +6,6 @@ import { resolve } from '$app/paths';
 export const authClient = createAuthClient({
 	plugins: [convexClient(), adminClient()],
 });
-
 export async function leaveMeeting() {
 	await fetch(resolve('/api/leave-meeting'), { method: 'POST' });
 }
