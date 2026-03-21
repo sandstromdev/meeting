@@ -18,11 +18,18 @@ export const listOpenMeetingIds = internalQuery({
 });
 
 export const getMeetingBackupPayload = internalQuery({
-	args: { meetingId: v.id('meetings') },
+	args: {
+		meetingId: v.id('meetings'),
+		/** When true, build a payload even if the meeting is closed (cron omits this). */
+		allowClosedMeeting: v.optional(v.boolean()),
+	},
 	returns: v.union(v.any(), v.null()),
-	handler: async (ctx, { meetingId }) => {
+	handler: async (ctx, { meetingId, allowClosedMeeting }) => {
 		const meeting = await ctx.db.get('meetings', meetingId);
-		if (!meeting || !meeting.isOpen) {
+		if (!meeting) {
+			return null;
+		}
+		if (!allowClosedMeeting && !meeting.isOpen) {
 			return null;
 		}
 		return await buildMeetingSnapshotPayload(ctx, meeting);
@@ -54,7 +61,10 @@ export const getMeetingSnapshotForExport = internalQuery({
 });
 
 export const saveSnapshotIfChanged = internalMutation({
-	args: { meetingId: v.id('meetings') },
+	args: {
+		meetingId: v.id('meetings'),
+		allowClosedMeeting: v.optional(v.boolean()),
+	},
 	returns: v.union(
 		v.object({ kind: v.literal('inserted') }),
 		v.object({
@@ -62,8 +72,11 @@ export const saveSnapshotIfChanged = internalMutation({
 			reason: v.union(v.literal('not_open'), v.literal('unchanged')),
 		}),
 	),
-	handler: async (ctx, { meetingId }) => {
-		const payload = await ctx.runQuery(internal.backup.getMeetingBackupPayload, { meetingId });
+	handler: async (ctx, { meetingId, allowClosedMeeting }) => {
+		const payload = await ctx.runQuery(internal.backup.getMeetingBackupPayload, {
+			meetingId,
+			allowClosedMeeting,
+		});
 		if (payload === null) {
 			return { kind: 'skipped' as const, reason: 'not_open' as const };
 		}

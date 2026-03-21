@@ -242,6 +242,21 @@ export const toggleMeeting = admin.mutation().public(async ({ ctx }) => {
 	return true;
 });
 
+type MeetingSnapshotTriggerResult =
+	| { kind: 'inserted' }
+	| { kind: 'skipped'; reason: 'not_open' | 'unchanged' };
+
+/** Snapshot now: same checksum dedup as cron when open; also allowed when meeting is closed. */
+export const triggerMeetingSnapshot = admin
+	.mutation()
+	.public(async ({ ctx }): Promise<MeetingSnapshotTriggerResult> => {
+		const result: MeetingSnapshotTriggerResult = await ctx.runMutation(
+			internal.backup.saveSnapshotIfChanged,
+			{ meetingId: ctx.meeting._id, allowClosedMeeting: true },
+		);
+		return result;
+	});
+
 export const resetMeeting = admin.mutation().public(async ({ ctx }) => {
 	const { db, meeting } = ctx;
 	const now = Date.now();

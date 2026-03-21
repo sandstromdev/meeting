@@ -1,10 +1,9 @@
-import type { Id } from './_generated/dataModel';
+import { zid } from 'convex-helpers/server/zod4';
+import { httpRouter } from 'convex/server';
 import { internal } from './_generated/api';
 import { httpAction } from './_generated/server';
-import { httpRouter } from 'convex/server';
 import { authComponent, createAuth } from './auth';
 import { appErrors, getAppError } from './helpers/error';
-import { zid } from 'convex-helpers/server/zod4';
 
 const http = httpRouter();
 
