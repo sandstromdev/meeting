@@ -1,5 +1,6 @@
 import { withMe } from '$convex/helpers/auth';
 import { logSpeakerSlot } from '$convex/helpers/meeting';
+import { Request } from '$convex/schema';
 import { z } from 'zod';
 
 export const request = withMe
@@ -15,16 +16,19 @@ export const request = withMe
 			return false;
 		}
 
-		await ctx.db.patch('meetings', meeting._id, {
-			[type]: {
-				type: 'requested',
-				by: {
-					userId: me._id,
-					name: me.name,
-				},
-				startTime: null,
+		const request = {
+			type: 'requested',
+			by: {
+				userId: me._id,
+				name: me.name,
 			},
+			startTime: null,
+		} satisfies typeof Request.type;
+
+		await ctx.db.patch('meetings', meeting._id, {
+			[type]: request,
 		});
+
 		return true;
 	});
 
