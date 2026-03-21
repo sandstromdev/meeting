@@ -6,6 +6,7 @@ import { getToken } from '@mmailaender/convex-better-auth-svelte/sveltekit';
 import { withServerConvexToken } from '@mmailaender/convex-svelte/sveltekit/server';
 import { type Handle } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
+import { dev } from '$app/environment';
 
 const log = false;
 
@@ -36,7 +37,7 @@ const auth: Handle = async ({ event, resolve }) => {
 		if (response.ok) {
 			const cookie = response.headers
 				.getSetCookie()
-				.find((c) => c.startsWith('better-auth.convex_jwt='));
+				.find((c) => c.startsWith(`${!dev ? '__Secure-' : ''}better-auth.convex_jwt=`));
 			token = cookie?.split('=').at(1)?.split(';').at(0);
 		}
 	}
