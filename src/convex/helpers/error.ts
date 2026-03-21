@@ -22,6 +22,9 @@ export class AppError<
 	constructor(code: C, status: number, data?: P) {
 		// oxlint-disable-next-line typescript/no-explicit-any
 		super({ type: 'app_error', code, status, data: data ?? {} } as any);
+
+		// oxlint-disable-next-line typescript/no-explicit-any
+		this.message = ErrorMessages[code as AppErrorCode]({ ...data, status } as any);
 	}
 
 	private get stored() {
@@ -30,12 +33,6 @@ export class AppError<
 
 	is<T extends AppErrorCode>(code: T): boolean {
 		return this.stored.code === (code as string);
-	}
-
-	get message() {
-		const { code, status, data } = this.stored;
-		// oxlint-disable-next-line typescript/no-explicit-any
-		return ErrorMessages[code as AppErrorCode]({ ...data, status } as any);
 	}
 
 	get code() {
