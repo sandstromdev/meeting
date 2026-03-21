@@ -194,12 +194,17 @@ export const MeetingParticipant = v.object({
 
 	isInSpeakerQueue: v.boolean(),
 
+	/** When the participant first joined this meeting (ms).  */
 	joinedAt: v.number(),
+
+	/** When the participant first joined this meeting (ms).  */
+	joinedAt: v.number(),
+
 	absentSince: v.number(),
 	returnRequestedAt: v.number(),
 
 	/** When true, participant cannot connect or access the meeting. */
-	banned: v.optional(v.boolean()),
+	banned: v.boolean(),
 });
 
 /** Tracks participant activity by tokenIdentifier (separate from meetingParticipants). */
