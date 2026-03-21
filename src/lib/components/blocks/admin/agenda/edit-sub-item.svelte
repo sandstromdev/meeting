@@ -14,6 +14,7 @@
 	import EditPoll from './edit-poll.svelte';
 	import { SvelteMap } from 'svelte/reactivity';
 	import { PollDraftSchema, type PollDraft } from '$lib/validation';
+	import { toast } from 'svelte-sonner';
 
 	const meeting = getMeetingContext();
 
@@ -230,15 +231,24 @@
 		for (const poll of polls) {
 			const result = PollDraftSchema.safeParse(poll);
 			if (!result.success) {
+				toast.warning('Kontrollera omröstningsfälten.');
 				return;
 			}
 		}
 		if (!canSubmit) {
+			toast.warning('Ange rubrik och minst en omröstning.');
 			return;
 		}
 		isLoading = true;
-		await submitEdit();
-		isLoading = false;
+		try {
+			await submitEdit();
+			toast.success('Underpunkt sparad.');
+		} catch (err) {
+			console.error(err);
+			toast.error('Kunde inte spara underpunkten.');
+		} finally {
+			isLoading = false;
+		}
 	}
 </script>
 

@@ -16,6 +16,7 @@
 	import { ABSTAIN_OPTION_LABEL, type MajorityRule, type PollType } from '$lib/polls';
 	import { PollDraftSchema, type PollDraft } from '$lib/validation';
 	import XIcon from '@lucide/svelte/icons/x';
+	import { toast } from 'svelte-sonner';
 
 	const meeting = getMeetingContext();
 
@@ -298,24 +299,31 @@
 		for (const poll of polls) {
 			const result = PollDraftSchema.safeParse(poll);
 			if (!result.success) {
+				toast.warning('Kontrollera omröstningsfälten.');
 				return;
 			}
 		}
 
 		if (!canSubmit) {
+			toast.warning('Ange en rubrik.');
 			return;
 		}
 		isLoading = true;
 
-		if (isEditMode) {
-			await submitEdit();
-		} else {
-			await submitCreate();
+		try {
+			if (isEditMode) {
+				await submitEdit();
+			} else {
+				await submitCreate();
+			}
+			toast.success(isEditMode ? 'Agendapunkt sparad.' : 'Agendapunkt tillagd.');
+			onClose?.();
+		} catch (err) {
+			console.error(err);
+			toast.error('Kunde inte spara agendapunkten.');
+		} finally {
+			isLoading = false;
 		}
-
-		onClose?.();
-
-		isLoading = false;
 	}
 </script>
 

@@ -9,6 +9,7 @@
 	} from '$lib/components/ui/collapsible';
 	import { confirm } from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
 	import { Input } from '$lib/components/ui/input';
+	import { notifyMutation } from '$lib/admin-toast';
 	import { getMeetingContext } from '$lib/context.svelte';
 	import { usePageState } from '$lib/page-state.svelte';
 	import { cn } from '$lib/utils';
@@ -88,10 +89,15 @@
 				title: 'Ta bort punkt?',
 				description: 'Är du säker på att du vill ta bort denna punkt?',
 				onConfirm: () =>
-					meeting.adminMutate(api.admin.agenda.removeAgendaItem, {
-						agendaItemId: itemId,
-						deletionMode: 'delete_subtree',
-					}),
+					notifyMutation(
+						'Punkt borttagen.',
+						() =>
+							meeting.adminMutate(api.admin.agenda.removeAgendaItem, {
+								agendaItemId: itemId,
+								deletionMode: 'delete_subtree',
+							}),
+						{ rethrow: true },
+					),
 			});
 			return;
 		}
@@ -102,10 +108,15 @@
 			confirm: { text: 'Behåll underpunkter' },
 			cancel: { text: 'Ta bort allt' },
 			onConfirm: () =>
-				meeting.adminMutate(api.admin.agenda.removeAgendaItem, {
-					agendaItemId: itemId,
-					deletionMode: 'keep_children',
-				}),
+				notifyMutation(
+					'Huvudpunkt borttagen (underpunkter behölls).',
+					() =>
+						meeting.adminMutate(api.admin.agenda.removeAgendaItem, {
+							agendaItemId: itemId,
+							deletionMode: 'keep_children',
+						}),
+					{ rethrow: true },
+				),
 			onCancel: () => {
 				confirm({
 					title: 'Ta bort punkt och underpunkter?',
@@ -113,10 +124,15 @@
 					confirm: { text: 'Ta bort alla' },
 					cancel: { text: 'Avbryt' },
 					onConfirm: () =>
-						meeting.adminMutate(api.admin.agenda.removeAgendaItem, {
-							agendaItemId: itemId,
-							deletionMode: 'delete_subtree',
-						}),
+						notifyMutation(
+							'Punkt och underpunkter borttagna.',
+							() =>
+								meeting.adminMutate(api.admin.agenda.removeAgendaItem, {
+									agendaItemId: itemId,
+									deletionMode: 'delete_subtree',
+								}),
+							{ rethrow: true },
+						),
 				});
 			},
 		});
@@ -134,11 +150,20 @@
 			return;
 		}
 
-		await meeting.adminMutate(api.admin.agenda.updateAgendaItem, {
-			agendaItemId: editingItem.id,
-			title: editingItem.title,
-		});
-		editingItem = undefined;
+		try {
+			await notifyMutation(
+				'Rubriken sparades.',
+				() =>
+					meeting.adminMutate(api.admin.agenda.updateAgendaItem, {
+						agendaItemId: editingItem!.id,
+						title: editingItem!.title,
+					}),
+				{ rethrow: true },
+			);
+			editingItem = undefined;
+		} catch {
+			// Fel redan som toast
+		}
 	}
 </script>
 
@@ -211,9 +236,11 @@
 										disabled={item.id === currentAgendaItemId}
 										type="button"
 										onClickPromise={() =>
-											meeting.adminMutate(api.admin.agenda.setCurrentAgendaItem, {
-												agendaItemId: item.id,
-											})}
+											notifyMutation('Aktuell punkt uppdaterad.', () =>
+												meeting.adminMutate(api.admin.agenda.setCurrentAgendaItem, {
+													agendaItemId: item.id,
+												}),
+											)}
 									>
 										<CheckIcon class="size-4" />
 									</Button>

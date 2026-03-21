@@ -7,6 +7,7 @@
 	import Input from '$lib/components/ui/input/input.svelte';
 	import * as NativeSelect from '$lib/components/ui/native-select';
 	import Separator from '$lib/components/ui/separator/separator.svelte';
+	import { toast } from 'svelte-sonner';
 
 	let { data } = $props();
 
@@ -39,12 +40,14 @@
 			loading = false;
 			console.error(failed.error);
 			error = 'Ett fel har inträffat.';
+			toast.error('Kunde inte spara ändringarna.');
 			return;
 		}
 
 		await invalidateAll();
 		loading = false;
 		success = true;
+		toast.success('Ändringar sparade.');
 	}
 
 	async function handleRemove() {
@@ -63,9 +66,11 @@
 			loading = false;
 			console.error(err);
 			error = 'Kunde inte ta bort användaren.';
+			toast.error('Kunde inte ta bort användaren.');
 			return;
 		}
 
+		toast.success('Användaren togs bort.');
 		await goto(resolve('/admin'));
 	}
 </script>

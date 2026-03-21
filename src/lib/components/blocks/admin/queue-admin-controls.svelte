@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { api } from '$convex/_generated/api';
 	import { Button } from '$lib/components/ui/button';
+	import { notifyMutation } from '$lib/admin-toast';
 	import { getMeetingContext } from '$lib/context.svelte';
 	import { useQuery } from '@mmailaender/convex-svelte';
 	import ChevronLeftIcon from '@lucide/svelte/icons/chevron-left';
@@ -53,7 +54,10 @@
 		{:else if queue.break.type === 'accepted'}
 			{#if meeting.isAdmin}
 				<Button
-					onClickPromise={() => meeting.adminMutate(api.admin.meeting.clearBreak)}
+					onClickPromise={() =>
+						notifyMutation('Streck avslutat.', () =>
+							meeting.adminMutate(api.admin.meeting.clearBreak),
+						)}
 					class="px-3"
 					type="button"
 					variant="outline"
@@ -90,7 +94,10 @@
 
 	{#if meeting.isAdmin && hasPointOfOrder}
 		<Button
-			onClickPromise={() => meeting.adminMutate(api.admin.meeting.clearPointOfOrder)}
+			onClickPromise={() =>
+				notifyMutation('Ordningsfrågan avslutad.', () =>
+					meeting.adminMutate(api.admin.meeting.clearPointOfOrder),
+				)}
 			class="px-3"
 			type="button"
 		>

@@ -10,10 +10,12 @@
 	import EllipsisVerticalIcon from '@lucide/svelte/icons/ellipsis-vertical';
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import LinkIcon from '@lucide/svelte/icons/link';
-	import { copyText, UseClipboard } from '$lib/hooks/use-clipboard.svelte';
+	import { copyText } from '$lib/hooks/use-clipboard.svelte';
 	import { PUBLIC_SITE_URL } from '$env/static/public';
+	import { notifyMutation } from '$lib/admin-toast';
 	import { useConvexClient } from '@mmailaender/convex-svelte';
 	import type { GenericId } from 'convex/values';
+	import { toast } from 'svelte-sonner';
 
 	let {
 		_id,
@@ -39,10 +41,15 @@
 				? `Markera ${name} som närvarande?`
 				: `Markera ${name} som frånvarande?`,
 			onConfirm: () =>
-				meeting.adminMutate(api.admin.users.setParticipantAbsent, {
-					userId: _id,
-					absent: !isAbsent,
-				}),
+				notifyMutation(
+					isAbsent ? `${name} markerades som närvarande.` : `${name} markerades som frånvarande.`,
+					() =>
+						meeting.adminMutate(api.admin.users.setParticipantAbsent, {
+							userId: _id,
+							absent: !isAbsent,
+						}),
+					{ rethrow: true },
+				),
 		});
 	}
 
@@ -52,7 +59,12 @@
 			description: `Ta bort ${name} från mötet? Detta kan inte ångras.`,
 			confirm: { text: 'Ta bort' },
 			cancel: { text: 'Avbryt' },
-			onConfirm: () => meeting.adminMutate(api.admin.users.removeParticipant, { userId: _id }),
+			onConfirm: () =>
+				notifyMutation(
+					`${name} togs bort från mötet.`,
+					() => meeting.adminMutate(api.admin.users.removeParticipant, { userId: _id }),
+					{ rethrow: true },
+				),
 		});
 	}
 
@@ -65,10 +77,15 @@
 			confirm: { text: isBanned ? 'Häv avstängning' : 'Avstäng' },
 			cancel: { text: 'Avbryt' },
 			onConfirm: () =>
-				meeting.adminMutate(api.admin.users.setParticipantBanned, {
-					userId: _id,
-					banned: !isBanned,
-				}),
+				notifyMutation(
+					isBanned ? `Avstängning hävd för ${name}.` : `${name} stängdes av från mötet.`,
+					() =>
+						meeting.adminMutate(api.admin.users.setParticipantBanned, {
+							userId: _id,
+							banned: !isBanned,
+						}),
+					{ rethrow: true },
+				),
 		});
 	}
 
@@ -80,10 +97,12 @@
 		});
 
 		if (!email) {
+			toast.error('Kunde inte hämta e-postadress.');
 			return;
 		}
 
 		copyText(`${PUBLIC_SITE_URL}/sign-in?email=${encodeURIComponent(email)}`);
+		toast.success('Inloggningslänk kopierad.');
 	}
 </script>
 

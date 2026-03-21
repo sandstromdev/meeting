@@ -11,6 +11,8 @@
 	import PlayIcon from '@lucide/svelte/icons/play';
 	import RotateCcwIcon from '@lucide/svelte/icons/rotate-ccw';
 	import SquareIcon from '@lucide/svelte/icons/square';
+	import { notifyMutation } from '$lib/admin-toast';
+	import { toast } from 'svelte-sonner';
 
 	const meeting = getMeetingContext();
 	const doc = $derived(meeting.meeting);
@@ -20,7 +22,6 @@
 	let code = $state('');
 	let dateInput = $state('');
 	let isLoading = $state(false);
-	let snapshotFeedback = $state<string | null>(null);
 
 	$effect(() => {
 		if (editOpen && doc) {
@@ -33,21 +34,23 @@
 	});
 
 	async function handleToggleMeeting() {
-		await meeting.adminMutate(api.admin.meeting.toggleMeeting);
+		const wasOpen = doc.isOpen;
+		await notifyMutation(wasOpen ? 'Mötet stängdes.' : 'Mötet öppnades.', () =>
+			meeting.adminMutate(api.admin.meeting.toggleMeeting),
+		);
 	}
 
 	async function handleTriggerSnapshot() {
-		snapshotFeedback = null;
 		const result = await meeting.adminMutate(api.admin.meeting.triggerMeetingSnapshot);
 		if (result === undefined) {
 			return;
 		}
 		if (result.kind === 'inserted') {
-			snapshotFeedback = 'Ögonblicksbilden sparades.';
+			toast.success('Ögonblicksbilden sparades.');
 		} else if (result.reason === 'unchanged') {
-			snapshotFeedback = 'Ingen ny ögonblicksbild — innehållet är oförändrat.';
+			toast.info('Ingen ny ögonblicksbild — innehållet är oförändrat.');
 		} else {
-			snapshotFeedback = 'Kunde inte spara ögonblicksbild.';
+			toast.error('Kunde inte spara ögonblicksbild.');
 		}
 	}
 
@@ -57,34 +60,51 @@
 			description:
 				'Återställ mötet? Talarkö och pågående talare kommer att rensas. Dagordning och deltagare behålls.',
 			confirm: { text: 'Återställ' },
-			onConfirm: () => meeting.adminMutate(api.admin.meeting.resetMeeting),
+			onConfirm: () =>
+				notifyMutation(
+					'Mötet återställdes.',
+					() => meeting.adminMutate(api.admin.meeting.resetMeeting),
+					{
+						rethrow: true,
+					},
+				),
 		});
 	}
 
 	async function handleSaveMeetingData(e: Event) {
 		e.preventDefault();
 		if (!title.trim()) {
+			toast.warning('Ange en titel.');
 			return;
 		}
 		if (code.length !== 6 || !/^[0-9]{6}$/.test(code)) {
+			toast.warning('Möteskoden måste vara exakt 6 siffror.');
 			return;
 		}
 
 		const dateTs = new Date(dateInput).getTime();
 		if (Number.isNaN(dateTs)) {
+			toast.warning('Ogiltigt datum.');
 			return;
 		}
 
 		isLoading = true;
-		const ok = await meeting.adminMutate(api.admin.meeting.updateMeetingData, {
-			title: title.trim(),
-			code: code.trim(),
-			date: dateTs,
-		});
-		isLoading = false;
-
-		if (ok) {
+		try {
+			await notifyMutation(
+				'Mötesdata sparades.',
+				() =>
+					meeting.adminMutate(api.admin.meeting.updateMeetingData, {
+						title: title.trim(),
+						code: code.trim(),
+						date: dateTs,
+					}),
+				{ errorMessage: 'Kunde inte spara mötesdata.', rethrow: true },
+			);
 			editOpen = false;
+		} catch {
+			// Fel visas redan som toast
+		} finally {
+			isLoading = false;
 		}
 	}
 </script>
@@ -117,9 +137,6 @@
 				<DatabaseBackupIcon class="size-4" />
 				Spara ögonblicksbild
 			</Button>
-			{#if snapshotFeedback}
-				<p class="text-xs text-muted-foreground">{snapshotFeedback}</p>
-			{/if}
 		{/if}
 
 		<Dialog.Root bind:open={editOpen}>

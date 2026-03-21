@@ -8,8 +8,10 @@
 	import { Input } from '$lib/components/ui/input';
 	import * as InputGroup from '$lib/components/ui/input-group/index.js';
 	import * as NativeSelect from '$lib/components/ui/native-select';
+	import { notifyMutation } from '$lib/admin-toast';
 	import { getMeetingContext } from '$lib/context.svelte';
 	import { useParticipantsContext } from './context.svelte';
+	import { toast } from 'svelte-sonner';
 
 	let manualEmail = $state('');
 	let name = $state('');
@@ -55,45 +57,64 @@
 	async function handleSubmit(e: Event) {
 		e.preventDefault();
 
-		loading = true;
-
 		if (email.length === 0) {
 			error = 'E-postadressen är obligatorisk';
+			toast.warning(error);
 			return;
 		}
 
 		if (name.length === 0) {
 			error = 'Namnet är obligatoriskt';
+			toast.warning(error);
 			return;
 		}
 
 		if (password.length === 0) {
 			error = 'Lösenordet är obligatoriskt';
+			toast.warning(error);
 			return;
 		}
 
-		const { data, error: err } = await authClient.admin.createUser({
-			email,
-			name,
-			password,
-		});
+		loading = true;
+		error = null;
 
-		if (err) {
-			error = JSON.stringify(err, null, 2) ?? 'Något gick fel';
-			return;
-		}
-
-		if (addToMeeting && data?.user.id) {
-			await meeting.adminMutate(api.admin.users.addParticipant, {
-				userId: data.user.id,
+		try {
+			const { data, error: err } = await authClient.admin.createUser({
+				email,
 				name,
-				role,
+				password,
 			});
+
+			if (err) {
+				error = JSON.stringify(err, null, 2) ?? 'Något gick fel';
+				toast.error('Kunde inte skapa användaren.');
+				return;
+			}
+
+			if (addToMeeting && data?.user.id) {
+				await notifyMutation(
+					'Användare skapad och tillagd i mötet.',
+					() =>
+						meeting.adminMutate(api.admin.users.addParticipant, {
+							userId: data.user.id,
+							name,
+							role,
+						}),
+					{
+						errorMessage: 'Användare skapades men kunde inte läggas till i mötet.',
+						rethrow: true,
+					},
+				);
+			} else {
+				toast.success('Användare skapad.');
+			}
+
+			handleClose();
+		} catch {
+			// notifyMutation har redan visat fel-toast
+		} finally {
+			loading = false;
 		}
-
-		loading = false;
-
-		handleClose();
 	}
 </script>
 

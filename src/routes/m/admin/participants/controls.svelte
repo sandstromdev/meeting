@@ -6,6 +6,7 @@
 	import { api } from '$convex/_generated/api';
 	import RefreshCcwIcon from '@lucide/svelte/icons/refresh-ccw';
 	import { getMeetingContext } from '$lib/context.svelte';
+	import { notifyMutation } from '$lib/admin-toast';
 
 	const ctx = useParticipantsContext();
 	const meeting = getMeetingContext();
@@ -17,7 +18,12 @@
 	<Button
 		variant="outline"
 		size="sm"
-		onClickPromise={() => meeting.adminMutate(api.admin.meeting.recountParticipants)}
+		onClickPromise={() =>
+			notifyMutation(
+				'Deltagare har räknats om.',
+				() => meeting.adminMutate(api.admin.meeting.recountParticipants),
+				{ errorMessage: 'Kunde inte räkna om deltagare.' },
+			)}
 	>
 		<RefreshCcwIcon class="size-4" />
 		Räkna om deltagare

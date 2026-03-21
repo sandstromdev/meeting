@@ -2,6 +2,7 @@
 	import { api } from '$convex/_generated/api';
 	import { Button } from '$lib/components/ui/button';
 	import { confirm } from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
+	import { notifyMutation } from '$lib/admin-toast';
 	import { getMeetingContext } from '$lib/context.svelte';
 	import { ABSTAIN_OPTION_LABEL, getVoteShare } from '$lib/polls';
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
@@ -55,7 +56,9 @@
 									size="sm"
 									variant="outline"
 									onClickPromise={() =>
-										meeting.adminMutate(api.admin.poll.closePollByAdmin, { pollId: poll._id })}
+										notifyMutation('Omröstning stängd.', () =>
+											meeting.adminMutate(api.admin.poll.closePollByAdmin, { pollId: poll._id }),
+										)}
 								>
 									Stäng
 								</Button>
@@ -63,14 +66,17 @@
 								<Button
 									size="sm"
 									onClickPromise={() =>
-										meeting.adminMutate(api.admin.poll.showPollResults, { pollId: poll._id })}
-									>Visa resultat</Button
+										notifyMutation('Resultat visas för deltagare.', () =>
+											meeting.adminMutate(api.admin.poll.showPollResults, { pollId: poll._id }),
+										)}>Visa resultat</Button
 								>
 								<Button
 									size="sm"
 									variant="outline"
 									onClickPromise={() =>
-										meeting.adminMutate(api.admin.poll.duplicatePoll, { pollId: poll._id })}
+										notifyMutation('Omröstning duplicerad.', () =>
+											meeting.adminMutate(api.admin.poll.duplicatePoll, { pollId: poll._id }),
+										)}
 								>
 									Duplicera
 								</Button>
@@ -82,7 +88,14 @@
 											title: 'Ta bort omröstning?',
 											description: 'Är du säker på att du vill ta bort denna omröstning?',
 											onConfirm: () =>
-												meeting.adminMutate(api.admin.poll.removePoll, { pollId: poll._id }),
+												notifyMutation(
+													'Omröstning borttagen.',
+													() =>
+														meeting.adminMutate(api.admin.poll.removePoll, {
+															pollId: poll._id,
+														}),
+													{ rethrow: true },
+												),
 										})}
 								>
 									<Trash2Icon class="size-4" />
@@ -91,8 +104,9 @@
 								<Button
 									size="sm"
 									onClickPromise={() =>
-										meeting.adminMutate(api.admin.poll.openPoll, { pollId: poll._id })}
-									>Öppna</Button
+										notifyMutation('Omröstning öppnad.', () =>
+											meeting.adminMutate(api.admin.poll.openPoll, { pollId: poll._id }),
+										)}>Öppna</Button
 								>
 							{/if}
 						</div>

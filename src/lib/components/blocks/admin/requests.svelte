@@ -8,6 +8,7 @@
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import XIcon from '@lucide/svelte/icons/x';
 	import { useQuery } from '@mmailaender/convex-svelte';
+	import { notifyMutation } from '$lib/admin-toast';
 	import { api } from '$convex/_generated/api';
 	import Request from '$lib/components/blocks/admin/request.svelte';
 
@@ -31,14 +32,18 @@
 					duration={req.requestedAt}
 					variant="warning"
 					approve={async () => {
-						await meeting.adminMutate(api.admin.meeting.approveReturnRequest, {
-							userId: req.userId,
-						});
+						await notifyMutation('Återkomst godkänd.', () =>
+							meeting.adminMutate(api.admin.meeting.approveReturnRequest, {
+								userId: req.userId,
+							}),
+						);
 					}}
 					deny={async () => {
-						await meeting.adminMutate(api.admin.meeting.denyReturnRequest, {
-							userId: req.userId,
-						});
+						await notifyMutation('Återkomst avvisad.', () =>
+							meeting.adminMutate(api.admin.meeting.denyReturnRequest, {
+								userId: req.userId,
+							}),
+						);
 					}}
 				/>
 			{/each}
@@ -60,17 +65,24 @@
 				duration={null}
 				variant="warning"
 				approve={async () => {
-					await meeting.adminMutate(api.admin.meeting.acceptBreak);
+					await notifyMutation('Streck accepterat.', () =>
+						meeting.adminMutate(api.admin.meeting.acceptBreak),
+					);
 				}}
 				deny={async () => {
-					await meeting.adminMutate(api.admin.meeting.clearBreak);
+					await notifyMutation('Streck avvisat.', () =>
+						meeting.adminMutate(api.admin.meeting.clearBreak),
+					);
 				}}
 			/>
 		{:else}
 			<Button
 				variant="outline"
 				size="sm"
-				onClickPromise={() => meeting.adminMutate(api.admin.meeting.clearBreak)}
+				onClickPromise={() =>
+					notifyMutation('Streck avslutat.', () =>
+						meeting.adminMutate(api.admin.meeting.clearBreak),
+					)}
 				type="button"
 			>
 				Avsluta streck
@@ -92,17 +104,24 @@
 				duration={null}
 				variant="warning"
 				approve={async () => {
-					await meeting.adminMutate(api.admin.meeting.acceptPointOfOrder);
+					await notifyMutation('Ordningsfråga accepterad.', () =>
+						meeting.adminMutate(api.admin.meeting.acceptPointOfOrder),
+					);
 				}}
 				deny={async () => {
-					await meeting.adminMutate(api.admin.meeting.clearPointOfOrder);
+					await notifyMutation('Ordningsfråga avvisad.', () =>
+						meeting.adminMutate(api.admin.meeting.clearPointOfOrder),
+					);
 				}}
 			/>
 		{:else}
 			<Button
 				variant="outline"
 				size="sm"
-				onClickPromise={() => meeting.adminMutate(api.admin.meeting.clearPointOfOrder)}
+				onClickPromise={() =>
+					notifyMutation('Ordningsfrågan avslutad.', () =>
+						meeting.adminMutate(api.admin.meeting.clearPointOfOrder),
+					)}
 				type="button"
 			>
 				Avsluta ordningsfråga
@@ -124,17 +143,24 @@
 				duration={null}
 				variant="warning"
 				approve={async () => {
-					await meeting.adminMutate(api.admin.meeting.acceptReply);
+					await notifyMutation('Replik accepterad.', () =>
+						meeting.adminMutate(api.admin.meeting.acceptReply),
+					);
 				}}
 				deny={async () => {
-					await meeting.adminMutate(api.admin.meeting.clearReply);
+					await notifyMutation('Replik avvisad.', () =>
+						meeting.adminMutate(api.admin.meeting.clearReply),
+					);
 				}}
 			/>
 		{:else}
 			<Button
 				variant="outline"
 				size="sm"
-				onClickPromise={() => meeting.adminMutate(api.admin.meeting.clearReply)}
+				onClickPromise={() =>
+					notifyMutation('Repliken avslutad.', () =>
+						meeting.adminMutate(api.admin.meeting.clearReply),
+					)}
 				type="button"
 			>
 				Avsluta replik

@@ -6,6 +6,7 @@
 	import * as Field from '$lib/components/ui/field';
 	import Input from '$lib/components/ui/input/input.svelte';
 	import * as NativeSelect from '$lib/components/ui/native-select';
+	import { toast } from 'svelte-sonner';
 
 	let name = $state('');
 	let email = $state('');
@@ -30,13 +31,16 @@
 			loading = false;
 			if (err.code === 'USER_ALREADY_EXISTS') {
 				error = 'E-postadressen är redan i bruk.';
+				toast.error(error);
 			} else {
 				console.error(err);
 				error = 'Ett fel har inträffat.';
+				toast.error('Kunde inte skapa användaren.');
 			}
 			return;
 		}
 
+		toast.success('Användare skapad.');
 		await goto(resolve('/admin'));
 	}
 </script>

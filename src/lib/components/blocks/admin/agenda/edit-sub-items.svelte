@@ -6,7 +6,9 @@
 	import CollapsibleTrigger from '$lib/components/ui/collapsible/collapsible-trigger.svelte';
 	import { confirm } from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
 	import { Input } from '$lib/components/ui/input';
+	import { notifyMutation } from '$lib/admin-toast';
 	import { getMeetingContext } from '$lib/context.svelte';
+	import { toast } from 'svelte-sonner';
 	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
 	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
 	import PencilIcon from '@lucide/svelte/icons/pencil';
@@ -51,13 +53,23 @@
 
 	async function addSubItem() {
 		if (!parentItemId || !newSubItemTitle.trim()) {
+			toast.warning('Ange en titel för underpunkten.');
 			return;
 		}
-		await meeting.adminMutate(api.admin.agenda.createAgendaItem, {
-			title: newSubItemTitle.trim(),
-			parentId: parentItemId,
-		});
-		newSubItemTitle = '';
+		try {
+			await notifyMutation(
+				'Underpunkt tillagd.',
+				() =>
+					meeting.adminMutate(api.admin.agenda.createAgendaItem, {
+						title: newSubItemTitle.trim(),
+						parentId: parentItemId,
+					}),
+				{ rethrow: true },
+			);
+			newSubItemTitle = '';
+		} catch {
+			// Fel redan som toast
+		}
 	}
 
 	function toggleExpand(id: string) {
@@ -80,10 +92,15 @@
 				title: 'Ta bort underpunkt?',
 				description: 'Är du säker på att du vill ta bort denna underpunkt?',
 				onConfirm: () =>
-					meeting.adminMutate(api.admin.agenda.removeAgendaItem, {
-						agendaItemId: itemId,
-						deletionMode: 'delete_subtree',
-					}),
+					notifyMutation(
+						'Underpunkt borttagen.',
+						() =>
+							meeting.adminMutate(api.admin.agenda.removeAgendaItem, {
+								agendaItemId: itemId,
+								deletionMode: 'delete_subtree',
+							}),
+						{ rethrow: true },
+					),
 			});
 			return;
 		}
@@ -94,10 +111,15 @@
 			confirm: { text: 'Behåll underpunkter' },
 			cancel: { text: 'Ta bort allt' },
 			onConfirm: () =>
-				meeting.adminMutate(api.admin.agenda.removeAgendaItem, {
-					agendaItemId: itemId,
-					deletionMode: 'keep_children',
-				}),
+				notifyMutation(
+					'Underpunkt borttagen (djupare nivåer behölls).',
+					() =>
+						meeting.adminMutate(api.admin.agenda.removeAgendaItem, {
+							agendaItemId: itemId,
+							deletionMode: 'keep_children',
+						}),
+					{ rethrow: true },
+				),
 			onCancel: () => {
 				confirm({
 					title: 'Ta bort underpunkt och alla underpunkter?',
@@ -105,10 +127,15 @@
 					confirm: { text: 'Ta bort alla' },
 					cancel: { text: 'Avbryt' },
 					onConfirm: () =>
-						meeting.adminMutate(api.admin.agenda.removeAgendaItem, {
-							agendaItemId: itemId,
-							deletionMode: 'delete_subtree',
-						}),
+						notifyMutation(
+							'Underpunkt och underliggande punkter borttagna.',
+							() =>
+								meeting.adminMutate(api.admin.agenda.removeAgendaItem, {
+									agendaItemId: itemId,
+									deletionMode: 'delete_subtree',
+								}),
+							{ rethrow: true },
+						),
 				});
 			},
 		});
