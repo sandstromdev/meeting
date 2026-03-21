@@ -31,7 +31,7 @@ export const getSpeakerLogEntries = admin.query().public(async ({ ctx }) => {
 		.query('speakerLogEntries')
 		.withIndex('by_meeting_endTime', (q) => q.eq('meetingId', ctx.meeting._id))
 		.order('desc')
-		.take(100);
+		.collect();
 
 	return entries.map((e) => ({
 		type: e.type,
