@@ -10,7 +10,7 @@ import {
 	getBannedCounter,
 	getParticipantCounter,
 } from '$convex/helpers/counters';
-import { AppError, errors } from '$convex/helpers/error';
+import { AppError, appErrors } from '$convex/helpers/error';
 
 export const getPointOfOrderEntries = admin.query().public(async ({ ctx }) => {
 	const entries = await ctx.db
@@ -327,7 +327,7 @@ export const updateMeetingData = admin
 					.query('meetings')
 					.withIndex('by_code', (q) => q.eq('code', newCode))
 					.first();
-				AppError.assert(!!existing, errors.meeting_code_already_exists(newCode));
+				AppError.assert(existing == null, appErrors.meeting_code_already_exists(newCode));
 			}
 			updates.code = newCode;
 		}

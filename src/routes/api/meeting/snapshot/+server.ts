@@ -1,9 +1,8 @@
 import { api } from '$convex/_generated/api';
+import { appErrors, getAppError } from '$convex/helpers/error';
 import { getConvexClient } from '$lib/server/convex';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { ConvexError } from 'convex/values';
-import { AppError, errors, getAppError } from '$convex/helpers/error';
 
 export const GET = (async ({ locals }) => {
 	if (!locals.meetingId) {
@@ -21,9 +20,8 @@ export const GET = (async ({ locals }) => {
 		});
 
 		if (!meeting) {
-			return new AppError(errors.meeting_not_found({ meetingId: locals.meetingId })).toResponse(
-				'json',
-			);
+			const err = appErrors.meeting_not_found({ meetingId: locals.meetingId });
+			return json(err.toJSON(), { status: err.status });
 		}
 
 		const absenceEntries = await convex
@@ -93,9 +91,10 @@ export const GET = (async ({ locals }) => {
 	} catch (error) {
 		const appError = getAppError(error);
 		if (appError) {
-			return appError.toResponse('json');
+			return json(appError.toJSON(), { status: appError.status });
 		}
 		console.error('Internal error:', error);
-		return new AppError(errors.internal_error).toResponse('json');
+		const internal = appErrors.internal_error();
+		return json(internal.toJSON(), { status: internal.status });
 	}
 }) satisfies RequestHandler;

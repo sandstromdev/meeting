@@ -9,7 +9,7 @@ import {
 	getVotersCounter,
 	getVotesCounter,
 } from '$convex/helpers/counters';
-import { AppError, errors } from '$convex/helpers/error';
+import { AppError, appErrors } from '$convex/helpers/error';
 import {
 	assertPollEditable,
 	assertPollInMeeting,
@@ -40,8 +40,8 @@ export const createPoll = admin
 
 		const found = args.agendaItemId ? findAgendaItemById(agenda, args.agendaItemId) : null;
 
-		if (args.agendaItemId && !found) {
-			throw new AppError(errors.agenda_item_not_found(args.agendaItemId));
+		if (args.agendaItemId) {
+			AppError.assertNotNull(found, appErrors.agenda_item_not_found(args.agendaItemId));
 		}
 
 		const draft = {
@@ -60,10 +60,10 @@ export const createPoll = admin
 			.and(PollTypeSchema)
 			.safeParse(draft);
 
-		if (!validated.success) {
-			console.log(z.prettifyError(validated.error));
-			throw new AppError(errors.invalid_poll_draft(validated.error));
-		}
+		AppError.assertZodSuccess(validated, (e) => {
+			console.log(z.prettifyError(e));
+			return appErrors.invalid_poll_draft(e);
+		});
 
 		const pollId = await ctx.db.insert('polls', validated.data);
 
@@ -96,14 +96,13 @@ export const editPoll = admin
 		const userOptionsCount =
 			options[options.length - 1] === ABSTAIN_OPTION_LABEL ? options.length - 1 : options.length;
 
-		if (userOptionsCount < 1 || (userOptionsCount < 2 && !nextAllowsAbstain)) {
-			throw new AppError(
-				errors.invalid_poll_vote_limit({
-					maxVotesPerVoter: 1,
-					optionsCount: userOptionsCount,
-				}),
-			);
-		}
+		AppError.assert(
+			userOptionsCount >= 1 && (userOptionsCount >= 2 || nextAllowsAbstain),
+			appErrors.invalid_poll_vote_limit({
+				maxVotesPerVoter: 1,
+				optionsCount: userOptionsCount,
+			}),
+		);
 
 		let updatedFields = {
 			...poll,
@@ -115,9 +114,7 @@ export const editPoll = admin
 
 		const validated = FullPollSchema.safeParse(Object.assign({}, poll, updatedFields));
 
-		if (!validated.success) {
-			throw new AppError(errors.invalid_poll_draft(validated.error));
-		}
+		AppError.assertZodSuccess(validated, appErrors.invalid_poll_draft);
 
 		await ctx.db.replace('polls', args.pollId, validated.data);
 

@@ -1,5 +1,5 @@
 import { withMe } from '$convex/helpers/auth';
-import { AppError, errors } from '$convex/helpers/error';
+import { AppError, appErrors } from '$convex/helpers/error';
 import { getAbsentCounter } from '$convex/helpers/counters';
 import { completeReturnToMeeting } from '$convex/helpers/meeting';
 
@@ -15,9 +15,10 @@ export const leaveMeeting = withMe.mutation().public(async ({ ctx }) => {
 		meeting.pointOfOrder?.type === 'accepted' && meeting.pointOfOrder.by.userId === me._id;
 	const isReplySpeaker = meeting.reply?.type === 'accepted' && meeting.reply.by.userId === me._id;
 
-	if (isCurrentSpeaker || isPointOfOrderSpeaker || isReplySpeaker) {
-		throw new AppError(errors.cannot_leave_while_speaking());
-	}
+	AppError.assert(
+		!isCurrentSpeaker && !isPointOfOrderSpeaker && !isReplySpeaker,
+		appErrors.cannot_leave_while_speaking(),
+	);
 
 	const now = Date.now();
 

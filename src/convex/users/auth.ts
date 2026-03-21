@@ -1,4 +1,4 @@
-import { AppError, errors } from '$convex/helpers/error';
+import { AppError, appErrors } from '$convex/helpers/error';
 import { authed, withMe } from '$convex/helpers/auth';
 import { getMeetingByCode, getMeetingParticipant } from '$convex/helpers/meeting';
 import { MeetingCode } from '$lib/validation';
@@ -28,9 +28,7 @@ export const connect = authed
 			role: 'participant',
 		});
 
-		if (!result.ok) {
-			throw new AppError(errors.participant_banned);
-		}
+		AppError.assert(result.ok, appErrors.participant_banned());
 
 		return result.meetingId;
 	});
