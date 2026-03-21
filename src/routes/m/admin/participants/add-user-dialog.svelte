@@ -136,7 +136,7 @@
 					{/if}
 					<Field.Field orientation="horizontal">
 						<Checkbox id="add-user-temporary" bind:checked={temporary} />
-						<Field.Label>Temporär användare</Field.Label>
+						<Field.Label for="add-user-temporary">Temporär användare</Field.Label>
 					</Field.Field>
 				</Field.Field>
 				<Field.Field>
