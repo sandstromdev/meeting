@@ -1,12 +1,10 @@
-import { dev } from '$app/environment';
 import { createAuth } from '$convex/auth';
 import { env } from '$env/dynamic/public';
 import { ENVIRONMENT, TRUSTED_ORIGINS } from '$env/static/private';
-import { authClient } from '$lib/auth-client';
 import { getMeetingCookie } from '$lib/server/meeting-cookie';
 import { getToken } from '@mmailaender/convex-better-auth-svelte/sveltekit';
 import { withServerConvexToken } from '@mmailaender/convex-svelte/sveltekit/server';
-import { json, type Handle } from '@sveltejs/kit';
+import { type Handle } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
 
 const log = false;
