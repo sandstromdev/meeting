@@ -19,6 +19,9 @@ export const connect = authed
 	})
 	.public(async ({ ctx, args }) => {
 		const meeting = await getMeetingByCode(ctx, args.meetingCode);
+
+		AppError.assertNotNull(meeting, appErrors.meeting_not_found({ meetingCode: args.meetingCode }));
+
 		const userId = ctx.user.subject;
 
 		const result = await ensureParticipantInMeeting(ctx, {
