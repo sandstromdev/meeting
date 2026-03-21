@@ -38,7 +38,6 @@
 		"globals": "^17.4.0",
 		"husky": "^9.1.7",
 		"lint-staged": "^16.4.0",
-		"mode-watcher": "^1.1.0",
 		"oxlint-tsgolint": "^0.17.1",
 		"prettier": "^3.8.1",
 		"prettier-plugin-svelte": "^3.5.1",

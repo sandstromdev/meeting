@@ -4,7 +4,6 @@
 	import '@fontsource-variable/nunito';
 	import { createSvelteAuthClient } from '@mmailaender/convex-better-auth-svelte/svelte';
 	import { Toaster } from '$lib/components/ui/sonner';
-	import { ModeWatcher } from 'mode-watcher';
 	import './layout.css';
 	import { usePageState } from '$lib/page-state.svelte';
 
@@ -19,7 +18,6 @@
 	<link rel="icon" href={favicon} />
 </svelte:head>
 
-<!-- <ModeWatcher  /> -->
 {#if !ps.isProjector}
 	<Toaster />
 {/if}
