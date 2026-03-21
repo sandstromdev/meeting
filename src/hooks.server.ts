@@ -1,5 +1,5 @@
 import { createAuth } from '$convex/auth';
-import { env } from '$env/dynamic/public';
+import { PUBLIC_SITE_URL } from '$env/static/public';
 import { ENVIRONMENT, TRUSTED_ORIGINS } from '$env/static/private';
 import { getMeetingCookie } from '$lib/server/meeting-cookie';
 import { getToken } from '@mmailaender/convex-better-auth-svelte/sveltekit';
@@ -17,7 +17,7 @@ const auth: Handle = async ({ event, resolve }) => {
 		});
 	}
 
-	process.env.PUBLIC_SITE_URL = env.PUBLIC_SITE_URL;
+	process.env.PUBLIC_SITE_URL = PUBLIC_SITE_URL;
 	process.env.TRUSTED_ORIGINS = TRUSTED_ORIGINS;
 	process.env.ENVIRONMENT = ENVIRONMENT;
 

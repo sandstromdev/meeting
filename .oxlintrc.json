@@ -151,7 +151,10 @@
 		"unicorn/filename-case": [
 			"error",
 			{
-				"case": "kebabCase "
+				"cases": {
+					"kebabCase": true,
+					"snakeCase": true
+				}
 			}
 		],
 		"eslint/curly": ["warn"],

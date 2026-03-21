@@ -136,3 +136,42 @@ export const PollTypeSchema = z.discriminatedUnion('type', [
 export const FullPollSchema = PollBaseSchema.and(PollTypeSchema);
 
 export const RoleSchema = z.enum(ROLES);
+
+/** Response shape for `GET /api/meeting/snapshot` (Convex export + SvelteKit proxy). */
+export const MeetingSnapshotSpeakerSchema = z.object({
+	type: z.enum(['speaker', 'point_of_order', 'reply']),
+	name: z.string(),
+	startTime: z.number(),
+	endTime: z.number(),
+});
+
+export const MeetingSnapshotSchema = z.object({
+	meeting: z.object({
+		_creationTime: z.number(),
+		_id: zid('meetings'),
+		code: z.string(),
+		date: z.number(),
+		title: z.string(),
+		startedAt: z.number().nullable(),
+		agenda: z.array(z.any()),
+	}),
+	polls: z.array(z.any()),
+	participants: z.array(
+		z.object({
+			name: z.string(),
+			role: RoleSchema,
+			banned: z.boolean(),
+			joinedAt: z.number(),
+		}),
+	),
+	absenceEntries: z.array(
+		z.object({
+			name: z.string(),
+			startTime: z.number(),
+			endTime: z.number().nullable(),
+		}),
+	),
+	speakerLog: z.array(MeetingSnapshotSpeakerSchema),
+});
+
+export type MeetingSnapshot = z.infer<typeof MeetingSnapshotSchema>;
