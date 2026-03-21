@@ -197,9 +197,6 @@ export const MeetingParticipant = v.object({
 	/** When the participant first joined this meeting (ms).  */
 	joinedAt: v.number(),
 
-	/** When the participant first joined this meeting (ms).  */
-	joinedAt: v.number(),
-
 	absentSince: v.number(),
 	returnRequestedAt: v.number(),
 
@@ -219,6 +216,14 @@ export const User = v.object({
 	userId: v.string(),
 });
 
+/** Stored backup row for an open meeting (payload shape matches meeting snapshot export). */
+export const MeetingSnapshot = v.object({
+	meetingId: v.id('meetings'),
+	checksum: v.string(),
+	payload: v.any(),
+	capturedAt: v.number(),
+});
+
 export default defineSchema(
 	{
 		meetingParticipants: defineTable(MeetingParticipant)
@@ -227,7 +232,9 @@ export default defineSchema(
 			.index('by_meeting', ['meetingId'])
 			.index('by_meeting_absent', ['meetingId', 'absentSince']),
 
-		meetings: defineTable(Meeting).index('by_code', ['code']),
+		meetings: defineTable(Meeting).index('by_code', ['code']).index('by_isOpen', ['isOpen']),
+
+		meetingSnapshots: defineTable(MeetingSnapshot).index('by_meeting', ['meetingId']),
 
 		speakerQueueEntries: defineTable(SpeakerQueueEntry)
 			.index('by_meeting', ['meetingId'])

@@ -11,7 +11,7 @@
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import LinkIcon from '@lucide/svelte/icons/link';
 	import { copyText, UseClipboard } from '$lib/hooks/use-clipboard.svelte';
-	import { env } from '$env/dynamic/public';
+	import { PUBLIC_SITE_URL } from '$env/static/public';
 	import { useConvexClient } from '@mmailaender/convex-svelte';
 	import type { GenericId } from 'convex/values';
 
@@ -83,7 +83,7 @@
 			return;
 		}
 
-		copyText(`${env.PUBLIC_SITE_URL}/sign-in?email=${encodeURIComponent(email)}`);
+		copyText(`${PUBLIC_SITE_URL}/sign-in?email=${encodeURIComponent(email)}`);
 	}
 </script>
 

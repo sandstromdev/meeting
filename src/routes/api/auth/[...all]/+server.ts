@@ -1,9 +1,9 @@
-import { env } from '$env/dynamic/public';
+import { PUBLIC_CONVEX_SITE_URL } from '$env/static/public';
 import type { RequestHandler } from '@sveltejs/kit';
 
 const handler = (async ({ request, fetch }) => {
 	const requestUrl = new URL(request.url);
-	const convexSiteUrl = env.PUBLIC_CONVEX_SITE_URL;
+	const convexSiteUrl = PUBLIC_CONVEX_SITE_URL;
 
 	if (!convexSiteUrl) {
 		throw new Error('PUBLIC_CONVEX_SITE_URL environment variable is not set');

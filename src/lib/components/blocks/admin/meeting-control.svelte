@@ -6,6 +6,7 @@
 	import { Label } from '$lib/components/ui/label';
 	import { confirm } from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
 	import { getMeetingContext } from '$lib/context.svelte';
+	import DatabaseBackupIcon from '@lucide/svelte/icons/database-backup';
 	import PencilIcon from '@lucide/svelte/icons/pencil';
 	import PlayIcon from '@lucide/svelte/icons/play';
 	import RotateCcwIcon from '@lucide/svelte/icons/rotate-ccw';
@@ -19,6 +20,7 @@
 	let code = $state('');
 	let dateInput = $state('');
 	let isLoading = $state(false);
+	let snapshotFeedback = $state<string | null>(null);
 
 	$effect(() => {
 		if (editOpen && doc) {
@@ -32,6 +34,21 @@
 
 	async function handleToggleMeeting() {
 		await meeting.adminMutate(api.admin.meeting.toggleMeeting);
+	}
+
+	async function handleTriggerSnapshot() {
+		snapshotFeedback = null;
+		const result = await meeting.adminMutate(api.admin.meeting.triggerMeetingSnapshot);
+		if (result === undefined) {
+			return;
+		}
+		if (result.kind === 'inserted') {
+			snapshotFeedback = 'Ögonblicksbilden sparades.';
+		} else if (result.reason === 'unchanged') {
+			snapshotFeedback = 'Ingen ny ögonblicksbild — innehållet är oförändrat.';
+		} else {
+			snapshotFeedback = 'Kunde inte spara ögonblicksbild.';
+		}
 	}
 
 	function handleResetMeeting() {
@@ -94,6 +111,16 @@
 			<RotateCcwIcon class="size-4" />
 			Återställ
 		</Button>
+
+		{#if meeting.isAdmin}
+			<Button onClickPromise={handleTriggerSnapshot} type="button" variant="outline">
+				<DatabaseBackupIcon class="size-4" />
+				Spara ögonblicksbild
+			</Button>
+			{#if snapshotFeedback}
+				<p class="text-xs text-muted-foreground">{snapshotFeedback}</p>
+			{/if}
+		{/if}
 
 		<Dialog.Root bind:open={editOpen}>
 			<Dialog.Trigger>

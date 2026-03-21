@@ -1,96 +1,49 @@
-import { api } from '$convex/_generated/api';
+import { PUBLIC_CONVEX_SITE_URL } from '$env/static/public';
 import { appErrors, getAppError } from '$convex/helpers/error';
-import { getConvexClient } from '$lib/server/convex';
+import { MeetingSnapshotSchema } from '$lib/validation';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
-export const GET = (async ({ locals }) => {
-	if (!locals.meetingId) {
-		return new Response('Unauthorized', { status: 401 });
+export const GET = (async ({ locals, fetch }) => {
+	if (!locals.token) {
+		return appErrors.unauthorized().toJsonResponse();
 	}
 
-	console.log({
-		locals,
-	});
+	if (!locals.meetingId) {
+		return appErrors.meeting_not_found({ meetingId: locals.meetingId }).toJsonResponse();
+	}
 
-	const convex = getConvexClient();
+	const url = `${PUBLIC_CONVEX_SITE_URL}/api/meeting/snapshot?meetingId=${encodeURIComponent(locals.meetingId)}`;
+
 	try {
-		const meeting = await convex.query(api.users.meeting.getMeeting, {
-			meetingId: locals.meetingId,
+		const res = await fetch(url, {
+			headers: {
+				Authorization: `Bearer ${locals.token}`,
+				Accept: 'application/json',
+			},
 		});
 
-		if (!meeting) {
-			return appErrors.meeting_not_found({ meetingId: locals.meetingId }).toJsonResponse();
+		if (!res.ok) {
+			return new Response(await res.text(), {
+				status: res.status,
+				headers: { 'Content-Type': res.headers.get('content-type') ?? 'application/json' },
+			});
 		}
 
-		const absenceEntries = await convex
-			.query(api.admin.meeting.getAbsenceEntries, { meetingId: locals.meetingId })
-			.then((e) =>
-				e.map((entry) => ({
-					name: entry.name,
-					startTime: Math.max(entry.startTime, meeting.startedAt ?? 0),
-					endTime: entry.endTime,
-				})),
-			);
+		const body = await res.json();
 
-		const participants = await convex
-			.query(api.admin.users.getParticipants, {
-				meetingId: locals.meetingId,
-			})
-			.then((r) =>
-				r.map((user) => ({
-					name: user.name,
-					role: user.role,
-					banned: user.banned,
-					joinedAt: Math.max(user.joinedAt, meeting.startedAt ?? 0),
-				})),
-			);
+		const parsed = MeetingSnapshotSchema.safeParse(body);
 
-		const polls = await convex
-			.query(api.admin.poll.getAllPolls, { meetingId: locals.meetingId })
-			// oxlint-disable-next-line no-unused-vars
-			.then((r) => r.map(({ _creationTime, isOpen, meetingId, updatedAt, ...poll }) => poll));
+		if (!parsed.success) {
+			console.error('Meeting snapshot schema mismatch', parsed.error);
+			return appErrors.internal_error().toJsonResponse();
+		}
 
-		const results = await convex.query(api.admin.poll.getAllResults, {
-			meetingId: locals.meetingId,
-		});
-
-		const speakerLog = await convex.query(api.admin.meeting.getSpeakerLogEntries, {
-			meetingId: locals.meetingId,
-		});
-
-		const agenda = meeting.agenda.map((item) =>
-			Object.assign(item, {
-				pollIds: undefined,
-				polls: polls
-					.filter((poll) => poll.agendaItemId === item.id || item.pollIds.includes(poll._id))
-					.map((poll) =>
-						Object.assign(poll, {
-							result: results.find((result) => result.pollId === poll._id) ?? null,
-						}),
-					),
-			}),
-		);
-
-		return json({
-			meeting: {
-				_creationTime: meeting._creationTime,
-				_id: meeting._id,
-				code: meeting.code,
-				date: meeting.date,
-				title: meeting.title,
-				startedAt: meeting.startedAt,
-				agenda,
-			},
-			polls,
-			participants,
-			absenceEntries,
-			speakerLog,
-		});
+		return json(parsed.data);
 	} catch (error) {
 		const appError = getAppError(error);
 		if (appError) {
-			return json(appError.toJSON(), { status: appError.status });
+			return appError.toJsonResponse();
 		}
 		console.error('Internal error:', error);
 		const internal = appErrors.internal_error();
