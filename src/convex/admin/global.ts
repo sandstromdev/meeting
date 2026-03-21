@@ -1,10 +1,10 @@
 import { authComponent, createAuth } from '$convex/auth';
 import { authed } from '$convex/helpers/auth';
-import { AppError, errors } from '$convex/helpers/error';
+import { AppError, appErrors } from '$convex/helpers/error';
 import * as z from 'zod';
 
 const admin = authed.use(async ({ ctx, next }) => {
-	AppError.assert(ctx.user.role === 'admin', errors.forbidden);
+	AppError.assert(ctx.user.role === 'admin', appErrors.forbidden());
 	return next(ctx);
 });
 
@@ -26,6 +26,6 @@ export const createUser = admin
 			return user.id;
 		} catch (error) {
 			console.error(error);
-			throw new AppError(errors.internal_error);
+			throw appErrors.internal_error();
 		}
 	});

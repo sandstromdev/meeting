@@ -5,7 +5,7 @@ import {
 	getVotersCounter,
 	getVotesCounter,
 } from '$convex/helpers/counters';
-import { AppError, errors } from '$convex/helpers/error';
+import { AppError, appErrors } from '$convex/helpers/error';
 import {
 	assertPollInMeeting,
 	getLatestPollResultSnapshot,
@@ -25,14 +25,14 @@ export const vote = withMe
 
 		assertPollInMeeting(poll, ctx.meeting._id);
 
-		AppError.assert(ctx.me.absentSince <= 0, errors.illegal_while_absent('vote'));
-		AppError.assert(poll.isOpen, errors.illegal_poll_action('vote_while_closed'));
+		AppError.assert(ctx.me.absentSince <= 0, appErrors.illegal_while_absent('vote'));
+		AppError.assert(poll.isOpen, appErrors.illegal_poll_action('vote_while_closed'));
 
 		const uniqueOptionIndexes = [...new Set(args.optionIndexes)];
 
 		AppError.assert(
 			uniqueOptionIndexes.length === args.optionIndexes.length,
-			errors.illegal_poll_action('duplicate_vote_option'),
+			appErrors.illegal_poll_action('duplicate_vote_option'),
 		);
 
 		const maxVotesPerVoter =
@@ -40,13 +40,13 @@ export const vote = withMe
 
 		AppError.assert(
 			uniqueOptionIndexes.length <= maxVotesPerVoter,
-			errors.illegal_poll_action('too_many_votes'),
+			appErrors.illegal_poll_action('too_many_votes'),
 		);
 
 		for (const optionIndex of uniqueOptionIndexes) {
 			AppError.assert(
 				optionIndex >= 0 && optionIndex < poll.options.length,
-				errors.invalid_poll_option(optionIndex),
+				appErrors.invalid_poll_option(optionIndex),
 			);
 		}
 
@@ -92,8 +92,8 @@ export const retractVote = withMe
 
 		assertPollInMeeting(poll, ctx.meeting._id);
 
-		AppError.assert(ctx.me.absentSince <= 0, errors.illegal_while_absent('vote'));
-		AppError.assert(poll.isOpen, errors.illegal_poll_action('vote_while_closed'));
+		AppError.assert(ctx.me.absentSince <= 0, appErrors.illegal_while_absent('vote'));
+		AppError.assert(poll.isOpen, appErrors.illegal_poll_action('vote_while_closed'));
 
 		const existingVotes = await ctx.db
 			.query('pollVotes')

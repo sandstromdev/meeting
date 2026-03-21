@@ -1,5 +1,5 @@
 import type { Id } from '$convex/_generated/dataModel';
-import { AppError, errors } from './error';
+import { AppError, appErrors } from './error';
 import type { Direction } from './types';
 
 export type AgendaItemId = string;
@@ -67,9 +67,7 @@ export function findAgendaItemById(agenda: Agenda, id: AgendaItemId): FindAgenda
 
 export function findAgendaItemOrThrow(agenda: Agenda, id: AgendaItemId) {
 	const found = findAgendaItemById(agenda, id);
-	if (!found) {
-		throw new AppError(errors.agenda_item_not_found(id));
-	}
+	AppError.assertNotNull(found, appErrors.agenda_item_not_found(id));
 	return found;
 }
 

@@ -1,5 +1,5 @@
 import { moderator } from '$convex/helpers/auth';
-import { AppError, errors } from '$convex/helpers/error';
+import { AppError, appErrors } from '$convex/helpers/error';
 import { logSpeakerSlot } from '$convex/helpers/meeting';
 import { zid } from 'convex-helpers/server/zod4';
 import { z } from 'zod';
@@ -42,9 +42,10 @@ export const removeFromSpeakerQueue = moderator
 			return;
 		}
 
-		if (entry._id === meeting.currentSpeaker?.entryId) {
-			throw new AppError(errors.cannot_delete_current_speaker());
-		}
+		AppError.assert(
+			entry._id !== meeting.currentSpeaker?.entryId,
+			appErrors.cannot_delete_current_speaker(),
+		);
 
 		await ctx.db.delete('speakerQueueEntries', entry._id);
 

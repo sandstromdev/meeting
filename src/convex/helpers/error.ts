@@ -2,45 +2,131 @@ import { ConvexError, type Value } from 'convex/values';
 import type { Id } from '$convex/_generated/dataModel';
 import { ErrorMessages } from '$lib/errors';
 import { z } from 'zod';
-import type { MaybePromise } from './builder/types';
-import { json } from '@sveltejs/kit';
 
-type Shape =
-	| {
-			code: string;
-			status: number;
-			[key: string]: unknown;
-	  }
-	// oxlint-disable-next-line typescript/no-explicit-any
-	| ((...args: any[]) => Shape);
+/** Convex serializes this as `ConvexError.data` for app-thrown errors. */
+// oxlint-disable-next-line typescript/no-explicit-any
+type AppConvexErrorData = Value;
 
-export const errors = {
-	unauthorized: { code: 'unauthorized', status: 401 },
-	forbidden: { code: 'forbidden', status: 403 },
-	internal_error: { code: 'internal_error', status: 500 },
+/** Normalized shape after `super({ type: 'app_error', ... })`. */
+type AppErrorStored<C extends string, P extends {}> = {
+	type: 'app_error';
+	code: C;
+	status: number;
+	data: P;
+};
 
+export class AppError<
+	C extends string = string,
+	P extends {} = {},
+> extends ConvexError<AppConvexErrorData> {
+	constructor(code: C, status: number, data?: P) {
+		// oxlint-disable-next-line typescript/no-explicit-any
+		super({ type: 'app_error', code, status, data: data ?? {} } as any);
+	}
+
+	private get stored() {
+		return this.data as AppErrorStored<C, P>;
+	}
+
+	is<T extends AppErrorCode>(code: T): boolean {
+		return this.stored.code === (code as string);
+	}
+
+	get message() {
+		const { code, status, data } = this.stored;
+		// oxlint-disable-next-line typescript/no-explicit-any
+		return ErrorMessages[code as AppErrorCode]({ ...data, status } as any);
+	}
+
+	get code() {
+		return this.stored.code;
+	}
+
+	get status() {
+		return this.stored.status;
+	}
+
+	toJSON() {
+		const { code, status, data } = this.stored;
+		return {
+			error: { code, status, ...data, message: this.message },
+		};
+	}
+
+	toJsonResponse() {
+		return Response.json(this.toJSON(), { status: this.status });
+	}
+
+	static fromConvex<P extends {}>(err: ConvexError<AppErrorStored<string, P>>) {
+		const { code, status, data } = err.data;
+		return new AppError(code, status, data ?? {});
+	}
+
+	static assert(pred: boolean, error: AppError): asserts pred is true {
+		if (!pred) {
+			throw error;
+		}
+	}
+
+	static assertNotNull<T>(value: T | null | undefined, error: AppError): asserts value is T {
+		if (value == null) {
+			throw error;
+		}
+	}
+
+	/** Narrows Zod `safeParse` / `SafeParseReturnType` to success; `toError` receives the `ZodError`. */
+	static assertZodSuccess<T>(
+		result: { success: true; data: T } | { success: false; error: z.ZodError },
+		toError: (error: z.ZodError) => AppError = (e) => appErrors.zod_error(z.treeifyError(e)),
+	): asserts result is { success: true; data: T } {
+		if (!result.success) {
+			throw toError(result.error);
+		}
+	}
+}
+
+export const appErrors = {
+	// HTTP-shaped (401 / 403 / 500), no domain payload
+	bad_request: (args: Record<string, Value | undefined>) =>
+		new AppError('bad_request', 400, { args }),
+	unauthorized: () => new AppError('unauthorized', 401),
+	forbidden: () => new AppError('forbidden', 403),
+	internal_error: () => new AppError('internal_error', 500),
+
+	// Email & account
+	email_exists: () => new AppError('email_exists', 400),
+	invalid_credentials: () => new AppError('invalid_credentials', 400),
+	participant_banned: () => new AppError('participant_banned', 403),
+
+	// Meeting
 	meeting_not_found: (args: { meetingId?: Id<'meetings'>; meetingCode?: string }) =>
-		({ code: 'meeting_not_found', status: 404, ...args }) as const,
-
+		new AppError('meeting_not_found', 404, args),
 	meeting_participant_not_found: (meetingId: Id<'meetings'>) =>
-		({ code: 'meeting_participant_not_found', status: 404, meetingId }) as const,
+		new AppError('meeting_participant_not_found', 404, { meetingId }),
+	invalid_meeting_code: () => new AppError('invalid_meeting_code', 400),
+	meeting_code_already_exists: (meetingCode: string) =>
+		new AppError('meeting_code_already_exists', 400, { meetingCode }),
 
+	// Agenda & speaking
 	agenda_item_not_found: (agendaItemId: string) =>
-		({ code: 'agenda_item_not_found', status: 404, agendaItemId }) as const,
+		new AppError('agenda_item_not_found', 404, { agendaItemId }),
+	cannot_delete_current_speaker: () => new AppError('cannot_delete_current_speaker', 400),
+	cannot_leave_while_speaking: () => new AppError('cannot_leave_while_speaking', 400),
+	illegal_while_absent: (action?: string) =>
+		new AppError('illegal_while_absent', 400, action !== undefined ? { action } : undefined),
 
-	poll_not_found: (pollId: Id<'polls'>) =>
-		({ code: 'poll_not_found', status: 404, pollId }) as const,
-	invalid_poll_option: (option: number) =>
-		({ code: 'invalid_poll_option', status: 400, option }) as const,
+	// Polls
+	poll_not_found: (pollId: Id<'polls'>) => new AppError('poll_not_found', 404, { pollId }),
+	invalid_poll_option: (option: number) => new AppError('invalid_poll_option', 400, { option }),
 	invalid_poll_vote_limit: (args: { maxVotesPerVoter: number; optionsCount: number }) =>
-		({ code: 'invalid_poll_vote_limit', status: 400, ...args }) as const,
+		new AppError('invalid_poll_vote_limit', 400, args),
 	invalid_poll_type_config: (
 		args:
 			| { kind: 'winningCount'; value: number; optionsCount: number }
 			| { kind: 'majorityRule_required' },
-	) => ({ code: 'invalid_poll_type_config', status: 400, ...args }) as const,
+	) => new AppError('invalid_poll_type_config', 400, args),
 	invalid_poll_draft: (error: z.ZodError) =>
-		({ code: 'invalid_poll_draft', status: 400, error: z.treeifyError(error) }) as const,
+		new AppError('invalid_poll_draft', 400, { error: z.treeifyError(error) }),
 	illegal_poll_action: (
 		action:
 			| 'edit_while_open'
@@ -49,141 +135,51 @@ export const errors = {
 			| 'agenda_has_poll'
 			| 'too_many_votes'
 			| 'duplicate_vote_option',
-	) => ({ code: 'illegal_poll_action', status: 400, action }) as const,
+	) => new AppError('illegal_poll_action', 400, { action }),
 
-	illegal_while_absent: (action?: string) =>
-		({ code: 'illegal_while_absent', status: 400, action }) as const,
-
-	cannot_delete_current_speaker: () =>
-		({ code: 'cannot_delete_current_speaker', status: 400 }) as const,
-	cannot_leave_while_speaking: () =>
-		({ code: 'cannot_leave_while_speaking', status: 400 }) as const,
-
-	email_exists: { code: 'email_exists', status: 400 },
-	invalid_credentials: { code: 'invalid_credentials', status: 400 },
-	invalid_meeting_code: { code: 'invalid_meeting_code', status: 400 },
-	participant_banned: { code: 'participant_banned', status: 403 },
-
+	// Validation
 	zod_error: (issues: z.core.$ZodErrorTree<unknown, string>) =>
-		({ code: 'bad_args', status: 400, issues }) as const,
+		new AppError('zod_error', 400, { issues }),
+} as const;
 
-	invalid_args: (args: Record<string, Value | undefined>) =>
-		({ code: 'invalid_args', status: 400, args }) as const,
+export type AppErrors = typeof appErrors;
+export type AppErrorCode = keyof AppErrors;
 
-	meeting_code_already_exists: (meetingCode: string) =>
-		({ code: 'meeting_code_already_exists', status: 400, meetingCode }) as const,
-} as const satisfies Record<string, Shape>;
+export type AppErrorPayloadFor<K extends AppErrorCode> =
+	ReturnType<AppErrors[K]> extends AppError<infer _C, infer P> ? P : never;
 
-export const errorCodes = new Set<AppErrorCode>(Object.keys(errors) as AppErrorCode[]);
-
-type AppErr = typeof errors;
-type AppFlatErr = {
-	// oxlint-disable-next-line typescript/no-explicit-any
-	[P in keyof AppErr]: AppErr[P] extends (...args: any) => any ? ReturnType<AppErr[P]> : AppErr[P];
+export type AppErrorBase<C extends string> = {
+	code: C;
+	status: number;
 };
 
-export type AppErrorObject = AppFlatErr[keyof AppFlatErr];
-
-export type AppErrorCode = keyof AppErr;
 export type AppErrorMessages = {
-	[P in keyof AppFlatErr]: (args: Omit<AppFlatErr[P], 'code'>) => string;
+	[K in AppErrorCode]: (args: Omit<AppErrorPayloadFor<K>, 'code'>) => string;
 };
 
-export type AppErrorObjectFor<T extends AppErrorCode> = AppFlatErr[T];
+export const errorCodes = new Set<AppErrorCode>(Object.keys(appErrors) as AppErrorCode[]);
 
-type ClientErrorObject<T extends AppErrorCode> = {
-	type: 'app_error';
-	code: T;
-} & AppFlatErr[T];
-
-export class AppError<ErrorCode extends AppErrorCode> extends ConvexError<
-	ClientErrorObject<ErrorCode>
-> {
-	constructor(error: AppFlatErr[ErrorCode]) {
-		super({
-			type: 'app_error',
-			...error,
-			// oxlint-disable-next-line typescript/no-explicit-any
-		} as any);
-	}
-
-	is<T extends AppErrorCode>(code: T): this is AppError<T> {
-		return this.data.code === code;
-	}
-
-	get code() {
-		return this.data.code;
-	}
-
-	// oxlint-disable-next-line typescript/no-explicit-any
-	message = ErrorMessages[this.data.code as AppErrorCode](this.data as any);
-
-	get status() {
-		return this.data.status;
-	}
-
-	toResponse(type: 'json' | 'text' = 'json') {
-		return type === 'json'
-			? json({ error: { ...this.data, message: this.message } }, { status: this.status })
-			: new Response(this.message, { status: this.status });
-	}
-
-	static fromConvex<ErrorCode extends AppErrorCode, Data extends ClientErrorObject<ErrorCode>>(
-		err: ConvexError<Data>,
-	) {
-		return new AppError<ErrorCode>(err.data);
-	}
-
-	static assert(pred: boolean, error: AppErrorObject): asserts pred is true {
-		if (!pred) {
-			throw new AppError(error);
-		}
-	}
-
-	static assertNotNull<T>(value: T | null | undefined, error: AppErrorObject): asserts value is T {
-		if (value == null) {
-			throw new AppError(error);
-		}
-	}
-
-	static async assertFn(pred: () => MaybePromise<boolean>, error: AppErrorObject) {
-		const result = await pred();
-		if (!result) {
-			throw new AppError(error);
-		}
-	}
-}
-
-export function isAppError(err: unknown): err is ConvexError<ClientErrorObject<AppErrorCode>>;
+export function isAppError(err: unknown): err is ConvexError<AppErrorStored<string, {}>>;
 export function isAppError<ErrorCode extends AppErrorCode>(
 	err: unknown,
 	code: ErrorCode,
-): err is ConvexError<ClientErrorObject<ErrorCode>>;
+): err is ConvexError<AppErrorStored<string, {}>>;
 export function isAppError(err: unknown, code?: AppErrorCode) {
-	if (err instanceof ConvexError) {
-		if (
-			err != null &&
-			typeof err.data === 'object' &&
-			'type' in err.data &&
-			err.data.type === 'app_error'
-		) {
-			if (code) {
-				return err.data.code === code;
-			}
-
-			return true;
-		}
+	if (!(err instanceof ConvexError)) {
+		return false;
 	}
-
-	return false;
+	const d = err.data;
+	if (typeof d !== 'object' || d === null || !('type' in d) || d.type !== 'app_error') {
+		return false;
+	}
+	if (code !== undefined) {
+		return d.code === code;
+	}
+	return true;
 }
 
-export function getAppError(err: unknown) {
-	if (!isAppError(err)) {
-		return null;
-	}
-
-	return AppError.fromConvex(err);
+export function getAppError(err: unknown): AppError | null {
+	return isAppError(err) ? AppError.fromConvex(err) : null;
 }
 
 export function isAppErrorCode(code: string): code is AppErrorCode {

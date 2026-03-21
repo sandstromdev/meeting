@@ -2,7 +2,7 @@ import type { Doc, Id } from '$convex/_generated/dataModel';
 import { ABSTAIN_OPTION_LABEL } from '$lib/polls';
 import type { StripSystemFields } from '$lib/types';
 import { stripSystemFields } from '.';
-import { AppError, errors } from './error';
+import { AppError, appErrors } from './error';
 import type { Db } from './types';
 
 export type OptionTotal = { optionIndex: number; option: string; votes: number };
@@ -39,11 +39,11 @@ export function buildPollResultSnapshot(args: PollResultSnapshotArgs): PollResul
 }
 
 export async function getPollOrThrow(db: Db, pollId?: Id<'polls'>) {
-	AppError.assertNotNull(pollId, errors.invalid_args({ pollId }));
+	AppError.assertNotNull(pollId, appErrors.bad_request({ pollId }));
 
 	const poll = await db.get('polls', pollId);
 
-	AppError.assertNotNull(poll, errors.poll_not_found(pollId));
+	AppError.assertNotNull(poll, appErrors.poll_not_found(pollId));
 
 	return poll;
 }
@@ -60,11 +60,11 @@ export function assertPollInMeeting(
 	poll: Pick<Doc<'polls'>, '_id' | 'meetingId'>,
 	meetingId: Id<'meetings'>,
 ) {
-	AppError.assert(poll.meetingId === meetingId, errors.poll_not_found(poll._id));
+	AppError.assert(poll.meetingId === meetingId, appErrors.poll_not_found(poll._id));
 }
 
 export function assertPollEditable(poll: Pick<Doc<'polls'>, 'isOpen'>) {
-	AppError.assert(!poll.isOpen, errors.illegal_poll_action('edit_while_open'));
+	AppError.assert(!poll.isOpen, appErrors.illegal_poll_action('edit_while_open'));
 }
 export function stripAbstain(optionTotals: OptionTotal[], allowsAbstain: boolean) {
 	return allowsAbstain

@@ -1,5 +1,5 @@
 // oxlint-disable typescript/no-explicit-any
-import { AppError, errors } from '$convex/helpers/error';
+import { AppError, appErrors } from '$convex/helpers/error';
 import { zodToConvex } from 'convex-helpers/server/zod4';
 import {
 	actionGeneric,
@@ -200,9 +200,7 @@ class BuilderWithFuncType<
 		) => {
 			const parsed = zodValidator.safeParse(args);
 
-			if (!parsed.success) {
-				throw new AppError(errors.zod_error(z.treeifyError(parsed.error)));
-			}
+			AppError.assertZodSuccess(parsed, (e) => appErrors.zod_error(z.treeifyError(e)));
 
 			return this.#execute(handler, mws, ctx, parsed.data);
 		};

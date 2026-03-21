@@ -1,6 +1,6 @@
 import type { MutationCtx, QueryCtx } from '$convex/_generated/server';
 import type { UserIdentity, Scheduler } from 'convex/server';
-import { AppError, errors } from './error';
+import { AppError, appErrors } from './error';
 import type { Doc, Id } from '$convex/_generated/dataModel';
 import { internal } from '$convex/_generated/api';
 import { getAbsentCounter } from './counters';
@@ -52,13 +52,8 @@ export async function getMeetingParticipant(
 		.withIndex('by_user_meeting', (q) => q.eq('userId', userId).eq('meetingId', meetingId))
 		.first();
 
-	if (!p) {
-		throw new AppError(errors.meeting_participant_not_found(meetingId));
-	}
-
-	if (p.banned) {
-		throw new AppError(errors.participant_banned);
-	}
+	AppError.assertNotNull(p, appErrors.meeting_participant_not_found(meetingId));
+	AppError.assert(!p.banned, appErrors.participant_banned());
 
 	return p;
 }
@@ -69,9 +64,7 @@ export async function getMeetingByCode(ctx: QueryCtx, meetingCode: string) {
 		.withIndex('by_code', (q) => q.eq('code', meetingCode))
 		.first();
 
-	if (!m) {
-		throw new AppError(errors.meeting_not_found({ meetingCode }));
-	}
+	AppError.assertNotNull(m, appErrors.meeting_not_found({ meetingCode }));
 
 	return m;
 }

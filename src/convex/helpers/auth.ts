@@ -1,7 +1,7 @@
 import { zid } from 'convex-helpers/server/zod4';
 import type { UserIdentity } from 'convex/server';
 import type { QueryCtx } from '$convex/_generated/server';
-import { AppError, errors } from './error';
+import { AppError, appErrors } from './error';
 import { c } from './index';
 import { getMeetingParticipant } from './meeting';
 
@@ -12,8 +12,8 @@ export const authMw = c.$context<QueryCtx>().createMiddleware(async ({ ctx, next
 
 	if (!user) {
 		console.log('unauthorized:', user);
-		throw new AppError(errors.unauthorized);
 	}
+	AppError.assertNotNull(user, appErrors.unauthorized());
 
 	return next({ ...ctx, user: Object.assign(user, { role: user.role ?? 'user' }) as Identity });
 });
@@ -27,9 +27,7 @@ export const withMeeting = authed
 	.use(async ({ ctx, args, next }) => {
 		const meeting = await ctx.db.get('meetings', args.meetingId);
 
-		if (!meeting) {
-			throw new AppError(errors.meeting_not_found(args));
-		}
+		AppError.assertNotNull(meeting, appErrors.meeting_not_found(args));
 
 		return next({ ...ctx, meeting });
 	});
@@ -37,25 +35,22 @@ export const withMeeting = authed
 export const withMe = withMeeting.use(async ({ ctx, args, next }) => {
 	const me = await getMeetingParticipant(ctx, args.meetingId);
 
-	if (!me) {
-		throw new AppError(errors.forbidden);
-	}
+	AppError.assertNotNull(me, appErrors.forbidden());
 
 	return next({ ...ctx, me });
 });
 
 export const moderator = withMe.use(({ ctx, next }) => {
-	if (ctx.me.role === 'participant' || ctx.me.role === 'adjuster') {
-		throw new AppError(errors.forbidden);
-	}
+	AppError.assert(
+		ctx.me.role !== 'participant' && ctx.me.role !== 'adjuster',
+		appErrors.forbidden(),
+	);
 
 	return next(ctx);
 });
 
 export const admin = withMe.use(({ ctx, next }) => {
-	if (ctx.me.role !== 'admin') {
-		throw new AppError(errors.forbidden);
-	}
+	AppError.assert(ctx.me.role === 'admin', appErrors.forbidden());
 
 	return next(ctx);
 });
