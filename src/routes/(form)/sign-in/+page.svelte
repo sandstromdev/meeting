@@ -1,11 +1,13 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import { PUBLIC_ENABLE_SIGNUP } from '$env/static/public';
 	import { authClient } from '$lib/auth-client';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import * as Field from '$lib/components/ui/field';
 	import Input from '$lib/components/ui/input/input.svelte';
 	import Separator from '$lib/components/ui/separator/separator.svelte';
+	import { CONTACT_EMAIL } from '$lib/contact';
 	import { ErrorMessages } from '$lib/errors';
 	import { signIn } from '../data.remote';
 	import { SignInSchema, validateRedirect } from '../schema';
@@ -30,6 +32,8 @@
 			? resolve(`/sign-up?redirect=${encodeURIComponent(data.redirect)}`)
 			: resolve('/sign-up'),
 	);
+
+	const isSignUpDisabled = $derived(PUBLIC_ENABLE_SIGNUP !== 'true');
 </script>
 
 <div class="max-w-sm rounded-md border px-6 py-5">
@@ -82,7 +86,16 @@
 
 			<Separator />
 
-			<Button href={signUpUrl} variant="outline">Skapa konto</Button>
+			{#if !isSignUpDisabled}
+				<Button href={signUpUrl} variant="outline">Skapa konto</Button>
+			{:else}
+				<p class="text-center text-sm text-muted-foreground">
+					Registrering är inaktiverad för tillfället.<br />
+					Kontakta
+					<a href={`mailto:${CONTACT_EMAIL}`} class="text-primary underline">{CONTACT_EMAIL}</a> för att
+					få hjälp.
+				</p>
+			{/if}
 		</Field.Set>
 	</form>
 </div>

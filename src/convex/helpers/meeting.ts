@@ -109,7 +109,5 @@ export async function getMeetingByCode(ctx: QueryCtx, meetingCode: string) {
 		.withIndex('by_code', (q) => q.eq('code', meetingCode))
 		.first();
 
-	AppError.assertNotNull(m, appErrors.meeting_not_found({ meetingCode }));
-
 	return m;
 }
