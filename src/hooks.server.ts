@@ -1,6 +1,7 @@
 import { createAuth } from '$convex/auth';
-import { PUBLIC_SITE_URL } from '$env/static/public';
 import { ENVIRONMENT, TRUSTED_ORIGINS } from '$env/static/private';
+import { PUBLIC_SITE_URL } from '$env/static/public';
+import { getSecureCookieName } from '$lib/server/cookie';
 import { getMeetingCookie } from '$lib/server/meeting-cookie';
 import { getToken } from '@mmailaender/convex-better-auth-svelte/sveltekit';
 import { withServerConvexToken } from '@mmailaender/convex-svelte/sveltekit/server';
@@ -21,7 +22,7 @@ const auth: Handle = async ({ event, resolve }) => {
 	process.env.TRUSTED_ORIGINS = TRUSTED_ORIGINS;
 	process.env.ENVIRONMENT = ENVIRONMENT;
 
-	const sessionToken = event.cookies.get('better-auth.session_token');
+	const sessionToken = event.cookies.get(getSecureCookieName('better-auth.session_token'));
 	let token = await getToken(createAuth, event.cookies);
 
 	if (!token && sessionToken && event.route.id !== '/api/auth/[...all]') {
@@ -36,7 +37,7 @@ const auth: Handle = async ({ event, resolve }) => {
 		if (response.ok) {
 			const cookie = response.headers
 				.getSetCookie()
-				.find((c) => c.startsWith('better-auth.convex_jwt='));
+				.find((c) => c.startsWith(getSecureCookieName('better-auth.convex_jwt=')));
 			token = cookie?.split('=').at(1)?.split(';').at(0);
 		}
 	}
