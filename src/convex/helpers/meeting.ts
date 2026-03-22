@@ -42,6 +42,51 @@ export async function completeReturnToMeeting(
 	await getAbsentCounter(meeting._id).dec(ctx);
 }
 
+/**
+ * If the participant is currently present, marks them absent: removes active speaker queue entries,
+ * inserts an open absence entry, sets absentSince, increments absent counter.
+ */
+export async function markParticipantAbsentNow(
+	ctx: MutationCtx,
+	meeting: Pick<Doc<'meetings'>, '_id' | 'lastConsumedCt'>,
+	userId: Id<'meetingParticipants'>,
+	p: Doc<'meetingParticipants'>,
+	now: number,
+): Promise<boolean> {
+	const { db } = ctx;
+	if (p.absentSince > 0) {
+		return false;
+	}
+
+	if (p.isInSpeakerQueue) {
+		const entries = await db
+			.query('speakerQueueEntries')
+			.withIndex('by_meeting_user', (q) =>
+				q
+					.eq('meetingId', meeting._id)
+					.eq('userId', userId)
+					.gt('_creationTime', meeting.lastConsumedCt ?? -1),
+			)
+			.collect();
+		for (const entry of entries) {
+			await db.delete('speakerQueueEntries', entry._id);
+		}
+		await db.patch('meetingParticipants', userId, { isInSpeakerQueue: false });
+	}
+
+	await db.insert('absenceEntries', {
+		meetingId: meeting._id,
+		userId,
+		name: p.name,
+		startTime: now,
+		endTime: null,
+	});
+
+	await db.patch('meetingParticipants', userId, { absentSince: now });
+	await getAbsentCounter(meeting._id).inc(ctx);
+	return true;
+}
+
 export async function getMeetingParticipant(
 	ctx: QueryCtx & { user: UserIdentity },
 	meetingId: Id<'meetings'>,

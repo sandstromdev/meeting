@@ -5,7 +5,7 @@ import {
 	getBannedCounter,
 	getParticipantCounter,
 } from '$convex/helpers/counters';
-import { completeReturnToMeeting } from '$convex/helpers/meeting';
+import { completeReturnToMeeting, markParticipantAbsentNow } from '$convex/helpers/meeting';
 import { ensureParticipantInMeeting } from '$convex/helpers/users';
 import { zid } from 'convex-helpers/server/zod4';
 import { z } from 'zod';
@@ -62,47 +62,45 @@ export const setParticipantAbsent = admin
 		}
 
 		if (args.absent) {
-			if (p.absentSince > 0) {
-				return false;
-			}
-
 			const now = Date.now();
-
-			if (p.isInSpeakerQueue) {
-				const entries = await ctx.db
-					.query('speakerQueueEntries')
-					.withIndex('by_meeting_user', (q) =>
-						q
-							.eq('meetingId', ctx.meeting._id)
-							.eq('userId', args.userId)
-							.gt('_creationTime', ctx.meeting.lastConsumedCt ?? -1),
-					)
-					.collect();
-				for (const entry of entries) {
-					await ctx.db.delete('speakerQueueEntries', entry._id);
-				}
-				await ctx.db.patch('meetingParticipants', args.userId, { isInSpeakerQueue: false });
-			}
-
-			await ctx.db.insert('absenceEntries', {
-				meetingId: ctx.meeting._id,
-				userId: args.userId,
-				name: p.name,
-				startTime: now,
-				endTime: null,
-			});
-
-			await ctx.db.patch('meetingParticipants', args.userId, { absentSince: now });
-			await getAbsentCounter(ctx.meeting._id).inc(ctx);
-		} else {
-			if (p.absentSince === 0) {
-				return false;
-			}
-
-			await completeReturnToMeeting(ctx, ctx.meeting, args.userId);
+			return await markParticipantAbsentNow(ctx, ctx.meeting, args.userId, p, now);
 		}
 
+		if (p.absentSince === 0) {
+			return false;
+		}
+
+		await completeReturnToMeeting(ctx, ctx.meeting, args.userId);
+
 		return true;
+	});
+
+export const markAllPresentParticipantsAbsent = admin
+	.mutation()
+	.input({
+		skipNonParticipants: z.boolean(),
+	})
+	.public(async ({ ctx, args }) => {
+		const participants = await ctx.db
+			.query('meetingParticipants')
+			.withIndex('by_meeting', (q) => q.eq('meetingId', ctx.meeting._id))
+			.collect();
+
+		const now = Date.now();
+		let marked = 0;
+		for (const p of participants) {
+			if (p._id === ctx.me._id) {
+				continue;
+			}
+			if (args.skipNonParticipants && p.role !== 'participant') {
+				continue;
+			}
+			if (await markParticipantAbsentNow(ctx, ctx.meeting, p._id, p, now)) {
+				marked++;
+			}
+		}
+
+		return { marked };
 	});
 
 export const removeParticipant = admin

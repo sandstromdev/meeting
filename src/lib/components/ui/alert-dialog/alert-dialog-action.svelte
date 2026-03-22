@@ -5,23 +5,20 @@
 	let {
 		ref = $bindable(null),
 		variant = 'default',
+		size = 'default',
 		class: className,
 		children,
 		...restProps
 	}: AlertDialogPrimitive.ActionProps & {
 		variant?: ButtonProps['variant'];
+		size?: ButtonProps['size'];
 		loading?: boolean;
 	} = $props();
 </script>
 
-<AlertDialogPrimitive.Action
-	bind:ref
-	data-slot="alert-dialog-action"
-	class={cn(buttonVariants({ variant }), className)}
-	{...restProps}
->
+<AlertDialogPrimitive.Action bind:ref data-slot="alert-dialog-action" {...restProps}>
 	{#snippet child({ props })}
-		<Button {...props}>
+		<Button {...props} {variant} {size} class={className}>
 			{@render children?.()}
 		</Button>
 	{/snippet}
