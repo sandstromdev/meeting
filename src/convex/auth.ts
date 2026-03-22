@@ -47,7 +47,7 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
 			enabled: true,
 			requireEmailVerification: false,
 			minPasswordLength: 4,
-			disableSignUp: true,
+			disableSignUp: !process.env.PUBLIC_ENABLE_SIGNUP,
 		},
 
 		plugins: [convex({ authConfig }), admin()],

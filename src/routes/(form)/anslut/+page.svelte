@@ -14,6 +14,7 @@
 	import AlertTitle from '$lib/components/ui/alert/alert-title.svelte';
 	import AlertDescription from '$lib/components/ui/alert/alert-description.svelte';
 	import AlertTriangle from '@lucide/svelte/icons/alert-triangle';
+	import { CONTACT_EMAIL } from '$lib/contact';
 	import { signOut } from '$lib/auth-client';
 	import { goto } from '$app/navigation';
 
@@ -126,8 +127,8 @@
 				<AlertTitle>Hoppsan! Ett fel har inträffat.</AlertTitle>
 				<AlertDescription
 					><p>
-						Kontakta <a href="mailto:contact@lsnd.se" class="font-semibold underline"
-							>kontakt@lsnd.se</a
+						Kontakta <a href={`mailto:${CONTACT_EMAIL}`} class="font-semibold underline"
+							>{CONTACT_EMAIL}</a
 						>
 						för hjälp. Felkod: <code>{data.error}</code>
 					</p></AlertDescription
