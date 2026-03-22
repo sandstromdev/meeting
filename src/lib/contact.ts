@@ -1,1 +1,1 @@
-export const CONTACT_EMAIL = 'meetings@lsnd.se';
+export const CONTACT_EMAIL = 'kontakt@lsnd.se';
