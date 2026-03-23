@@ -16,10 +16,15 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     env:
+      # Parity with `.env.schema` (placeholders only)
       PUBLIC_SITE_URL: https://ci.example
       PUBLIC_CONVEX_URL: https://ci.convex.example
       PUBLIC_CONVEX_SITE_URL: https://ci.convex.example
       PUBLIC_ENABLE_SIGNUP: 'true'
+      ENVIRONMENT: test
+      TRUSTED_ORIGINS: https://ci.example
+      VERCEL_URL: ci-placeholder.vercel.app
+      VERCEL_PROJECT_PRODUCTION_URL: ci.example
     steps:
       - name: Checkout
         uses: actions/checkout@v4
