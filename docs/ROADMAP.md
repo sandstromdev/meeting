@@ -7,6 +7,7 @@ This roadmap captures the next product steps for the meeting platform, based on 
 1. Complete the full meeting lifecycle (create -> invite -> run -> follow-up).
 2. Improve live collaboration during meetings.
 3. Add operational tooling (notifications, calendar, analytics, integrations).
+4. Support both open and restricted meeting access models.
 
 ---
 
@@ -41,7 +42,38 @@ This roadmap captures the next product steps for the meeting platform, based on 
 
 ---
 
-### 2) Invitations and RSVP
+### 2) Meeting access control (open vs closed)
+
+**Problem:** RSVP tracks intent to attend, but does not enforce authorization.
+
+**Deliverables**
+- Add access modes per meeting:
+  - `open` (join by code)
+  - `closed` (only pre-approved users)
+  - optional `invite_only` (must accept invite token)
+- Block unauthorized join attempts with clear UI messaging.
+- Admin tools to manage allowlist (add/remove users, bulk import by email).
+- Audit log entries for denied join attempts and access list changes.
+
+**Suggested backend functions**
+- `access.setMode`
+- `access.addAllowedUser`
+- `access.removeAllowedUser`
+- `access.bulkAddAllowedUsers`
+- `access.canJoin`
+
+**Schema additions**
+- `meetings.accessMode` (`open | closed | invite_only`)
+- New table `meetingAccessList`: `meetingId`, `userId?`, `email?`, `addedByUserId`, `addedAt`
+
+**Indexes**
+- `meetingAccessList.by_meetingId`
+- `meetingAccessList.by_meetingId_and_userId`
+- `meetingAccessList.by_meetingId_and_email`
+
+---
+
+### 3) Invitations and RSVP
 
 **Problem:** Join-by-code exists, but invite and RSVP workflows are missing.
 
@@ -70,6 +102,7 @@ This roadmap captures the next product steps for the meeting platform, based on 
 ---
 
 ### 3) Profile completion
+### 4) Profile completion
 
 **Problem:** Profile page exists but is currently minimal/placeholder.
 
@@ -85,7 +118,7 @@ This roadmap captures the next product steps for the meeting platform, based on 
 
 ## P2 - Collaboration layer
 
-### 4) Shared notes and minutes
+### 5) Shared notes and minutes
 
 **Deliverables**
 - Shared notes per meeting and optional agenda-item scope.
@@ -102,7 +135,7 @@ This roadmap captures the next product steps for the meeting platform, based on 
 
 ---
 
-### 5) Action items and follow-ups
+### 6) Action items and follow-ups
 
 **Deliverables**
 - Create, assign, and track action items from meeting outcomes.
@@ -125,7 +158,7 @@ This roadmap captures the next product steps for the meeting platform, based on 
 
 ---
 
-### 6) In-meeting chat (lightweight)
+### 7) In-meeting chat (lightweight)
 
 **Deliverables**
 - Real-time meeting chat with optional agenda thread mode.
@@ -147,7 +180,7 @@ This roadmap captures the next product steps for the meeting platform, based on 
 
 ## P3 - Operations, reliability, integrations
 
-### 7) Notifications and reminders
+### 8) Notifications and reminders
 
 **Deliverables**
 - Meeting reminder jobs.
@@ -161,7 +194,7 @@ This roadmap captures the next product steps for the meeting platform, based on 
 
 ---
 
-### 8) Calendar support (ICS first)
+### 9) Calendar support (ICS first)
 
 **Deliverables**
 - Generate ICS files for meeting events.
@@ -172,7 +205,7 @@ This roadmap captures the next product steps for the meeting platform, based on 
 
 ---
 
-### 9) Analytics dashboard
+### 10) Analytics dashboard
 
 **Deliverables**
 - Admin dashboard for attendance, poll participation, and speaker dynamics.
@@ -184,7 +217,7 @@ This roadmap captures the next product steps for the meeting platform, based on 
 
 ---
 
-### 10) Integrations and webhooks
+### 11) Integrations and webhooks
 
 **Deliverables**
 - Outbound event hooks for external systems.
@@ -211,13 +244,14 @@ This roadmap captures the next product steps for the meeting platform, based on 
 ## Recommended execution order
 
 1. P1.1 Meeting creation and lifecycle
-2. P1.2 Invitations and RSVP
-3. P1.3 Profile completion
-4. P2.4 Shared notes and minutes
-5. P2.5 Action items and follow-ups
-6. P2.6 In-meeting chat
-7. P3.7 Notifications and reminders
-8. P3.8 Calendar support (ICS)
-9. P3.9 Analytics dashboard
-10. P3.10 Integrations and webhooks
+2. P1.2 Meeting access control (open vs closed)
+3. P1.3 Invitations and RSVP
+4. P1.4 Profile completion
+5. P2.5 Shared notes and minutes
+6. P2.6 Action items and follow-ups
+7. P2.7 In-meeting chat
+8. P3.8 Notifications and reminders
+9. P3.9 Calendar support (ICS)
+10. P3.10 Analytics dashboard
+11. P3.11 Integrations and webhooks
 
