@@ -8,7 +8,7 @@ Convex agent skills for common tasks can be installed by running `npx convex ai-
 
 <!-- convex-ai-end -->
 
-Environment variables are documented in [`.env.schema`](.env.schema) (do not invent new names without updating the schema and running `bun run env:typegen`).
+Environment variables are documented in [`.env.schema`](.env.schema) (do not invent new names without updating the schema). Varlock is for docs and `bun run env:validate` / `varlock load`—Convex does not run Varlock; use the Convex dashboard for backend `process.env`.
 
 This project uses [Bun](https://bun.sh) as its package manager and script runner. Install dependencies with `bun install`. Run `package.json` scripts with `bun run <script>` (for example `bun run dev:all` for Vite and Convex together, or `bun run check` for typechecking). For one-off package binaries, use `bunx` instead of `npx` when you want Bun to execute them (for example `bunx convex ai-files install`).
 

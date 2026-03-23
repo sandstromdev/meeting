@@ -11,8 +11,5 @@ bun.lockb
 # Convex generated files
 **/_generated/**
 
-# Varlock (from .env.schema)
-src/env-varlock.d.ts 
-
 .agents/**
 .agent/**
