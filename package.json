@@ -4,20 +4,22 @@
 	"version": "0.0.1",
 	"type": "module",
 	"scripts": {
+		"build": "varlock typegen --path .env.schema && varlock load --path .env.schema && vite build",
+		"check": "varlock typegen --path .env.schema && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"check:watch": "varlock typegen --path .env.schema && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+		"clean": "rm -rf node_modules && bun install",
 		"dev:all": "conc 'bun dev:vite' 'bun dev:convex'",
-		"dev:vite": "vite dev --port 4000 --host",
 		"dev:convex": "convex dev",
-		"build": "vite build",
-		"preview": "vite preview",
-		"prepare": "svelte-kit sync || echo '' && husky",
-		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
-		"test": "vitest run",
-		"test:watch": "vitest",
-		"lint": "prettier --cache --check . && oxlint .",
-		"format": "prettier --cache --write .",
+		"dev:vite": "vite dev --port 4000 --host",
+		"env:typegen": "varlock typegen --path .env.schema",
+		"env:validate": "varlock load --path .env.schema",
 		"fix": "prettier --cache --write . && oxlint --fix .",
-		"clean": "rm -rf node_modules && bun install"
+		"format": "prettier --cache --write .",
+		"lint": "prettier --cache --check . && oxlint .",
+		"prepare": "svelte-kit sync || echo '' && varlock typegen --path .env.schema && husky",
+		"preview": "vite preview",
+		"test": "vitest run",
+		"test:watch": "vitest"
 	},
 	"devDependencies": {
 		"@edge-runtime/vm": "^5.0.0",
@@ -67,6 +69,7 @@
 		"convex": "^1.34.0",
 		"oxlint": "^1.56.0",
 		"runed": "^0.37.1",
+		"varlock": "^0.6.3",
 		"zod": "^4.3.6"
 	},
 	"lint-staged": {

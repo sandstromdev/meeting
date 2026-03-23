@@ -9,7 +9,10 @@ bun.lockb
 /static/
 
 # Convex generated files
-**/_generated/** 
+**/_generated/**
+
+# Varlock (from .env.schema)
+src/env-varlock.d.ts 
 
 .agents/**
 .agent/**
