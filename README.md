@@ -2,6 +2,12 @@
 
 Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
 
+## Project documentation
+
+- [Roadmap](docs/ROADMAP.md)
+- [Absence system](docs/ABSENCE.md)
+- [Convex race condition analysis](docs/RACE_CONDITION_ANALYSIS.md)
+
 ## Creating a project
 
 If you're seeing this, you've probably already done this step. Congrats!
