@@ -1,131 +1,195 @@
-# Convex Functions – Race Condition Analysis
+# Race Condition Analysis
 
-This document evaluates Convex mutations for potential race conditions and concurrency issues. It reflects the codebase as of the latest review.
+## Document Metadata
 
-## Convex OCC (Optimistic Concurrency Control)
+- **Last reviewed (code)**: 2026-03-23
+- **Primary backend**: Convex (`src/convex/`)
+- **Focus**: Meeting control, queue/speaker transitions, polls, attendance, join/connect
+- **Reviewer posture**: Fresh code review of current tree (older analyses treated as historical context only)
 
-Convex uses **Optimistic Concurrency Control**. When mutations conflict (read/write the same documents), Convex retries failed mutations (up to 3 times) with fresh state. This mitigates many read-modify-write races.
+## Purpose
 
-**However**, under heavy load retries can still hit limits, and some patterns (e.g. uniqueness without a unique index) remain risky.
+This document evaluates concurrency behavior in the Convex meeting backend and distinguishes:
 
----
+- correctness risks that can create wrong state,
+- expected OCC retry/contention behavior,
+- low-risk patterns already mitigated by current design.
 
-## Mitigations Already in Place
+## Executive Summary
 
-### Sharded counters (`meetingCounters.ts`)
+Convex mutations here run with optimistic concurrency control (OCC). The dominant runtime issue is not silent corruption; it is **burst contention on the shared `meetings` document**, where many independent flows patch one row (`agenda`, poll pointers, speaker state, break/point/reply flags, meeting open/close).
 
-**File:** `src/convex/helpers/meetingCounters.ts`
+One active correctness risk stands out from current code: `ensureParticipantInMeeting` can still create **duplicate `meetingParticipants` rows** for the same `(userId, meetingId)` under concurrent join/add flows because the check-before-insert pattern is not uniqueness-enforced.
 
-Participants and absent counts are implemented with **sharded counters** (`@convex-dev/sharded-counter`). Increments and decrements no longer touch the `meetings` document, so there is no RMW race on `meeting.participants` or `meeting.absent`.
+Most other overlaps are contention/retry concerns, with practical symptoms like occasional failed button actions, retries, or perceived control lag during spikes (multi-admin actions, reconnect storms, multi-tab usage).
 
-- **Used by:** `users/auth.connect` → `incParticipants`; `users/attendance.leaveMeeting` → `incAbsent`; `completeReturnToMeeting` (in `helpers/meeting.ts`) → `decAbsent`.
-- **Effect:** Old races on `anonIdCounter`, `participants`, and `absent` are removed.
+## Scope
 
-### Heartbeat API
+### Reviewed Areas
 
-**File:** `src/convex/heartbeat.ts`
+- `src/convex/schema.ts`
+- `src/convex/helpers/auth.ts`
+- `src/convex/helpers/meeting.ts`
+- `src/convex/helpers/users.ts`
+- `src/convex/helpers/counters.ts`
+- `src/convex/users/auth.ts`
+- `src/convex/users/queue.ts`
+- `src/convex/users/attendance.ts`
+- `src/convex/users/poll.ts`
+- `src/convex/admin/meeting.ts`
+- `src/convex/admin/agenda.ts`
+- `src/convex/admin/poll.ts`
+- `src/convex/admin/users.ts`
+- `src/convex/moderator/meeting.ts`
+- `src/convex/heartbeat.ts`
+- `src/convex/backup.ts`
+- `src/convex/crons.ts`
 
-`recordHeartbeat` and `pruneStaleHeartbeats` use the correct Convex API: `ctx.db.patch('heartbeats', id, ...)` and `ctx.db.delete('heartbeats', id)`.
+### Review Method
 
-### Queue order from creation time (`orderKey`)
+For each sensitive flow, this review mapped:
 
-**Files:** `src/convex/schema.ts`, `src/convex/users/queue.ts`, `src/convex/helpers/meeting.ts`
+- documents read,
+- documents written,
+- likely concurrent actors,
+- expected behavior when operations overlap.
 
-Queue order is derived from **creation time**: each `speakerQueueEntry` has an `orderKey` set from the document’s `_creationTime` on insert. No counter table or RMW on a shared counter; `placeInSpeakerQueue` only inserts and then patches the new doc with `orderKey: entry._creationTime`. Moderator “move” swaps `orderKey` between two entries. Queue joins no longer conflict with agenda or other meeting writes.
+Findings are classified as:
 
----
+- active correctness risk,
+- contention/retry risk,
+- low-risk pattern currently mitigated.
 
-## Medium Risk: Read-Modify-Write on `meetings.agenda`
+### Real-World Conditions Considered
 
-**Files:** `admin/poll.ts`, `admin/agenda.ts`
+- Concurrency is bursty, not constant.
+- Highest overlap windows are moderator/admin control clicks, reconnects, refresh retries, and multi-tab interactions.
+- Main production symptom is usually transient failure ("action did not go through"), not silent data drift.
 
-Agenda-related mutations share the same pattern:
+## Concurrency Model
 
-1. Read `ctx.meeting.agenda` (from middleware).
-2. Compute a new agenda in memory.
-3. Patch `meetings` with the new agenda.
+- **Queries** are snapshot reads; they can become stale versus subsequent writes but do not mutate state.
+- **Mutations** are transactional with OCC; overlapping writes to same documents retry.
+- **Actions/internal actions** are not DB transactions; when they call multiple queries/mutations they span multiple transactions.
+- **Shared-write hotspot**: Many flows patch the same `meetings` document, so unrelated field updates can still conflict because the document version is shared.
 
-**Affected mutations:**
+## Findings
 
-- `admin/poll.createPoll` – adds poll to an agenda item.
-- `admin/poll.removePoll` – removes poll from an agenda item.
-- `admin/agenda.createAgendaItem`, `updateAgendaItem`, `setAgendaItemPollIds`, `removeAgendaItem`, `moveAgendaItem`, `setCurrentAgendaItem`, `next`, `previous`.
+### 1) Duplicate membership rows on concurrent connect/add
 
-**Risk:** Concurrent admin actions can conflict on the same `meetings` document. OCC will retry; under heavy admin activity you may see serialization errors or hit retry limits.
+**Classification**: Active correctness risk
 
-**Mitigation:** Limit concurrent admin edits (e.g. UI or process), or consider batching agenda updates.
+**Where**: `ensureParticipantInMeeting` in `src/convex/helpers/users.ts`, called by `users/auth.connect` and `admin/users.addParticipant`
 
----
+**Why it can happen**:
 
-## Medium Risk: `updateMeetingData` – Meeting code uniqueness
+- Code does `query by_user_meeting -> first()` and then inserts when missing.
+- Schema has index `by_user_meeting` but no uniqueness guarantee.
+- Two concurrent callers can both observe "no participant yet" and both insert.
 
-**File:** `src/convex/admin/meeting.ts`
+**Impact**:
 
-```typescript
-const existing = await db
-	.query('meetings')
-	.withIndex('by_code', (q) => q.eq('code', newCode))
-	.first();
-if (existing) return false;
-// ...
-await db.patch('meetings', meeting._id, updates);
-```
+- Subsequent `.first()` lookups become nondeterministic.
+- Queue flags, absence updates, or role reads can target different duplicate rows.
 
-**Risk:** Two different meetings can both try to set the same code. Both can see `existing === null` and both patch. One overwrites the other, so two meetings can end up with the same code.
+### 2) Shared `meetings` row remains the main contention hotspot
 
-**Mitigation:** Enforce uniqueness at the database level (e.g. unique index on `meetings.code` if supported), or use a transactional “claim code” pattern.
+**Classification**: Contention / retry risk
 
----
+**Where**: Many mutations in `admin/meeting`, `admin/agenda`, `admin/poll`, `moderator/meeting`, `users/queue`, and `admin/users` patch `meetings`.
 
-## Low Risk: Poll vote + `closePollIfAllEligibleHaveVoted`
+**Why it matters**:
 
-**Files:** `users/poll.ts`, `helpers/poll.ts`
+- Different controls still converge on one document.
+- OCC safely retries but conflict frequency grows during bursts.
+- End-user symptom is usually transient failed actions/latency, not confirmed silent corruption.
 
-**Risk:** Two voters can both be the last eligible voter and both try to close the poll. Both patch the poll. OCC retries one; the second run sees the poll already closed. Closing again is effectively idempotent.
+### 3) Agenda rewrites increase collision surface
 
-**Note:** `closePollIfAllEligibleHaveVoted` uses `meeting.participants` and `meeting.absent` from the passed-in meeting object. If the meeting document no longer stores these (e.g. after moving to sharded counters), the vote mutation must supply eligible voter count from `countParticipants` / `countAbsent` in `meetingCounters.ts`; otherwise auto-close may never run.
+**Classification**: Contention / retry risk
 
-**Status:** Mitigated by OCC for the close race; ensure eligible count source is correct.
+**Where**: Agenda operations in `src/convex/admin/agenda.ts` and poll operations that rewrite `meeting.agenda` associations in `src/convex/admin/poll.ts`
 
----
+**Why it matters**:
 
-## Low Risk: Moderator queue and speaker mutations
+- Multiple operations replace the full `agenda` array on `meetings`.
+- Larger/longer write transactions increase chance of colliding with unrelated meeting-state updates.
 
-**File:** `src/convex/moderator/meeting.ts`
+### 4) Speaker transitions overlap safely under OCC but can feel flaky under spikes
 
-- **moveSpeakerInQueue:** Patches two `speakerQueueEntries` to swap ordinals. Concurrent moves on overlapping entries can conflict; OCC retries and the logic is deterministic.
-- **nextSpeaker / previousSpeaker / clearPreviousSpeakers:** Read meeting and queue state, then patch `meetings` and/or `speakerQueueEntries` and `meetingParticipants`. Concurrent moderator actions can conflict; OCC retries.
+**Classification**: Contention / retry risk (low correctness risk)
 
-**Status:** Mitigated by OCC; low risk.
+**Where**: `moderator/meeting.nextSpeaker`, `users/queue.doneSpeaking`, queue insert/remove flows
 
----
+**Current behavior**:
 
-## Low Risk: User queue and meeting state
+- Overlaps on `meetings`, `speakerQueueEntries`, and participant queue flags tend to serialize via retries.
+- Guard checks (`currentSpeaker` ownership, queue cursor logic) prevent obvious double-advance corruption.
 
-**File:** `src/convex/users/queue.ts`
+**Practical symptom**:
 
-- **requestPointOfOrder / recallPointOfOrderRequest**, **requestReply / recallReplyRequest**, **requestBreak / recallBreakRequest:** Each patches `meetings` once (e.g. `pointOfOrder`, `reply`, `break`). Concurrent requests from different users conflict on the same meeting doc; OCC retries.
-- **doneSpeaking:** Patches `meetings` and possibly `speakerQueueEntries` / `meetingParticipants`. Same as above.
+- Occasional no-op/failed action when state changed just before commit.
 
-**File:** `src/convex/users/attendance.ts`
+### 5) Poll open/close/show flows contend on `polls` + `meetings.currentPollId`
 
-- **leaveMeeting / requestReturnToMeeting / recallReturnRequest:** Participant and absence state; `incAbsent` uses sharded counter. Other patches are per-participant or per-absence doc; conflicts are limited.
+**Classification**: Contention / retry risk
 
-**Status:** Mitigated by OCC and sharded counters where applicable.
+**Where**: `admin/poll.openPoll`, `closePollByAdmin`, `closePollAndShowResults`, and `admin/meeting.toggleMeeting`
 
----
+**Current behavior**:
+
+- Overlapping admin actions can collide on poll row and meeting pointer updates.
+- Poll snapshot insertion path is guarded by `closedAt` check in `insertPollResultSnapshot`, reducing duplicate snapshot writes for the same close timestamp.
+
+### 6) Sharded counters are a meaningful mitigation
+
+**Classification**: Low-risk pattern currently mitigated
+
+**Where**: `src/convex/helpers/counters.ts` with sharded counter component
+
+**Why it helps**:
+
+- Participant/absent/banned and poll vote/voter counts avoid one counter field on `meetings`.
+- This reduces write contention for high-frequency increments/decrements.
+
+### 7) Scheduled logging/snapshot/cleanup paths are multi-transaction by design
+
+**Classification**: Low-risk pattern currently mitigated
+
+**Where**: `logSpeakerSlot` scheduling `internal.admin.meeting.logSpeaker`, poll snapshot action, vote cleanup, backup snapshot cron
+
+**Reasoning**:
+
+- Work runs after trigger mutation and can interleave with newer operations.
+- Current logic passes explicit IDs/timestamps and includes idempotent-ish guards where needed (`closedAt` snapshot guard), so this is mainly an ordering-awareness concern rather than an active correctness bug.
+
+## Interpretation
+
+The system's primary concurrency profile is **hot-document contention on `meetings`** during operational bursts. Under Convex OCC, that mostly manifests as retries and occasional user-visible action failure, not confirmed silent state corruption.
+
+The exception is participant creation idempotency: duplicate rows can violate logical uniqueness and produce inconsistent read/update targeting. This is the clearest correctness item to prioritize.
+
+## Notes
+
+- `users/meeting.getData` normalizes `currentAgendaItemId` in query output if the stored ID is no longer present; this is read-side repair, not a write race.
+- Identity mapping still uses `ctx.user.subject` in participant lookup and connect paths; keep join and lookup identity source aligned if auth identity handling changes.
 
 ## Summary
 
-| Category                 | Count | Action                                                                         |
-| ------------------------ | ----- | ------------------------------------------------------------------------------ |
-| Mitigations in place     | 3     | Sharded counters, heartbeat API, queue order from `_creationTime` (`orderKey`) |
-| Medium risk (agenda RMW) | 1     | Reduce concurrent admin edits or batch updates                                 |
-| Medium risk (uniqueness) | 1     | `updateMeetingData` code – add unique index or transactional claim             |
-| Low risk                 | 3     | Poll close, moderator mutations, user queue/attendance                         |
+### Risk Summary
 
-**Recommended next steps:**
+| Area                         | Current status             | Main impact                                               |
+| ---------------------------- | -------------------------- | --------------------------------------------------------- |
+| Participant join/create path | Active correctness risk    | Duplicate membership rows under concurrent insert         |
+| `meetings` control state     | Contention/retry risk      | Transient failed actions and latency during spikes        |
+| Agenda updates               | Contention/retry risk      | Larger collisions due to full-array rewrites              |
+| Poll lifecycle               | Contention/retry risk      | Overlapping admin actions on `polls` + `meetings`         |
+| Counters                     | Mitigated low-risk pattern | Reduced write hot-spotting via sharding                   |
+| Scheduled background paths   | Low-risk pattern           | Ordering awareness, mostly acceptable with current guards |
 
-1. Enforce meeting code uniqueness (unique index or transactional pattern).
-2. Ensure poll auto-close gets eligible voter count from sharded counters if the meeting doc no longer has `participants` / `absent`.
-3. Keep an eye on agenda mutations under heavy admin concurrency; add batching or coordination if needed.
+### Recommended next actions
+
+1. **Harden membership insertion**: Make `(meetingId, userId)` creation idempotent under concurrent callers and add a duplicate-row audit query for existing data.
+2. **Treat `meetings` as a deliberate hotspot**: Keep high-value UI actions retry-aware and user-visible when OCC conflicts exhaust retries.
+3. **Consider splitting high-churn sub-state** if moderator/admin control reliability degrades under load (especially agenda-heavy sessions).
+4. **Re-run this audit after major flow changes** touching `meetings` patch paths or action-driven orchestration.

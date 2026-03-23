@@ -2,6 +2,33 @@
 
 This roadmap captures the next product steps for the meeting platform, based on current capabilities in this repository.
 
+## As implemented today (repo snapshot)
+
+Use this when scoping tickets so work is additive rather than duplicated.
+
+**Meetings**
+
+- Documents have `code`, `title`, `date`, `agenda`, `isOpen`, `startedAt`, speaker queue / current speaker state, and related request slots (break, point of order, reply). Index `by_code` exists; there is **no** app mutation that inserts a new meeting row—meetings are expected to be provisioned outside the app today.
+- Admins can update `title`, `code`, and `date` in-meeting via `admin.updateMeetingData` (code uniqueness enforced). Open/close session is `toggleMeeting` (boolean `isOpen`), not a full lifecycle `status` enum yet.
+
+**Join and participants**
+
+- Join-by-code flow (`findByCode`, connect routes). Participants stored in `meetingParticipants` with roles, absence/return-request behavior documented in [Absence system](ABSENCE.md). No RSVP table, invite tokens, or access-mode enforcement beyond banning.
+
+**Live meeting features**
+
+- Agenda editing, polls, voting, projector/admin/moderator surfaces, snapshots/backup helpers, heartbeats.
+
+**Auth and admin shell**
+
+- Better Auth; SvelteKit `/admin` area is oriented around **platform user** management (list/create users), not meeting provisioning.
+
+**Gaps vs this document**
+
+- No `meetings.create` / `listForCurrentUser`, no `status` (`draft` → `archived`), no `accessMode` / allowlist tables, no `meetingInvites` / RSVP, no profile or notification settings APIs as described below.
+
+---
+
 ## Product goals
 
 1. Complete the full meeting lifecycle (create -> invite -> run -> follow-up).
@@ -15,14 +42,14 @@ This roadmap captures the next product steps for the meeting platform, based on 
 
 ### 1) Meeting creation and lifecycle
 
-**Problem:** Meetings can be managed, but in-app meeting provisioning is missing/thin.
+**Problem:** Meetings can be managed inside an existing meeting, but in-app **provisioning** (create row, list “my meetings”) is missing. Lifecycle is only partially expressed via `isOpen` and `startedAt`.
 
 **Deliverables**
 
-- Create meeting flow in admin UI.
-- Unique meeting code generation.
+- Create meeting flow in admin UI (or dedicated organizer surface).
+- Unique meeting code generation (reuse patterns from `updateMeetingData` uniqueness checks).
 - Meeting list for current admin/user context.
-- Status model for lifecycle: `draft`, `scheduled`, `active`, `closed`, `archived`.
+- Status model for lifecycle: `draft`, `scheduled`, `active`, `closed`, `archived` (align with or replace raw `isOpen` over time; avoid two conflicting sources of truth).
 
 **Suggested backend functions**
 
@@ -42,13 +69,13 @@ This roadmap captures the next product steps for the meeting platform, based on 
 
 - `by_createdByUserId`
 - `by_status_and_date`
-- `by_code` (with uniqueness strategy)
+- `by_code` — already present; extend if composite queries are needed
 
 ---
 
 ### 2) Meeting access control (open vs closed)
 
-**Problem:** RSVP tracks intent to attend, but does not enforce authorization.
+**Problem:** Anyone with the code can become a participant (unless banned); there is no allowlist, invite-only gate, or RSVP-backed authorization yet.
 
 **Deliverables**
 
@@ -112,8 +139,6 @@ This roadmap captures the next product steps for the meeting platform, based on 
 - `by_status_and_meetingId`
 
 ---
-
-### 3) Profile completion
 
 ### 4) Profile completion
 
