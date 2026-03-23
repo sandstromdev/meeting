@@ -1,5 +1,5 @@
 <script lang="ts" module>
-	import type { WithChildren, WithoutChildren } from 'bits-ui';
+	import type { WithChildren, WithElementRef, WithoutChildren } from 'bits-ui';
 	import type { HTMLAnchorAttributes, HTMLButtonAttributes } from 'svelte/elements';
 	import { type VariantProps, tv } from 'tailwind-variants';
 
@@ -36,34 +36,17 @@
 	export type ButtonVariant = VariantProps<typeof buttonVariants>['variant'];
 	export type ButtonSize = VariantProps<typeof buttonVariants>['size'];
 
-	export type ButtonPropsWithoutHTML = WithChildren<{
-		ref?: HTMLElement | null;
-		variant?: ButtonVariant;
-		size?: ButtonSize;
-		loading?: boolean;
-		'data-slot'?: string;
-		onClickPromise?: (
-			e: MouseEvent & {
-				currentTarget: EventTarget & HTMLButtonElement;
-			},
-		) => Promise<unknown>;
-	}>;
-
-	export type AnchorElementProps = ButtonPropsWithoutHTML &
-		WithoutChildren<Omit<HTMLAnchorAttributes, 'href' | 'type'>> & {
-			href: /* HTMLAnchorAttributes['href'] */ ResolvedPathname | undefined | null;
-			type?: never;
-			disabled?: HTMLButtonAttributes['disabled'];
+	export type ButtonProps = WithElementRef<HTMLButtonAttributes> &
+		WithElementRef<HTMLAnchorAttributes> & {
+			variant?: ButtonVariant;
+			size?: ButtonSize;
+			loading?: boolean;
+			onClickPromise?: (
+				e: MouseEvent & {
+					currentTarget: EventTarget & HTMLButtonElement;
+				},
+			) => Promise<unknown>;
 		};
-
-	export type ButtonElementProps = ButtonPropsWithoutHTML &
-		WithoutChildren<Omit<HTMLButtonAttributes, 'type' | 'href'>> & {
-			type?: HTMLButtonAttributes['type'];
-			href?: never;
-			disabled?: HTMLButtonAttributes['disabled'];
-		};
-
-	export type ButtonProps = AnchorElementProps | ButtonElementProps;
 </script>
 
 <script lang="ts">
