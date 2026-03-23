@@ -9,7 +9,7 @@ bun.lockb
 /static/
 
 # Convex generated files
-**/_generated/** 
+**/_generated/**
 
 .agents/**
 .agent/**

@@ -26,7 +26,11 @@ bun install
 
 ### 2) Environment
 
-Use `.env.local` for local development. Add the keys your frontend, auth, and Convex setup require.
+Use `.env.local` for local development (gitignored). Variable names and semantics are defined in [`.env.schema`](.env.schema) ([Varlock](https://varlock.dev) / [@env-spec](https://varlock.dev/env-spec)); that file is for docs and Varlock tooling only—SvelteKit still loads values from `.env*` through Vite.
+
+Check required variables against the schema: `bun run env:validate` (also runs inside `bun run build` and the Vercel `build:vercel` step before `vite build`).
+
+Set the same `PUBLIC_*` values in the [Convex dashboard](https://dashboard.convex.dev) for your deployment so `src/convex/auth.ts` sees matching `process.env`.
 
 ### 3) Run the dev stack
 
