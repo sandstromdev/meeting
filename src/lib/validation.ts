@@ -42,6 +42,7 @@ export const PollDraftSchema = z.object({
 	allowsAbstain: z.boolean().default(true),
 	maxVotesPerVoter: z.number().min(1),
 });
+export const StandaloneVisibilitySchema = z.enum(['public', 'account_required']);
 
 export const RefinePollDraftSchema = PollDraftSchema.superRefine((data, ctx) => {
 	if (data.type === 'single_winner') {
@@ -134,6 +135,25 @@ export const PollTypeSchema = z.discriminatedUnion('type', [
 ]);
 
 export const FullPollSchema = PollBaseSchema.and(PollTypeSchema);
+
+export const StandalonePollBaseSchema = z.object({
+	_id: zid('standalonePolls'),
+	_creationTime: z.number(),
+	code: z.string().trim().min(4).max(12),
+	ownerUserId: z.string().trim().min(1),
+	visibilityMode: StandaloneVisibilitySchema,
+	title: z.string().trim().min(1),
+	options: z.array(z.string().trim().min(1)).min(1),
+	isResultPublic: z.boolean(),
+	allowsAbstain: z.boolean(),
+	maxVotesPerVoter: z.number().min(1),
+	isOpen: z.boolean(),
+	openedAt: z.number().nullable(),
+	closedAt: z.number().nullable(),
+	updatedAt: z.number(),
+});
+
+export const FullStandalonePollSchema = StandalonePollBaseSchema.and(PollTypeSchema);
 
 export const RoleSchema = z.enum(ROLES);
 

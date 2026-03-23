@@ -30,6 +30,10 @@ export const ErrorMessages = {
 
 	// Polls
 	poll_not_found: ({ pollId }) => `Pollen med id '${pollId}' hittades inte.`,
+	standalone_poll_not_found: ({ pollId }) =>
+		`Den fristående omröstningen med id '${pollId}' hittades inte.`,
+	standalone_poll_code_not_found: ({ pollCode }) =>
+		`Den fristående omröstningen med kod '${pollCode}' hittades inte.`,
 	invalid_poll_option: ({ option }) => `'${option}' är inte ett möjligt alternativ i pollen.`,
 	invalid_poll_vote_limit: ({ maxVotesPerVoter, optionsCount }) =>
 		`Maxröster per deltagare (${maxVotesPerVoter}) måste vara mellan 1 och antal alternativ (${optionsCount}).`,
@@ -56,6 +60,24 @@ export const ErrorMessages = {
 				return 'Du kan inte rösta flera gånger på samma alternativ.';
 			default:
 				return 'Du kan inte ändra i pollen just nu.';
+		}
+	},
+	illegal_standalone_poll_action: ({ action }) => {
+		switch (action) {
+			case 'edit_while_open':
+				return 'Du kan inte ändra i en omröstning medan den är öppen.';
+			case 'vote_while_closed':
+				return 'Omröstningen är stängd.';
+			case 'too_many_votes':
+				return 'Du kan inte rösta på fler alternativ än tillåtet.';
+			case 'duplicate_vote_option':
+				return 'Du kan inte rösta flera gånger på samma alternativ.';
+			case 'missing_session_key':
+				return 'En sessionsnyckel krävs för att rösta i publik omröstning.';
+			case 'auth_required':
+				return 'Inloggning krävs för att rösta i denna omröstning.';
+			default:
+				return 'Du kan inte utföra denna handling just nu.';
 		}
 	},
 

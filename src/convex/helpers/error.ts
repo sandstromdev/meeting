@@ -114,6 +114,10 @@ export const appErrors = {
 
 	// Polls
 	poll_not_found: (pollId: Id<'polls'>) => new AppError('poll_not_found', 404, { pollId }),
+	standalone_poll_not_found: (pollId: Id<'standalonePolls'>) =>
+		new AppError('standalone_poll_not_found', 404, { pollId }),
+	standalone_poll_code_not_found: (pollCode: string) =>
+		new AppError('standalone_poll_code_not_found', 404, { pollCode }),
 	invalid_poll_option: (option: number) => new AppError('invalid_poll_option', 400, { option }),
 	invalid_poll_vote_limit: (args: { maxVotesPerVoter: number; optionsCount: number }) =>
 		new AppError('invalid_poll_vote_limit', 400, args),
@@ -133,6 +137,15 @@ export const appErrors = {
 			| 'too_many_votes'
 			| 'duplicate_vote_option',
 	) => new AppError('illegal_poll_action', 400, { action }),
+	illegal_standalone_poll_action: (
+		action:
+			| 'edit_while_open'
+			| 'vote_while_closed'
+			| 'too_many_votes'
+			| 'duplicate_vote_option'
+			| 'missing_session_key'
+			| 'auth_required',
+	) => new AppError('illegal_standalone_poll_action', 400, { action }),
 
 	// Validation
 	zod_error: (issues: z.core.$ZodErrorTree<unknown, string>) =>

@@ -79,9 +79,11 @@ export const majorityRule = v.union(
 	v.literal('three_quarters'),
 	v.literal('unanimous'),
 );
+export const standaloneVisibilityMode = v.union(v.literal('public'), v.literal('account_required'));
 
 export type PollType = typeof pollType.type;
 export type MajorityRule = typeof majorityRule.type;
+export type StandaloneVisibilityMode = typeof standaloneVisibilityMode.type;
 
 const pollBaseFields = {
 	meetingId: v.id('meetings'),
@@ -114,6 +116,70 @@ export const Poll = v.union(
 	}),
 );
 export type Poll = typeof Poll.type;
+
+const standalonePollBaseFields = {
+	code: v.string(),
+	ownerUserId: v.string(),
+	visibilityMode: standaloneVisibilityMode,
+	title: v.string(),
+	options: v.array(v.string()),
+	allowsAbstain: v.boolean(),
+	isOpen: v.boolean(),
+	maxVotesPerVoter: v.number(),
+	isResultPublic: v.boolean(),
+	openedAt: v.nullable(v.number()),
+	closedAt: v.nullable(v.number()),
+	updatedAt: v.number(),
+};
+
+export const StandalonePoll = v.union(
+	v.object({
+		...standalonePollBaseFields,
+		type: v.literal('multi_winner'),
+		winningCount: v.number(),
+	}),
+	v.object({
+		...standalonePollBaseFields,
+		type: v.literal('single_winner'),
+		majorityRule: majorityRule,
+	}),
+);
+
+export const StandalonePollVote = v.object({
+	pollId: v.id('standalonePolls'),
+	voterKey: v.string(),
+	optionIndex: v.number(),
+});
+
+export const StandalonePollResultOptionTotal = v.object({
+	optionIndex: v.number(),
+	option: v.string(),
+	votes: v.number(),
+});
+
+export const StandalonePollResult = {
+	pollId: v.id('standalonePolls'),
+	closedAt: v.number(),
+	poll: StandalonePoll,
+	complete: v.boolean(),
+	results: v.object({
+		optionTotals: v.array(StandalonePollResultOptionTotal),
+		winners: v.array(
+			v.object({
+				optionIndex: v.number(),
+				option: v.string(),
+				votes: v.number(),
+			}),
+		),
+		isTie: v.boolean(),
+		majorityRule: v.nullable(majorityRule),
+		counts: v.object({
+			totalVotes: v.number(),
+			usableVotes: v.number(),
+			abstain: v.number(),
+		}),
+	}),
+};
 
 export const PollVote = v.object({
 	meetingId: v.id('meetings'),
@@ -264,6 +330,19 @@ export default defineSchema(
 		pollResults: defineTable(PollResult)
 			.index('by_poll_and_closedAt', ['pollId', 'closedAt'])
 			.index('by_meeting_and_poll_and_closedAt', ['meetingId', 'pollId', 'closedAt']),
+
+		standalonePolls: defineTable(StandalonePoll)
+			.index('by_code', ['code'])
+			.index('by_ownerUserId_and_updatedAt', ['ownerUserId', 'updatedAt']),
+
+		standalonePollVotes: defineTable(StandalonePollVote)
+			.index('by_poll', ['pollId'])
+			.index('by_poll_and_voterKey', ['pollId', 'voterKey']),
+
+		standalonePollResults: defineTable(StandalonePollResult).index('by_poll_and_closedAt', [
+			'pollId',
+			'closedAt',
+		]),
 
 		heartbeats: defineTable(Heartbeat)
 			.index('by_token', ['tokenIdentifier'])

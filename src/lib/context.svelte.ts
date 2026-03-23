@@ -348,7 +348,7 @@ export class MeetingState {
 	}
 
 	get url() {
-		return `${PUBLIC_SITE_URL}/anslut/${this.meeting.code}`;
+		return `${PUBLIC_SITE_URL}/m/anslut/${this.meeting.code}`;
 	}
 
 	get isAbsent() {

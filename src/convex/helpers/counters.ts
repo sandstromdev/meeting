@@ -9,6 +9,8 @@ type Counters =
 	| 'banned'
 	| `voters:${Id<'polls'>}`
 	| `votes:${Id<'polls'>}`
+	| `standalone_voters:${Id<'standalonePolls'>}`
+	| `standalone_votes:${Id<'standalonePolls'>}`
 	| undefined;
 
 const counter = new ShardedCounter<string, Counters>(components.counters);
@@ -31,6 +33,14 @@ export function getVotersCounter(meetingId: Id<'meetings'>, pollId: Id<'polls'>)
 
 export function getVotesCounter(meetingId: Id<'meetings'>, pollId: Id<'polls'>) {
 	return counter.for(meetingId, `votes:${pollId}`);
+}
+
+export function getStandaloneVotersCounter(pollId: Id<'standalonePolls'>) {
+	return counter.for(`standalone:${pollId}`, `standalone_voters:${pollId}`);
+}
+
+export function getStandaloneVotesCounter(pollId: Id<'standalonePolls'>) {
+	return counter.for(`standalone:${pollId}`, `standalone_votes:${pollId}`);
 }
 
 export function getAllCounters(meetingId: Id<'meetings'>) {
