@@ -14,7 +14,7 @@ export const load = (async ({ locals, cookies, url }) => {
 	}
 
 	if (!locals.meetingId) {
-		redirect(307, '/anslut');
+		redirect(307, '/m/anslut');
 	}
 
 	let meeting;
@@ -35,7 +35,10 @@ export const load = (async ({ locals, cookies, url }) => {
 		) {
 			deleteMeetingCookie(cookies);
 
-			redirect(307, err?.is('participant_banned') ? '/anslut?error=participant_banned' : '/anslut');
+			redirect(
+				307,
+				err?.is('participant_banned') ? '/m/anslut?error=participant_banned' : '/m/anslut',
+			);
 		}
 
 		console.error(e);

@@ -47,7 +47,7 @@
 					if (validateRedirect(data.redirect)) {
 						window.location.pathname = data.redirect;
 					} else {
-						window.location.pathname = '/anslut';
+						window.location.pathname = '/m/anslut';
 					}
 				}
 			} catch (e) {

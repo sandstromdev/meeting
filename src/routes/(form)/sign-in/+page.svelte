@@ -53,7 +53,7 @@
 				} else if (err?.message) {
 					error = err.message;
 				} else {
-					const redirect = validateRedirect(data.redirect) ? data.redirect : '/anslut';
+					const redirect = validateRedirect(data.redirect) ? data.redirect : '/m/anslut';
 					// eslint-disable-next-line svelte/no-navigation-without-resolve
 					await goto(redirect);
 				}

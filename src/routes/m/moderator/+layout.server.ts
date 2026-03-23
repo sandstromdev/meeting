@@ -6,7 +6,7 @@ export const load = (async ({ locals, parent }) => {
 	redirectIfNotAuthed('/sign-in');
 
 	if (!locals.meetingId) {
-		redirect(307, '/anslut');
+		redirect(307, '/m/anslut');
 	}
 
 	const { meeting } = await parent();

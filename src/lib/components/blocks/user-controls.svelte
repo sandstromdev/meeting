@@ -33,7 +33,7 @@
 
 				await auth.leaveMeeting();
 
-				goto(resolve('/anslut'));
+				goto(resolve('/m/anslut'));
 			},
 		});
 	}

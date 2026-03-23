@@ -40,7 +40,7 @@
 				Du har inte tillgång till detta möte.
 			</p>
 
-			<Button variant="link" href={resolve('/anslut')}>Återgå till anslutningssidan</Button>
+			<Button variant="link" href={resolve('/m/anslut')}>Återgå till anslutningssidan</Button>
 		{/if}
 	</MessageLayout>
 {/if}
