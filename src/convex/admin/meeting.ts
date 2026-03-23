@@ -402,11 +402,8 @@ export const recountParticipants = admin.mutation().public(async ({ ctx }) => {
 	const pc = getParticipantCounter(meeting._id);
 	const ac = getAbsentCounter(meeting._id);
 
-	await pc.reset(ctx);
-	await ac.reset(ctx);
-
-	pc.add(ctx, counts.total);
-	ac.add(ctx, counts.absent);
+	await Promise.all([pc.reset(ctx), ac.reset(ctx)]);
+	await Promise.all([pc.add(ctx, counts.total), ac.add(ctx, counts.absent)]);
 
 	return true;
 });
