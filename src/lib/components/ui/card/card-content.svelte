@@ -12,11 +12,8 @@
 
 <div
 	bind:this={ref}
-	data-slot="alert-title"
-	class={cn(
-		'font-medium group-has-[>svg]/alert:col-start-2 [&_a]:underline [&_a]:underline-offset-3 [&_a]:hover:text-foreground',
-		className,
-	)}
+	data-slot="card-content"
+	class={cn('px-6 group-data-[size=sm]/card:px-4', className)}
 	{...restProps}
 >
 	{@render children?.()}

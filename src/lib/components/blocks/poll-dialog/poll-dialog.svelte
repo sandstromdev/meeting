@@ -5,11 +5,10 @@
 	import Results from '$lib/components/blocks/poll-dialog/results.svelte';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
 	import { Button } from '$lib/components/ui/button';
-	import * as CheckboxBlock from '$lib/components/ui/checkbox-block';
+	import Checkbox from '$lib/components/ui/checkbox/checkbox.svelte';
 	import { confirm } from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
 	import * as Field from '$lib/components/ui/field';
-	import * as RadioBlock from '$lib/components/ui/radio-block';
-	import RadioGroup from '$lib/components/ui/radio-group/radio-group.svelte';
+	import * as RadioGroup from '$lib/components/ui/radio-group';
 	import ScrollArea from '$lib/components/ui/scroll-area/scroll-area.svelte';
 	import { getMeetingContext } from '$lib/context.svelte';
 	import { usePageState } from '$lib/page-state.svelte';
@@ -219,36 +218,42 @@
 										{#if isMultiWinner}
 											<div class="flex flex-col gap-2">
 												{#each poll.options as option, optionIndex (optionIndex)}
-													<CheckboxBlock.Root>
-														<CheckboxBlock.Checkbox
-															checked={selectedOptionIndexes.has(optionIndex)}
-															onCheckedChange={(checked) => toggleOption(optionIndex, checked)}
-															disabled={isOptionDisabled(optionIndex)}
-														/>
-														<CheckboxBlock.Content>
-															<CheckboxBlock.Title>{option}</CheckboxBlock.Title>
-														</CheckboxBlock.Content>
-													</CheckboxBlock.Root>
+													<Field.Label for={optionIndex.toString()}>
+														<Field.Field orientation="horizontal">
+															<Field.Content>
+																<Field.Title>{option}</Field.Title>
+															</Field.Content>
+															<Checkbox
+																checked={selectedOptionIndexes.has(optionIndex)}
+																onCheckedChange={(checked) => toggleOption(optionIndex, checked)}
+																disabled={isOptionDisabled(optionIndex)}
+																id={optionIndex.toString()}
+															/>
+														</Field.Field>
+													</Field.Label>
 												{/each}
 											</div>
 										{:else}
-											<RadioGroup
+											<RadioGroup.Root
 												class="gap-2"
 												value={effectiveSelection[0]?.toString()}
 												onValueChange={(value) => toggleOption(Number(value), true)}
 											>
 												{#each poll.options as option, optionIndex (optionIndex)}
-													<RadioBlock.Root>
-														<RadioBlock.Item
-															value={optionIndex.toString()}
-															disabled={isOptionDisabled(optionIndex)}
-														/>
-														<RadioBlock.Content>
-															<RadioBlock.Title>{option}</RadioBlock.Title>
-														</RadioBlock.Content>
-													</RadioBlock.Root>
+													<Field.Label for={optionIndex.toString()}>
+														<Field.Field orientation="horizontal">
+															<Field.Content>
+																<Field.Title>{option}</Field.Title>
+															</Field.Content>
+															<RadioGroup.Item
+																value={optionIndex.toString()}
+																id={optionIndex.toString()}
+																disabled={isOptionDisabled(optionIndex)}
+															/>
+														</Field.Field>
+													</Field.Label>
 												{/each}
-											</RadioGroup>
+											</RadioGroup.Root>
 										{/if}
 									</ScrollArea>
 								</Field.Content>

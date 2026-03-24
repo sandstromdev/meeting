@@ -9,8 +9,6 @@
 		value,
 		...restProps
 	}: WithoutChildrenOrChild<ProgressPrimitive.RootProps> = $props();
-
-	const progress = $derived(((value ?? 0) / max) * 100);
 </script>
 
 <ProgressPrimitive.Root
@@ -27,6 +25,6 @@
 	<div
 		data-slot="progress-indicator"
 		class="size-full flex-1 bg-current transition-all"
-		style="transform: translateX(-{100 - progress}%)"
+		style="transform: translateX(-{100 - 100 * ((value ?? 0) / (max ?? 1))}%)"
 	></div>
 </ProgressPrimitive.Root>
