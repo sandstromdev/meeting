@@ -1,6 +1,7 @@
-import { redirectIfNotAuthed } from '$lib/server/guards';
 import type { PageServerLoad } from './$types';
 
-export const load = (async ({ url }) => {
-	redirectIfNotAuthed(`/sign-in?redirect=${encodeURIComponent(url.pathname)}`);
+export const load = (async () => {
+	return {
+		// polls: await convexLoad(api.public.standalone_poll.get_my_owned_polls, {}),
+	};
 }) satisfies PageServerLoad;

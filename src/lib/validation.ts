@@ -43,6 +43,7 @@ export const PollDraftSchema = z.object({
 	maxVotesPerVoter: z.number().min(1),
 });
 export const StandaloneVisibilitySchema = z.enum(['public', 'account_required']);
+export type StandaloneVisibility = z.infer<typeof StandaloneVisibilitySchema>;
 
 export const RefinePollDraftSchema = PollDraftSchema.superRefine((data, ctx) => {
 	if (data.type === 'single_winner') {

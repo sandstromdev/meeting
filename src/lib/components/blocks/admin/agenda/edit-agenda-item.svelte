@@ -10,13 +10,15 @@
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import SaveIcon from '@lucide/svelte/icons/save';
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
-	import EditPoll from './edit-poll.svelte';
+	import EditPoll from '$lib/components/ui/edit-poll.svelte';
 	import EditSubItems from './edit-sub-items.svelte';
 	import { SvelteMap } from 'svelte/reactivity';
 	import { ABSTAIN_OPTION_LABEL, type MajorityRule, type PollType } from '$lib/polls';
 	import { PollDraftSchema, type PollDraft } from '$lib/validation';
 	import XIcon from '@lucide/svelte/icons/x';
 	import { toast } from 'svelte-sonner';
+	import PencilIcon from '@lucide/svelte/icons/pencil';
+	import * as Card from '$lib/components/ui/card';
 
 	const meeting = getMeetingContext();
 
@@ -80,6 +82,8 @@
 	let initialPollIds = $state<Id<'polls'>[]>([]);
 	let originalPolls = new SvelteMap<Id<'polls'>, EditablePollDraft>();
 
+	let editPollIdx = $state<number | null>(null);
+
 	$effect(() => {
 		if (isEditMode && item && item.id !== lastSyncedId) {
 			const currentPolls = currentPollsResult.data;
@@ -103,35 +107,32 @@
 
 	const canSubmit = $derived(!!newTitle.trim());
 
-	function addPollDraft() {
-		polls = [...polls, newPollDraft()];
+	function addPollDraft(draft?: Partial<PollDraft>) {
+		if (editPollIdx != null) {
+			return;
+		}
+
+		polls = [...polls, draft ? Object.assign(newPollDraft(), draft) : newPollDraft()];
+		editPollIdx = polls.length - 1;
 	}
 
 	function addYesOrNoPollDraft() {
-		polls = [
-			...polls,
-			{
-				...newPollDraft(),
-				options: ['Ja', 'Nej'],
-				type: 'single_winner',
-				majorityRule: 'simple',
-				allowsAbstain: true,
-			},
-		];
+		addPollDraft({
+			options: ['Ja', 'Nej'],
+			type: 'single_winner',
+			majorityRule: 'simple',
+			allowsAbstain: true,
+		});
 	}
 
 	function addMultiWinnerPollDraft() {
-		polls = [
-			...polls,
-			{
-				...newPollDraft(),
-				type: 'multi_winner',
-				winningCount: 1,
-				majorityRule: 'simple',
-				allowsAbstain: true,
-				options: Array.from({ length: 10 }, (_, i) => ``),
-			},
-		];
+		addPollDraft({
+			type: 'multi_winner',
+			winningCount: 1,
+			majorityRule: 'simple',
+			allowsAbstain: true,
+			options: Array.from({ length: 5 }, (_, i) => ``),
+		});
 	}
 
 	function movePollUp(index: number) {
@@ -293,9 +294,7 @@
 		}
 	}
 
-	async function onsubmit(e: Event) {
-		e.preventDefault();
-
+	async function submit() {
 		for (const poll of polls) {
 			const result = PollDraftSchema.safeParse(poll);
 			if (!result.success) {
@@ -325,15 +324,23 @@
 			isLoading = false;
 		}
 	}
+
+	function editPoll(index: number) {
+		if (editPollIdx !== null) {
+			return;
+		}
+
+		editPollIdx = index;
+	}
 </script>
 
 {#if isEditMode && agendaItemId && !item}
 	<p class="border-t p-4 text-sm text-muted-foreground">Punkt hittades inte.</p>
 {:else}
-	<form class="w-full space-y-4" {onsubmit}>
+	<div class="w-full space-y-4">
 		<div class="flex flex-wrap items-center gap-2">
 			<Input bind:value={newTitle} placeholder="Rubrik" class="min-w-[12rem]" />
-			<Button type="button" variant="outline" size="sm" onclick={addPollDraft}>
+			<Button type="button" variant="outline" size="sm" onclick={() => addPollDraft()}>
 				<PlusIcon class="size-4" />
 				Lägg till omröstning
 			</Button>
@@ -345,7 +352,7 @@
 				<PlusIcon class="size-4" />
 				Lägg till fleromröstning
 			</Button>
-			<Button type="submit" class="ml-auto" loading={isLoading} disabled={!canSubmit}>
+			<Button class="ml-auto" loading={isLoading} disabled={!canSubmit} onclick={submit}>
 				{#if isEditMode}
 					<SaveIcon class="size-4" />
 					Spara ändringar
@@ -392,7 +399,39 @@
 						</div>
 						<div class="min-w-0 flex-1">
 							{#if polls[i]}
-								<EditPoll bind:poll={polls[i]} />
+								{#if editPollIdx === i}
+									<EditPoll
+										poll={polls[i]}
+										showDiscard
+										onDiscard={() => {
+											if (!polls[i].id) {
+												polls = polls.filter((_, j) => j !== i);
+											}
+											editPollIdx = null;
+										}}
+										onSubmit={async (payload) => {
+											polls = polls.map((p, j) => (j === i ? { ...p, ...payload.draft } : p));
+											editPollIdx = null;
+										}}
+										submitLabel="Spara ändringar"
+										submitPendingLabel="Sparar..."
+									/>
+								{:else}
+									<Card.Root>
+										<Card.Header>
+											<Card.Title>{polls[i].title}</Card.Title>
+											<Card.Description>{polls[i].options.join(', ')}</Card.Description>
+										</Card.Header>
+										<Card.Content>
+											<p>Alternativ: {polls[i].options.join(', ')}</p>
+										</Card.Content>
+										<Card.Footer>
+											<Button type="button" variant="ghost" size="icon" onclick={() => editPoll(i)}>
+												<PencilIcon class="size-4" />
+											</Button>
+										</Card.Footer>
+									</Card.Root>
+								{/if}
 							{/if}
 						</div>
 					</div>
@@ -403,5 +442,5 @@
 		{#if isEditMode && item}
 			<EditSubItems parentItemId={item.id} parentDepth={item.depth} />
 		{/if}
-	</form>
+	</div>
 {/if}

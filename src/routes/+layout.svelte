@@ -6,6 +6,7 @@
 	import { Toaster } from '$lib/components/ui/sonner';
 	import './layout.css';
 	import { usePageState } from '$lib/page-state.svelte';
+	import { ModeWatcher } from 'mode-watcher';
 
 	let { children, data } = $props();
 
@@ -17,6 +18,8 @@
 <svelte:head>
 	<link rel="icon" href={favicon} />
 </svelte:head>
+
+<ModeWatcher />
 
 {#if !ps.isProjector}
 	<Toaster />
