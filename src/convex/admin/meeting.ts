@@ -11,6 +11,7 @@ import {
 	getParticipantCounter,
 } from '$convex/helpers/counters';
 import { AppError, appErrors } from '$convex/helpers/error';
+import { c } from '$convex/helpers';
 
 export const getPointOfOrderEntries = admin.query().public(async ({ ctx }) => {
 	const entries = await ctx.db
@@ -355,7 +356,7 @@ export const updateMeetingData = admin
 		return true;
 	});
 
-export const logSpeaker = admin
+export const logSpeaker = c
 	.mutation()
 	.input({
 		type: z.enum(['point_of_order', 'reply', 'speaker']),
@@ -365,13 +366,14 @@ export const logSpeaker = admin
 		}),
 		startTime: z.number(),
 		endTime: z.number(),
+		meetingId: zid('meetings'),
 	})
 	.internal(async ({ ctx, args }) => {
-		const { db, meeting } = ctx;
-		const { type, by, startTime, endTime } = args;
+		const { db } = ctx;
+		const { type, by, startTime, endTime, meetingId } = args;
 
 		await db.insert('speakerLogEntries', {
-			meetingId: meeting._id,
+			meetingId,
 			type,
 			userId: by.userId,
 			name: by.name,
