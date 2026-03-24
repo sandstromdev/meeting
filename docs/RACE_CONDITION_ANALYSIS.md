@@ -2,26 +2,29 @@
 
 ## Document Metadata
 
-- **Last reviewed (code)**: 2026-03-23
-- **Primary backend**: Convex (`src/convex/`)
-- **Focus**: Meeting control, queue/speaker transitions, polls, attendance, join/connect
-- **Reviewer posture**: Fresh code review of current tree (older analyses treated as historical context only)
+- **AI model**: gpt-5.3-codex
+- **Generated at**: 2026-03-24
+- **Repository**: Convex meeting backend (`src/convex/`)
+- **Review mode**: Fresh review from current code; previous report treated as historical context only
 
 ## Purpose
 
-This document evaluates concurrency behavior in the Convex meeting backend and distinguishes:
+This analysis evaluates practical concurrency behavior in the current Convex backend and classifies findings into:
 
-- correctness risks that can create wrong state,
-- expected OCC retry/contention behavior,
-- low-risk patterns already mitigated by current design.
+- active correctness risk,
+- contention/retry risk,
+- resolved or low-risk patterns currently mitigated by OCC and existing flow guards.
 
 ## Executive Summary
 
-Convex mutations here run with optimistic concurrency control (OCC). The dominant runtime issue is not silent corruption; it is **burst contention on the shared `meetings` document**, where many independent flows patch one row (`agenda`, poll pointers, speaker state, break/point/reply flags, meeting open/close).
+Convex optimistic concurrency control (OCC) is functioning as expected across most overlap scenarios in this codebase. The most common production symptom is likely transient action failure or retries during bursts, not silent corruption.
 
-One active correctness risk stands out from current code: `ensureParticipantInMeeting` can still create **duplicate `meetingParticipants` rows** for the same `(userId, meetingId)` under concurrent join/add flows because the check-before-insert pattern is not uniqueness-enforced.
+The main shared-write hotspot is still the `meetings` document: agenda operations, speaker transitions, request flags (break/point/reply), and poll pointer updates all patch that row.
 
-Most other overlaps are contention/retry concerns, with practical symptoms like occasional failed button actions, retries, or perceived control lag during spikes (multi-admin actions, reconnect storms, multi-tab usage).
+Two active correctness risks remain where OCC does not reliably serialize behavior:
+
+1. concurrent participant creation can create duplicate `meetingParticipants` rows for the same logical user+meeting,
+2. concurrent vote submissions from the same voter can leave multiple `pollVotes`/`standalonePollVotes` rows because vote replacement is implemented as read-delete-insert without uniqueness enforcement.
 
 ## Scope
 
@@ -31,8 +34,11 @@ Most other overlaps are contention/retry concerns, with practical symptoms like 
 - `src/convex/helpers/auth.ts`
 - `src/convex/helpers/meeting.ts`
 - `src/convex/helpers/users.ts`
+- `src/convex/helpers/poll.ts`
+- `src/convex/helpers/standalone_poll.ts`
 - `src/convex/helpers/counters.ts`
 - `src/convex/users/auth.ts`
+- `src/convex/users/meeting.ts`
 - `src/convex/users/queue.ts`
 - `src/convex/users/attendance.ts`
 - `src/convex/users/poll.ts`
@@ -40,156 +46,223 @@ Most other overlaps are contention/retry concerns, with practical symptoms like 
 - `src/convex/admin/agenda.ts`
 - `src/convex/admin/poll.ts`
 - `src/convex/admin/users.ts`
+- `src/convex/admin/standalone_poll.ts`
 - `src/convex/moderator/meeting.ts`
+- `src/convex/public/standalone_poll.ts`
 - `src/convex/heartbeat.ts`
 - `src/convex/backup.ts`
 - `src/convex/crons.ts`
 
 ### Review Method
 
-For each sensitive flow, this review mapped:
+Each sensitive flow was mapped to:
 
 - documents read,
 - documents written,
-- likely concurrent actors,
-- expected behavior when operations overlap.
-
-Findings are classified as:
-
-- active correctness risk,
-- contention/retry risk,
-- low-risk pattern currently mitigated.
+- likely concurrent actors (admin/moderator/participant, reconnecting clients, multi-tab clients, scheduled jobs),
+- expected behavior when calls overlap under Convex OCC.
 
 ### Real-World Conditions Considered
 
-- Concurrency is bursty, not constant.
-- Highest overlap windows are moderator/admin control clicks, reconnects, refresh retries, and multi-tab interactions.
-- Main production symptom is usually transient failure ("action did not go through"), not silent data drift.
+- Concurrency is usually bursty (simultaneous clicks, reconnect storms, retries), not sustained.
+- Highest-risk windows are moderator/admin controls and voting windows.
+- Multi-tab and repeated-click behavior is considered normal in production.
+- Main user-facing symptom is expected to be intermittent failure/retry lag under spikes.
 
 ## Concurrency Model
 
-- **Queries** are snapshot reads; they can become stale versus subsequent writes but do not mutate state.
-- **Mutations** are transactional with OCC; overlapping writes to same documents retry.
-- **Actions/internal actions** are not DB transactions; when they call multiple queries/mutations they span multiple transactions.
-- **Shared-write hotspot**: Many flows patch the same `meetings` document, so unrelated field updates can still conflict because the document version is shared.
+- Convex mutations are transactional and use OCC; conflicting transactions retry automatically.
+- OCC mostly protects shared-document correctness but does not enforce logical uniqueness across independently inserted rows.
+- Actions and `ctx.scheduler.runAfter(...)` paths span multiple transactions and can interleave with later state changes.
+- The `meetings` document is a central write hotspot, so unrelated features can conflict because they share one row version.
 
 ## Findings
 
-### 1) Duplicate membership rows on concurrent connect/add
+### 1) Duplicate meeting participants under concurrent join/add
 
 **Classification**: Active correctness risk
 
-**Where**: `ensureParticipantInMeeting` in `src/convex/helpers/users.ts`, called by `users/auth.connect` and `admin/users.addParticipant`
+**Where**:
 
-**Why it can happen**:
-
-- Code does `query by_user_meeting -> first()` and then inserts when missing.
-- Schema has index `by_user_meeting` but no uniqueness guarantee.
-- Two concurrent callers can both observe "no participant yet" and both insert.
-
-**Impact**:
-
-- Subsequent `.first()` lookups become nondeterministic.
-- Queue flags, absence updates, or role reads can target different duplicate rows.
-
-### 2) Shared `meetings` row remains the main contention hotspot
-
-**Classification**: Contention / retry risk
-
-**Where**: Many mutations in `admin/meeting`, `admin/agenda`, `admin/poll`, `moderator/meeting`, `users/queue`, and `admin/users` patch `meetings`.
-
-**Why it matters**:
-
-- Different controls still converge on one document.
-- OCC safely retries but conflict frequency grows during bursts.
-- End-user symptom is usually transient failed actions/latency, not confirmed silent corruption.
-
-### 3) Agenda rewrites increase collision surface
-
-**Classification**: Contention / retry risk
-
-**Where**: Agenda operations in `src/convex/admin/agenda.ts` and poll operations that rewrite `meeting.agenda` associations in `src/convex/admin/poll.ts`
-
-**Why it matters**:
-
-- Multiple operations replace the full `agenda` array on `meetings`.
-- Larger/longer write transactions increase chance of colliding with unrelated meeting-state updates.
-
-### 4) Speaker transitions overlap safely under OCC but can feel flaky under spikes
-
-**Classification**: Contention / retry risk (low correctness risk)
-
-**Where**: `moderator/meeting.nextSpeaker`, `users/queue.doneSpeaking`, queue insert/remove flows
-
-**Current behavior**:
-
-- Overlaps on `meetings`, `speakerQueueEntries`, and participant queue flags tend to serialize via retries.
-- Guard checks (`currentSpeaker` ownership, queue cursor logic) prevent obvious double-advance corruption.
-
-**Practical symptom**:
-
-- Occasional no-op/failed action when state changed just before commit.
-
-### 5) Poll open/close/show flows contend on `polls` + `meetings.currentPollId`
-
-**Classification**: Contention / retry risk
-
-**Where**: `admin/poll.openPoll`, `closePollByAdmin`, `closePollAndShowResults`, and `admin/meeting.toggleMeeting`
-
-**Current behavior**:
-
-- Overlapping admin actions can collide on poll row and meeting pointer updates.
-- Poll snapshot insertion path is guarded by `closedAt` check in `insertPollResultSnapshot`, reducing duplicate snapshot writes for the same close timestamp.
-
-### 6) Sharded counters are a meaningful mitigation
-
-**Classification**: Low-risk pattern currently mitigated
-
-**Where**: `src/convex/helpers/counters.ts` with sharded counter component
-
-**Why it helps**:
-
-- Participant/absent/banned and poll vote/voter counts avoid one counter field on `meetings`.
-- This reduces write contention for high-frequency increments/decrements.
-
-### 7) Scheduled logging/snapshot/cleanup paths are multi-transaction by design
-
-**Classification**: Low-risk pattern currently mitigated
-
-**Where**: `logSpeakerSlot` scheduling `internal.admin.meeting.logSpeaker`, poll snapshot action, vote cleanup, backup snapshot cron
+- `src/convex/helpers/users.ts` (`ensureParticipantInMeeting`)
+- callers: `src/convex/users/auth.ts` (`connect`) and `src/convex/admin/users.ts` (`addParticipant`)
 
 **Reasoning**:
 
-- Work runs after trigger mutation and can interleave with newer operations.
-- Current logic passes explicit IDs/timestamps and includes idempotent-ish guards where needed (`closedAt` snapshot guard), so this is mainly an ordering-awareness concern rather than an active correctness bug.
+- Lookup uses `by_user_meeting` with `.first()` and inserts if no row exists.
+- The schema index is not uniqueness-enforced.
+- Two concurrent requests can both observe "missing participant" and both insert.
+
+**Practical impact**:
+
+- Later `.first()` reads become nondeterministic across duplicate rows.
+- Role/absence/queue updates may target one duplicate while another remains stale.
+- Counter side effects can drift because both inserts trigger participant/absence increments.
+
+### 2) Vote replacement is race-prone for same voter
+
+**Classification**: Active correctness risk
+
+**Where**:
+
+- `src/convex/users/poll.ts` (`vote`)
+- `src/convex/public/standalone_poll.ts` (`vote`)
+
+**Reasoning**:
+
+- Current pattern is `read existing votes -> delete existing -> insert new votes`.
+- There is no uniqueness constraint on (`pollId`, voter identity) in `pollVotes`/`standalonePollVotes`.
+- Two concurrent submissions from the same voter can both pass the initial read and both insert.
+- Counter updates are executed through sharded counter component mutations and do not guarantee serialization of voter-level uniqueness.
+
+**Practical impact**:
+
+- One voter can end up with multiple persisted vote rows across concurrent requests.
+- This can violate intended "replace my vote" semantics and distort totals/winners.
+
+### 3) Shared `meetings` document remains the dominant contention hotspot
+
+**Classification**: Contention / retry risk
+
+**Where**:
+
+- `admin/meeting`, `admin/agenda`, `admin/poll`, `moderator/meeting`, `users/queue`, `admin/users`
+
+**Reasoning**:
+
+- These flows frequently patch one `meetings` row (`agenda`, `currentAgendaItemId`, `currentPollId`, `currentSpeaker`, `previousSpeaker`, request flags, open/close state).
+- Under bursts, many valid operations collide even when touching different fields.
+
+**Practical impact**:
+
+- Retry-driven latency or occasional user-visible "action did not go through".
+- No confirmed silent corruption from this pattern alone.
+
+### 4) Agenda array rewrites increase collision surface
+
+**Classification**: Contention / retry risk
+
+**Where**:
+
+- `src/convex/admin/agenda.ts`
+- `src/convex/helpers/poll.ts` (agenda linkage updates during poll creation)
+- `src/convex/admin/poll.ts` (agenda poll-id maintenance)
+
+**Reasoning**:
+
+- Full `agenda` array replacement is common for create/move/remove/update operations.
+- Longer/more complex mutations touching `agenda` are more likely to collide with speaker/poll control patches on `meetings`.
+
+**Practical impact**:
+
+- Higher conflict probability during active moderator sessions.
+- User perception of flaky controls during simultaneous edits.
+
+### 5) Speaker transition overlaps are mostly OCC-safe but burst-sensitive
+
+**Classification**: Contention / retry risk (low correctness risk)
+
+**Where**:
+
+- `src/convex/moderator/meeting.ts` (`nextSpeaker`, `previousSpeaker`)
+- `src/convex/users/queue.ts` (`doneSpeaking`, queue insert/recall)
+
+**Reasoning**:
+
+- Multiple flows converge on `meetings.currentSpeaker`/`lastConsumedCt` and `speakerQueueEntries`.
+- OCC generally serializes updates; guard checks prevent obvious double-advance corruption.
+
+**Practical impact**:
+
+- Most likely issue is transient no-op/retry behavior under simultaneous clicks.
+
+### 6) Poll lifecycle overlaps are mostly safe with snapshot guards
+
+**Classification**: Contention / retry risk
+
+**Where**:
+
+- `src/convex/admin/poll.ts` (`openPoll`, `closePollByAdmin`, `closePollAndShowResults`, `cancelPoll`)
+- `src/convex/admin/meeting.ts` (`toggleMeeting`)
+- snapshot internals in `admin/poll` and `admin/standalone_poll`
+
+**Reasoning**:
+
+- Concurrent poll open/close/show actions contend on both poll rows and `meetings.currentPollId`.
+- Snapshot insertion guards on `closedAt` reduce duplicate snapshots for the same close event.
+
+**Practical impact**:
+
+- Retry-driven failures are plausible under admin bursts.
+- Snapshot duplication risk appears controlled for identical close timestamps.
+
+### 7) Heartbeat upsert pattern can create duplicate rows
+
+**Classification**: Contention / retry risk (data quality)
+
+**Where**:
+
+- `src/convex/heartbeat.ts` (`recordHeartbeat`)
+
+**Reasoning**:
+
+- First-write pattern is `query by token -> if none insert`.
+- Concurrent first heartbeats for the same token can both insert due to lack of uniqueness.
+
+**Practical impact**:
+
+- Duplicate heartbeat rows are possible; `isActive` uses `.first()` and may read any duplicate.
+- Usually low product impact, but can add noise and inconsistency.
+
+### 8) Scheduled follow-up work is multi-transaction and intentionally eventual
+
+**Classification**: Low-risk pattern currently mitigated
+
+**Where**:
+
+- `logSpeakerSlot` scheduling `internal.admin.meeting.logSpeaker`
+- poll vote cleanup and poll-result snapshot actions
+- `backup.runOpenMeetingSnapshots`
+
+**Reasoning**:
+
+- These paths intentionally execute later and can interleave with newer writes.
+- Current code uses explicit IDs/timestamps and duplicate guards where needed.
+
+**Practical impact**:
+
+- Mostly an ordering-awareness concern, not a confirmed active correctness bug.
 
 ## Interpretation
 
-The system's primary concurrency profile is **hot-document contention on `meetings`** during operational bursts. Under Convex OCC, that mostly manifests as retries and occasional user-visible action failure, not confirmed silent state corruption.
+The dominant concurrency picture is still burst contention on shared operational state, primarily the `meetings` document. Under Convex OCC, this tends to produce retries and occasional action failures rather than silent corruption.
 
-The exception is participant creation idempotency: duplicate rows can violate logical uniqueness and produce inconsistent read/update targeting. This is the clearest correctness item to prioritize.
+The highest-priority risks are the logical uniqueness gaps in participant creation and vote replacement. Those are correctness concerns because they can persist inconsistent rows without requiring a direct OCC conflict.
 
 ## Notes
 
-- `users/meeting.getData` normalizes `currentAgendaItemId` in query output if the stored ID is no longer present; this is read-side repair, not a write race.
-- Identity mapping still uses `ctx.user.subject` in participant lookup and connect paths; keep join and lookup identity source aligned if auth identity handling changes.
+- This review intentionally distinguishes logical uniqueness races from normal OCC retries.
+- Prior analysis themes about `meetings` hot-spot behavior remain valid in current code.
+- The new/clearer active concern in this pass is voter-level upsert concurrency in both meeting and standalone poll vote flows.
 
 ## Summary
 
 ### Risk Summary
 
-| Area                         | Current status             | Main impact                                               |
-| ---------------------------- | -------------------------- | --------------------------------------------------------- |
-| Participant join/create path | Active correctness risk    | Duplicate membership rows under concurrent insert         |
-| `meetings` control state     | Contention/retry risk      | Transient failed actions and latency during spikes        |
-| Agenda updates               | Contention/retry risk      | Larger collisions due to full-array rewrites              |
-| Poll lifecycle               | Contention/retry risk      | Overlapping admin actions on `polls` + `meetings`         |
-| Counters                     | Mitigated low-risk pattern | Reduced write hot-spotting via sharding                   |
-| Scheduled background paths   | Low-risk pattern           | Ordering awareness, mostly acceptable with current guards |
+| Area                                                  | Current status                             | Likely production symptom                                 |
+| ----------------------------------------------------- | ------------------------------------------ | --------------------------------------------------------- |
+| Participant join/add (`meetingParticipants`)          | Active correctness risk                    | Duplicate membership rows, inconsistent follow-up updates |
+| Vote replacement (`pollVotes`, `standalonePollVotes`) | Active correctness risk                    | One voter represented by multiple vote rows               |
+| Shared `meetings` state                               | Contention / retry risk                    | Intermittent failed controls under burst overlap          |
+| Agenda rewrites                                       | Contention / retry risk                    | Higher collision frequency with other meeting controls    |
+| Speaker transitions                                   | Contention / retry risk (low correctness)  | Retry/no-op feel during simultaneous actions              |
+| Poll open/close/show                                  | Contention / retry risk                    | Admin action races and occasional retry failures          |
+| Heartbeats                                            | Low-to-medium contention/data-quality risk | Duplicate heartbeat rows for same token                   |
+| Scheduled follow-ups                                  | Low-risk mitigated pattern                 | Eventual ordering variance, generally acceptable          |
 
 ### Recommended next actions
 
-1. **Harden membership insertion**: Make `(meetingId, userId)` creation idempotent under concurrent callers and add a duplicate-row audit query for existing data.
-2. **Treat `meetings` as a deliberate hotspot**: Keep high-value UI actions retry-aware and user-visible when OCC conflicts exhaust retries.
-3. **Consider splitting high-churn sub-state** if moderator/admin control reliability degrades under load (especially agenda-heavy sessions).
-4. **Re-run this audit after major flow changes** touching `meetings` patch paths or action-driven orchestration.
+1. **Enforce voter uniqueness semantics**: make vote writes idempotent per voter+poll (single authoritative row or equivalent strict upsert workflow), then reconcile duplicates.
+2. **Harden participant idempotency**: enforce one participant row per (`meetingId`, `userId`) and add one-time cleanup for existing duplicates.
+3. **Keep hotspot UX resilient**: ensure client actions that hit `meetings` surface retry/failure clearly and avoid silent no-op behavior.
+4. **Consider state decomposition if contention rises**: move high-churn sub-state off the `meetings` row if moderator/admin control reliability degrades in larger sessions.
