@@ -7,9 +7,9 @@
 			variant: {
 				default: 'bg-card text-card-foreground',
 				destructive:
-					'text-destructive bg-card *:data-[slot=alert-description]:text-destructive/90 *:[svg]:text-current',
+					'text-destructive border-destructive/20 bg-destructive/10 *:data-[slot=alert-description]:text-destructive/90 *:[svg]:text-current',
 				warning:
-					'text-yellow-800 bg-yellow-50 border-yellow-800/20 *:data-[slot=alert-description]:text-yellow-800/90 *[svg]:text-current',
+					'text-yellow-800 bg-yellow-50 dark:bg-yellow-700/10 dark:text-yellow-500 border-yellow-800/20 *:data-[slot=alert-description]:text-yellow-800/90 *[svg]:text-current',
 			},
 		},
 		defaultVariants: {

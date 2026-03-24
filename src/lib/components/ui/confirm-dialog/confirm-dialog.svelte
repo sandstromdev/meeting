@@ -19,9 +19,11 @@
 		};
 		confirm?: {
 			text?: string;
+			variant?: ButtonVariant;
 		};
 		cancel?: {
 			text?: string;
+			variant?: ButtonVariant;
 		};
 		actions?: ConfirmAction<Value>[];
 		onConfirm?: (value: Value) => Promise<unknown> | unknown;
@@ -229,7 +231,7 @@
 					{#snippet child({ props })}
 						<Button
 							{...props}
-							variant="outline"
+							variant={dialogState.options?.cancel?.variant ?? 'outline'}
 							disabled={cancelDisabled}
 							onclick={dialogState.cancel}
 						>
