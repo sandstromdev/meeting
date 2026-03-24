@@ -11,12 +11,8 @@
 		...restProps
 	}: WithElementRef<HTMLAttributes<HTMLDivElement>> & {
 		children?: Snippet;
-		errors?: { message?: string }[] | string[];
+		errors?: { message?: string }[];
 	} = $props();
-
-	const errs = $derived(
-		errors?.map((error) => (typeof error === 'string' ? error : error.message)),
-	);
 
 	const hasContent = $derived.by(() => {
 		// has slotted error
@@ -25,20 +21,20 @@
 		}
 
 		// no errors
-		if (!errs || errs.length === 0) {
+		if (!errors || errors.length === 0) {
 			return false;
 		}
 
 		// has an error but no message
-		if (errs.length === 1 && !errs[0]) {
+		if (errors.length === 1 && !errors[0]?.message) {
 			return false;
 		}
 
 		return true;
 	});
 
-	const isMultipleErrors = $derived(errs && errs.length > 1);
-	const singleErrorMessage = $derived(errs && errs.length === 1 && errs[0]);
+	const isMultipleErrors = $derived(errors && errors.length > 1);
+	const singleErrorMessage = $derived(errors && errors.length === 1 && errors[0]?.message);
 </script>
 
 {#if hasContent}
@@ -54,10 +50,10 @@
 		{:else if singleErrorMessage}
 			{singleErrorMessage}
 		{:else if isMultipleErrors}
-			<ul class="ms-4 flex list-disc flex-col gap-1">
-				{#each errs ?? [] as error, index (index)}
-					{#if error}
-						<li>{error}</li>
+			<ul class="ml-4 flex list-disc flex-col gap-1">
+				{#each errors ?? [] as error, index (index)}
+					{#if error?.message}
+						<li>{error.message}</li>
 					{/if}
 				{/each}
 			</ul>
