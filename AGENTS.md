@@ -6,6 +6,8 @@ When working on Convex code, **always read `src/convex/_generated/ai/guidelines.
 
 Convex agent skills for common tasks can be installed by running `npx convex ai-files install`.
 
+When you **create** or **notice** new registered Convex functions (new `query`, `mutation`, `action`, or internal variants, including builder-style `.public()` / `.internal()` exports), **update** [`docs/CONVEX_FUNCTIONS_MAP.md`](docs/CONVEX_FUNCTIONS_MAP.md) so the map stays complete. Adjust the similarity section if the change introduces or resolves overlapping APIs.
+
 <!-- convex-ai-end -->
 
 If Convex codegen fails or generated Convex types look temporarily broken, ignore it for now; it is often resolved by reloading TypeScript types or running `bun run dev:all` manually.
