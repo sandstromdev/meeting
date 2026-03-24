@@ -11,7 +11,7 @@
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import SaveIcon from '@lucide/svelte/icons/save';
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
-	import EditPoll from './edit-poll.svelte';
+	import EditPoll from '$lib/components/ui/edit-poll.svelte';
 	import { SvelteMap } from 'svelte/reactivity';
 	import { PollDraftSchema, type PollDraft } from '$lib/validation';
 	import { toast } from 'svelte-sonner';
@@ -299,7 +299,7 @@
 						</Button>
 					</div>
 					<div class="min-w-0 flex-1">
-						<EditPoll bind:poll={polls[i]} />
+						<EditPoll poll={polls[i]} />
 					</div>
 				</div>
 			{/each}

@@ -3,12 +3,16 @@
 	import { page } from '$app/state';
 	import { api } from '$convex/_generated/api';
 	import type { Id } from '$convex/_generated/dataModel';
-	import { useConvexClient, useQuery } from '@mmailaender/convex-svelte';
+	import Checkbox from '$lib/components/ui/checkbox/checkbox.svelte';
+	import * as Field from '$lib/components/ui/field';
+	import * as RadioGroup from '$lib/components/ui/radio-group';
+	import { useConvexClient } from '@mmailaender/convex-svelte';
 	import { onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
 
+	let { data } = $props();
+
 	const convex = useConvexClient();
-	const currentUser = useQuery(api.me.getCurrentUser, {});
 	const pollCode = $derived(typeof page.params.code === 'string' ? page.params.code : '');
 	const standalonePollApi = api.public.standalone_poll;
 
@@ -66,7 +70,7 @@
 			selectedOptionIndexes.length <= (poll.maxVotesPerVoter ?? 0),
 	);
 	const requiresSignIn = $derived(
-		poll?.visibilityMode === 'account_required' && currentUser.data == null,
+		poll?.visibilityMode === 'account_required' && data.currentUser.data == null,
 	);
 	const signInHref = $derived(
 		resolve(`/sign-in?redirect=${encodeURIComponent(`${page.url.pathname}${page.url.search}`)}`),
@@ -228,34 +232,41 @@
 				<h2 class="text-lg font-semibold">Rösta</h2>
 				{#if poll.type === 'single_winner'}
 					<div class="space-y-2">
-						{#each poll.options as option, optionIndex (optionIndex)}
-							<label class="flex cursor-pointer items-start gap-2 rounded border p-3">
-								<input
-									type="radio"
-									name="standalone-poll-option"
-									checked={selectedSet.has(optionIndex)}
-									onchange={() => (draftSelectedOptionIndexes = [optionIndex])}
-								/>
-								<span>{option}</span>
-							</label>
-						{/each}
+						<RadioGroup.Root
+							value={draftSelectedOptionIndexes?.[0]?.toString()}
+							onValueChange={(value) => (draftSelectedOptionIndexes = [Number(value)])}
+						>
+							{#each poll.options as option, optionIndex (optionIndex)}
+								<Field.Label for={optionIndex.toString()}>
+									<Field.Field orientation="horizontal">
+										<Field.Content>
+											<Field.Title>{option}</Field.Title>
+										</Field.Content>
+										<RadioGroup.Item
+											value={optionIndex.toString()}
+											disabled={isOptionDisabled(optionIndex)}
+										/>
+									</Field.Field>
+								</Field.Label>
+							{/each}
+						</RadioGroup.Root>
 					</div>
 				{:else}
 					<div class="space-y-2">
 						{#each poll.options as option, optionIndex (optionIndex)}
-							<label
-								class={`flex items-start gap-2 rounded border p-3 ${
-									isOptionDisabled(optionIndex) ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
-								}`}
-							>
-								<input
-									type="checkbox"
-									checked={selectedSet.has(optionIndex)}
-									disabled={isOptionDisabled(optionIndex)}
-									onchange={() => toggleMultiOption(optionIndex)}
-								/>
-								<span>{option}</span>
-							</label>
+							<Field.Label for={optionIndex.toString()}>
+								<Field.Field orientation="horizontal">
+									<Field.Content>
+										<Field.Title>{option}</Field.Title>
+									</Field.Content>
+									<Checkbox
+										checked={selectedSet.has(optionIndex)}
+										disabled={isOptionDisabled(optionIndex)}
+										onchange={() => toggleMultiOption(optionIndex)}
+										id={optionIndex.toString()}
+									/>
+								</Field.Field>
+							</Field.Label>
 						{/each}
 					</div>
 					<p class="text-xs text-muted-foreground">
