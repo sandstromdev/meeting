@@ -5,12 +5,12 @@ import type { MeetingState } from '$lib/context.svelte';
 
 export class ParticipantsContext {
 	addUserDialogOpen = $state(false);
-	#query: UseQueryReturn<typeof api.admin.users.getParticipants>;
+	#query: UseQueryReturn<typeof api.meeting.admin.users.getParticipants>;
 	#meeting: MeetingState;
 
 	constructor(meeting: MeetingState) {
 		this.#meeting = meeting;
-		this.#query = meeting.adminQuery(api.admin.users.getParticipants, () => ({}), {
+		this.#query = meeting.adminQuery(api.meeting.admin.users.getParticipants, () => ({}), {
 			keepPreviousData: true,
 		});
 

@@ -10,7 +10,7 @@ import type { DefaultFunctionArgs, FunctionReference } from 'convex/server';
 import type { UseQueryOptions, UseQueryReturn } from '$lib/types';
 import { PUBLIC_SITE_URL } from '$env/static/public';
 
-export type MeetingData = typeof api.users.meeting.getData._returnType;
+export type MeetingData = typeof api.meeting.users.meeting.getData._returnType;
 
 const [getContext, setContext] = createContext<MeetingState>();
 
@@ -65,7 +65,7 @@ export class MeetingState {
 			banned: 0,
 		});
 
-		const attendance = this.adminQuery(api.admin.meeting.getAttendance);
+		const attendance = this.adminQuery(api.meeting.admin.meeting.getAttendance);
 
 		$effect(() => {
 			this.#data = data();

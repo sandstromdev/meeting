@@ -15,7 +15,7 @@
 	const meeting = getMeetingContext();
 	const now = useNow();
 
-	const returnRequestsResult = useQuery(api.admin.meeting.getReturnRequests, () => ({
+	const returnRequestsResult = useQuery(api.meeting.admin.meeting.getReturnRequests, () => ({
 		meetingId: meeting.meeting._id,
 	}));
 
@@ -33,14 +33,14 @@
 					variant="warning"
 					approve={async () => {
 						await notifyMutation('Återkomst godkänd.', () =>
-							meeting.adminMutate(api.admin.meeting.approveReturnRequest, {
+							meeting.adminMutate(api.meeting.admin.meeting.approveReturnRequest, {
 								userId: req.userId,
 							}),
 						);
 					}}
 					deny={async () => {
 						await notifyMutation('Återkomst avvisad.', () =>
-							meeting.adminMutate(api.admin.meeting.denyReturnRequest, {
+							meeting.adminMutate(api.meeting.admin.meeting.denyReturnRequest, {
 								userId: req.userId,
 							}),
 						);
@@ -66,12 +66,12 @@
 				variant="warning"
 				approve={async () => {
 					await notifyMutation('Streck accepterat.', () =>
-						meeting.adminMutate(api.admin.meeting.acceptBreak),
+						meeting.adminMutate(api.meeting.admin.meeting.acceptBreak),
 					);
 				}}
 				deny={async () => {
 					await notifyMutation('Streck avvisat.', () =>
-						meeting.adminMutate(api.admin.meeting.clearBreak),
+						meeting.adminMutate(api.meeting.admin.meeting.clearBreak),
 					);
 				}}
 			/>
@@ -81,7 +81,7 @@
 				size="sm"
 				onClickPromise={() =>
 					notifyMutation('Streck avslutat.', () =>
-						meeting.adminMutate(api.admin.meeting.clearBreak),
+						meeting.adminMutate(api.meeting.admin.meeting.clearBreak),
 					)}
 				type="button"
 			>
@@ -105,12 +105,12 @@
 				variant="warning"
 				approve={async () => {
 					await notifyMutation('Ordningsfråga accepterad.', () =>
-						meeting.adminMutate(api.admin.meeting.acceptPointOfOrder),
+						meeting.adminMutate(api.meeting.admin.meeting.acceptPointOfOrder),
 					);
 				}}
 				deny={async () => {
 					await notifyMutation('Ordningsfråga avvisad.', () =>
-						meeting.adminMutate(api.admin.meeting.clearPointOfOrder),
+						meeting.adminMutate(api.meeting.admin.meeting.clearPointOfOrder),
 					);
 				}}
 			/>
@@ -120,7 +120,7 @@
 				size="sm"
 				onClickPromise={() =>
 					notifyMutation('Ordningsfrågan avslutad.', () =>
-						meeting.adminMutate(api.admin.meeting.clearPointOfOrder),
+						meeting.adminMutate(api.meeting.admin.meeting.clearPointOfOrder),
 					)}
 				type="button"
 			>
@@ -144,12 +144,12 @@
 				variant="warning"
 				approve={async () => {
 					await notifyMutation('Replik accepterad.', () =>
-						meeting.adminMutate(api.admin.meeting.acceptReply),
+						meeting.adminMutate(api.meeting.admin.meeting.acceptReply),
 					);
 				}}
 				deny={async () => {
 					await notifyMutation('Replik avvisad.', () =>
-						meeting.adminMutate(api.admin.meeting.clearReply),
+						meeting.adminMutate(api.meeting.admin.meeting.clearReply),
 					);
 				}}
 			/>
@@ -159,7 +159,7 @@
 				size="sm"
 				onClickPromise={() =>
 					notifyMutation('Repliken avslutad.', () =>
-						meeting.adminMutate(api.admin.meeting.clearReply),
+						meeting.adminMutate(api.meeting.admin.meeting.clearReply),
 					)}
 				type="button"
 			>

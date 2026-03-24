@@ -14,7 +14,7 @@
 	const hasBreak = $derived(queue.hasBreak);
 	const hasPointOfOrder = $derived(queue.hasPointOfOrder);
 
-	const previousSpeakerResult = useQuery(api.moderator.meeting.getPreviousSpeaker, () => ({
+	const previousSpeakerResult = useQuery(api.meeting.moderator.meeting.getPreviousSpeaker, () => ({
 		meetingId: meeting.meeting._id,
 	}));
 
@@ -24,7 +24,7 @@
 <div class="space-y-2 p-4">
 	<div class="grid grid-cols-3 gap-2">
 		<Button
-			onClickPromise={() => meeting.moderatorMutate(api.moderator.meeting.previousSpeaker)}
+			onClickPromise={() => meeting.moderatorMutate(api.meeting.moderator.meeting.previousSpeaker)}
 			disabled={hasPointOfOrder || !canGoBack}
 			type="button"
 			variant="outline"
@@ -34,7 +34,7 @@
 		</Button>
 		{#if !queue.break}
 			<Button
-				onClickPromise={() => meeting.mutate(api.users.queue.request, { type: 'break' })}
+				onClickPromise={() => meeting.mutate(api.meeting.users.queue.request, { type: 'break' })}
 				disabled={!queue.canRequestBreak}
 				type="button"
 				variant="outline"
@@ -44,7 +44,8 @@
 			</Button>
 		{:else if queue.break.type === 'requested' && queue.break.by.userId === meeting.me._id}
 			<Button
-				onClickPromise={() => meeting.mutate(api.users.queue.recallRequest, { type: 'break' })}
+				onClickPromise={() =>
+					meeting.mutate(api.meeting.users.queue.recallRequest, { type: 'break' })}
 				type="button"
 				variant="outline"
 			>
@@ -56,7 +57,7 @@
 				<Button
 					onClickPromise={() =>
 						notifyMutation('Streck avslutat.', () =>
-							meeting.adminMutate(api.admin.meeting.clearBreak),
+							meeting.adminMutate(api.meeting.admin.meeting.clearBreak),
 						)}
 					class="px-3"
 					type="button"
@@ -73,7 +74,7 @@
 			{/if}
 		{:else}
 			<Button
-				onClickPromise={() => meeting.mutate(api.users.queue.request, { type: 'break' })}
+				onClickPromise={() => meeting.mutate(api.meeting.users.queue.request, { type: 'break' })}
 				type="button"
 				variant="outline"
 			>
@@ -82,7 +83,7 @@
 			</Button>
 		{/if}
 		<Button
-			onClickPromise={() => meeting.moderatorMutate(api.moderator.meeting.nextSpeaker)}
+			onClickPromise={() => meeting.moderatorMutate(api.meeting.moderator.meeting.nextSpeaker)}
 			disabled={hasPointOfOrder || !queue.canAdvance}
 			type="button"
 			variant="outline"
@@ -96,7 +97,7 @@
 		<Button
 			onClickPromise={() =>
 				notifyMutation('Ordningsfrågan avslutad.', () =>
-					meeting.adminMutate(api.admin.meeting.clearPointOfOrder),
+					meeting.adminMutate(api.meeting.admin.meeting.clearPointOfOrder),
 				)}
 			class="px-3"
 			type="button"

@@ -16,7 +16,7 @@
 
 	const meeting = getMeetingContext();
 
-	const absenteesResult = useQuery(api.admin.meeting.getAbsentees, () => ({
+	const absenteesResult = useQuery(api.meeting.admin.meeting.getAbsentees, () => ({
 		meetingId: meeting.meeting._id,
 	}));
 	const absentees = $derived(absenteesResult.data ?? []);

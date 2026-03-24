@@ -25,7 +25,8 @@
 		confirm({
 			title: 'Ändra roll',
 			description: `Ändra roll till ${ROLE_LABELS[role]}?`,
-			onConfirm: () => meeting.adminMutate(api.admin.users.setParticipantRole, { userId, role }),
+			onConfirm: () =>
+				meeting.adminMutate(api.meeting.admin.users.setParticipantRole, { userId, role }),
 		});
 	}
 </script>

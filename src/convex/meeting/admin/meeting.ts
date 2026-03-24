@@ -11,7 +11,8 @@ import {
 	getParticipantCounter,
 } from '$convex/helpers/counters';
 import { AppError, appErrors } from '$convex/helpers/error';
-import { c } from '$convex/helpers';
+
+// --- Public queries ---
 
 export const getPointOfOrderEntries = admin.query().public(async ({ ctx }) => {
 	const entries = await ctx.db
@@ -82,6 +83,8 @@ export const getReturnRequests = admin.query().public(async ({ ctx }) => {
 			requestedAt: p.returnRequestedAt,
 		}));
 });
+
+// --- Public mutations ---
 
 export const approveReturnRequest = admin
 	.mutation()
@@ -223,9 +226,13 @@ export const toggleMeeting = admin.mutation().public(async ({ ctx }) => {
 					closedAt: now,
 					updatedAt: now,
 				});
-				await ctx.scheduler.runAfter(0, internal.admin.poll.createPollResultSnapshotAction, {
-					pollId: currentPoll._id,
-				});
+				await ctx.scheduler.runAfter(
+					0,
+					internal.meeting.jobs.poll_close.createPollResultSnapshotAction,
+					{
+						pollId: currentPoll._id,
+					},
+				);
 			}
 		}
 
@@ -252,7 +259,7 @@ export const triggerMeetingSnapshot = admin
 	.mutation()
 	.public(async ({ ctx }): Promise<MeetingSnapshotTriggerResult> => {
 		const result: MeetingSnapshotTriggerResult = await ctx.runMutation(
-			internal.backup.saveSnapshotIfChanged,
+			internal.meeting.jobs.snapshots.saveSnapshotIfChanged,
 			{ meetingId: ctx.meeting._id, allowClosedMeeting: true },
 		);
 		return result;
@@ -354,32 +361,6 @@ export const updateMeetingData = admin
 
 		await db.patch('meetings', meeting._id, updates);
 		return true;
-	});
-
-export const logSpeaker = c
-	.mutation()
-	.input({
-		type: z.enum(['point_of_order', 'reply', 'speaker']),
-		by: z.object({
-			userId: zid('meetingParticipants'),
-			name: z.string(),
-		}),
-		startTime: z.number(),
-		endTime: z.number(),
-		meetingId: zid('meetings'),
-	})
-	.internal(async ({ ctx, args }) => {
-		const { db } = ctx;
-		const { type, by, startTime, endTime, meetingId } = args;
-
-		await db.insert('speakerLogEntries', {
-			meetingId,
-			type,
-			userId: by.userId,
-			name: by.name,
-			startTime,
-			endTime,
-		});
 	});
 
 export const recountParticipants = admin.mutation().public(async ({ ctx }) => {

@@ -3,6 +3,20 @@ import { logSpeakerSlot } from '$convex/helpers/meeting';
 import { Request } from '$convex/schema';
 import { z } from 'zod';
 
+// --- Public queries ---
+
+export const getNextSpeakers = withMe.query().public(async ({ ctx }) => {
+	return await ctx.db
+		.query('speakerQueueEntries')
+		.withIndex('by_meeting', (q) =>
+			q.eq('meetingId', ctx.meeting._id).gt('_creationTime', ctx.meeting.lastConsumedCt ?? -1),
+		)
+		.order('asc')
+		.take(10);
+});
+
+// --- Public mutations ---
+
 export const request = withMe
 	.mutation()
 	.input({
@@ -51,16 +65,6 @@ export const recallRequest = withMe
 
 		return true;
 	});
-
-export const getNextSpeakers = withMe.query().public(async ({ ctx }) => {
-	return await ctx.db
-		.query('speakerQueueEntries')
-		.withIndex('by_meeting', (q) =>
-			q.eq('meetingId', ctx.meeting._id).gt('_creationTime', ctx.meeting.lastConsumedCt ?? -1),
-		)
-		.order('asc')
-		.take(10);
-});
 
 export const placeInSpeakerQueue = withMe.mutation().public(async ({ ctx }) => {
 	const { db, meeting, me } = ctx;

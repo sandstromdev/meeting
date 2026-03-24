@@ -8,9 +8,9 @@
 	let { data } = $props();
 
 	const convex = useConvexClient();
-	const standaloneApi = api.public.standalone_poll;
-	const standaloneAdminApi = api.admin.standalone_poll;
-	const ownedPolls = useQuery(standaloneApi.get_my_owned_polls);
+	const standaloneApi = api.polls.public.standalone_poll;
+	const standaloneAdminApi = api.polls.admin.standalone_poll;
+	const ownedPolls = useQuery(standaloneApi.getMyOwnedPolls);
 
 	let actionLoadingPollId = $state<string | null>(null);
 	let actionLoadingType = $state<string | null>(null);
@@ -89,7 +89,7 @@
 													poll._id,
 													'close',
 													() =>
-														convex.mutation(standaloneAdminApi.close_poll, {
+														convex.mutation(standaloneAdminApi.closePoll, {
 															pollId: poll._id,
 														}),
 													'Omröstningen stängdes.',
@@ -108,7 +108,7 @@
 													poll._id,
 													'cancel',
 													() =>
-														convex.mutation(standaloneAdminApi.cancel_poll, {
+														convex.mutation(standaloneAdminApi.cancelPoll, {
 															pollId: poll._id,
 														}),
 													'Omröstningen avbröts.',
@@ -128,7 +128,7 @@
 													poll._id,
 													'open',
 													() =>
-														convex.mutation(standaloneAdminApi.open_poll, {
+														convex.mutation(standaloneAdminApi.openPoll, {
 															pollId: poll._id,
 														}),
 													'Omröstningen öppnades.',
@@ -147,7 +147,7 @@
 													poll._id,
 													'remove',
 													() =>
-														convex.mutation(standaloneAdminApi.remove_poll, {
+														convex.mutation(standaloneAdminApi.removePoll, {
 															pollId: poll._id,
 														}),
 													'Omröstningen togs bort.',

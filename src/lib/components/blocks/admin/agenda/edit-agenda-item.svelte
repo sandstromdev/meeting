@@ -38,8 +38,9 @@
 	);
 	const isEditMode = $derived(!!agendaItemId);
 
-	const currentPollsResult = meeting.adminQuery(api.admin.poll.getPollsByAgendaItemId, () =>
-		isEditMode && agendaItemId ? { agendaItemId } : 'skip',
+	const currentPollsResult = meeting.adminQuery(
+		api.meeting.admin.poll.getPollsByAgendaItemId,
+		() => (isEditMode && agendaItemId ? { agendaItemId } : 'skip'),
 	);
 
 	let newTitle = $state('');

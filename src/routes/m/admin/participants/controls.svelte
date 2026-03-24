@@ -14,7 +14,7 @@
 	const ctx = useParticipantsContext();
 	const meeting = getMeetingContext();
 
-	const currentUser = useQuery(api.me.getCurrentUser);
+	const currentUser = useQuery(api.app.me.getCurrentUser);
 
 	const otherPresentCount = $derived(
 		ctx.participants.filter((p) => p.absentSince === 0 && p._id !== meeting.me._id).length,
@@ -25,9 +25,12 @@
 			await new Promise((resolve) => setTimeout(resolve, 4000));
 			return;
 
-			const result = await meeting.adminMutate(api.admin.users.markAllPresentParticipantsAbsent, {
-				skipNonParticipants,
-			});
+			const result = await meeting.adminMutate(
+				api.meeting.admin.users.markAllPresentParticipantsAbsent,
+				{
+					skipNonParticipants,
+				},
+			);
 			const marked = result?.marked ?? 0;
 			toast.success(
 				marked === 0
@@ -72,7 +75,7 @@
 		onClickPromise={() =>
 			notifyMutation(
 				'Deltagare har räknats om.',
-				() => meeting.adminMutate(api.admin.meeting.recountParticipants),
+				() => meeting.adminMutate(api.meeting.admin.meeting.recountParticipants),
 				{ errorMessage: 'Kunde inte räkna om deltagare.' },
 			)}
 	>

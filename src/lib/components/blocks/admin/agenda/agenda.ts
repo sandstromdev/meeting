@@ -76,7 +76,7 @@ export async function createAgendaItem(
 ) {
 	const polls = RefinePollDraftSchema.array().parse(args.polls);
 
-	const data = await meeting.adminMutate(api.admin.agenda.createAgendaItem, {
+	const data = await meeting.adminMutate(api.meeting.admin.agenda.createAgendaItem, {
 		title: args.title,
 		parentId: args.parentId,
 		polls,
@@ -96,7 +96,7 @@ export async function updateAgendaItem(
 		polls: EditablePollDraft[];
 	},
 ) {
-	const data = await meeting.adminMutate(api.admin.agenda.updateAgendaItem, {
+	const data = await meeting.adminMutate(api.meeting.admin.agenda.updateAgendaItem, {
 		agendaItemId: args.agendaItemId,
 		title: args.title,
 		polls: args.polls,

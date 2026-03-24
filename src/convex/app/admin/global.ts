@@ -8,6 +8,8 @@ const admin = authed.use(async ({ ctx, next }) => {
 	return next(ctx);
 });
 
+// --- Public mutations ---
+
 export const createUser = admin
 	.mutation()
 	.input({

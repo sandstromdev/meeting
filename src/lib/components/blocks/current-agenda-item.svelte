@@ -41,7 +41,7 @@
 				variant="ghost"
 				type="button"
 				disabled={!ag.previousItem}
-				onClickPromise={() => meeting.adminMutate(api.admin.agenda.previous)}
+				onClickPromise={() => meeting.adminMutate(api.meeting.admin.agenda.previous)}
 			>
 				<ChevronUpIcon class="size-4" />
 			</Button>
@@ -50,7 +50,7 @@
 				variant="ghost"
 				type="button"
 				disabled={!ag.nextItem}
-				onClickPromise={() => meeting.adminMutate(api.admin.agenda.next)}
+				onClickPromise={() => meeting.adminMutate(api.meeting.admin.agenda.next)}
 			>
 				<ChevronDownIcon class="size-4" />
 			</Button>

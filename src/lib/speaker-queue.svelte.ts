@@ -1,7 +1,7 @@
 import { api } from '$convex/_generated/api';
 import { type MeetingState } from './context.svelte';
 
-type SpeakerQueueEntry = (typeof api.users.queue.getNextSpeakers._returnType)[number];
+type SpeakerQueueEntry = (typeof api.meeting.users.queue.getNextSpeakers._returnType)[number];
 
 export class SpeakerQueue {
 	#meeting: MeetingState;
@@ -17,7 +17,7 @@ export class SpeakerQueue {
 	constructor(meeting: MeetingState) {
 		this.#meeting = meeting;
 
-		const q = meeting.query(api.users.queue.getNextSpeakers, undefined, {
+		const q = meeting.query(api.meeting.users.queue.getNextSpeakers, undefined, {
 			keepPreviousData: true,
 		});
 

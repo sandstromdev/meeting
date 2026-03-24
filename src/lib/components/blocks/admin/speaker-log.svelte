@@ -15,7 +15,7 @@
 
 	// TODO: Paginate
 
-	const speakerLogResult = useQuery(api.admin.meeting.getSpeakerLogEntries, () => ({
+	const speakerLogResult = useQuery(api.meeting.admin.meeting.getSpeakerLogEntries, () => ({
 		meetingId: meeting.meeting._id,
 	}));
 

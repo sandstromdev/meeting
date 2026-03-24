@@ -18,7 +18,7 @@
 	const meeting = getMeetingContext();
 	const ps = usePageState();
 
-	const userQuery = useQuery(api.me.getCurrentUser);
+	const userQuery = useQuery(api.app.me.getCurrentUser);
 	const user = $derived(userQuery.data);
 	const isTemporaryUser = $derived(user?.email.endsWith('@m.lsnd.se'));
 
@@ -29,7 +29,7 @@
 				'Du kommer att lämna mötet. Om du vill komma tillbaka måste en administratör godkänna dig.',
 			confirm: { text: 'Lämna möte' },
 			onConfirm: async () => {
-				await meeting.mutate(api.users.attendance.leaveMeeting);
+				await meeting.mutate(api.meeting.users.attendance.leaveMeeting);
 
 				await auth.leaveMeeting();
 
@@ -45,7 +45,7 @@
 				'Du kommer att lämna mötet och loggas ut från ditt konto. Om du vill komma tillbaka måste en administratör godkänna dig.',
 			confirm: { text: 'Logga ut' },
 			onConfirm: async () => {
-				await meeting.mutate(api.users.attendance.leaveMeeting);
+				await meeting.mutate(api.meeting.users.attendance.leaveMeeting);
 
 				await auth.signOut();
 

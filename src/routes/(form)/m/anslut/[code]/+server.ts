@@ -27,7 +27,7 @@ export const GET: RequestHandler = async (event) => {
 	const convex = getConvexClient();
 
 	try {
-		const meetingId = await convex.mutation(api.users.auth.connect, {
+		const meetingId = await convex.mutation(api.meeting.users.auth.connect, {
 			meetingCode: parsed.data,
 		});
 

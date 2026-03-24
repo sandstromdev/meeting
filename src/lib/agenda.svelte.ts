@@ -89,7 +89,7 @@ export class AgendaState {
 		if (optionIndexes.length === 0) {
 			return;
 		}
-		await this.#meeting.mutate(api.users.poll.vote, {
+		await this.#meeting.mutate(api.meeting.users.poll.vote, {
 			pollId: poll.id,
 			optionIndexes,
 		});

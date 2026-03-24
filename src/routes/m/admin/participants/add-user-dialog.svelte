@@ -95,7 +95,7 @@
 				await notifyMutation(
 					'Användare skapad och tillagd i mötet.',
 					() =>
-						meeting.adminMutate(api.admin.users.addParticipant, {
+						meeting.adminMutate(api.meeting.admin.users.addParticipant, {
 							userId: data.user.id,
 							name,
 							role,

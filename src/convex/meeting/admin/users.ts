@@ -10,6 +10,8 @@ import { ensureParticipantInMeeting } from '$convex/helpers/users';
 import { zid } from 'convex-helpers/server/zod4';
 import { z } from 'zod';
 
+// --- Public queries ---
+
 export const getParticipants = admin.query().public(async ({ ctx }) => {
 	const participants = await ctx.db
 		.query('meetingParticipants')
@@ -28,6 +30,23 @@ export const getParticipants = admin.query().public(async ({ ctx }) => {
 		banned: p.banned ?? false,
 	}));
 });
+
+export const getParticipantEmail = admin
+	.query()
+	.input({
+		userId: z.string('user'),
+	})
+	.public(async ({ ctx, args }) => {
+		const user = await authComponent.getAnyUserById(ctx, args.userId);
+
+		if (!user) {
+			return null;
+		}
+
+		return user.email;
+	});
+
+// --- Public mutations ---
 
 export const setParticipantRole = admin
 	.mutation()
@@ -217,19 +236,4 @@ export const addParticipant = admin
 		}
 
 		return true;
-	});
-
-export const getParticipantEmail = admin
-	.query()
-	.input({
-		userId: z.string('user'),
-	})
-	.public(async ({ ctx, args }) => {
-		const user = await authComponent.getAnyUserById(ctx, args.userId);
-
-		if (!user) {
-			return null;
-		}
-
-		return user.email;
 	});

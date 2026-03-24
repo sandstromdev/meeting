@@ -15,7 +15,7 @@
 	let { data } = $props();
 
 	const convex = useConvexClient();
-	const standalonePollApi = api.public.standalone_poll;
+	const standalonePollApi = api.polls.public.standalone_poll;
 
 	let draftSelectedOptionIndexes = $state<number[] | null>(null);
 	let submitting = $state(false);
@@ -79,7 +79,7 @@
 		}
 		try {
 			submitting = true;
-			await convex.mutation(standalonePollApi.retract_vote, {
+			await convex.mutation(standalonePollApi.retractVote, {
 				pollId: poll.id,
 				voterSessionToken: data.voterSessionToken,
 			});

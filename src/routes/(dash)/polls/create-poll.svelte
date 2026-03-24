@@ -6,7 +6,7 @@
 	import { toast } from 'svelte-sonner';
 
 	const convex = useConvexClient();
-	const standaloneAdminApi = api.admin.standalone_poll;
+	const standaloneAdminApi = api.polls.admin.standalone_poll;
 
 	async function handleSubmit(payload: {
 		draft: PollDraft;
@@ -14,7 +14,7 @@
 	}) {
 		const vm = payload.visibilityMode ?? 'public';
 		try {
-			await convex.mutation(standaloneAdminApi.create_poll, {
+			await convex.mutation(standaloneAdminApi.createPoll, {
 				draft: {
 					title: payload.draft.title,
 					options: payload.draft.options,

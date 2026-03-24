@@ -2,6 +2,8 @@ import { authed, withMe, withMeeting } from '$convex/helpers/auth';
 import { getMeetingParticipant } from '$convex/helpers/meeting';
 import { zid } from 'convex-helpers/server/zod4';
 
+// --- Public queries ---
+
 export const getMeeting = withMeeting.query().public(async ({ ctx }) => {
 	const { meeting } = ctx;
 	return meeting;

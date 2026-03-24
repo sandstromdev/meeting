@@ -36,7 +36,7 @@
 					variant="outline"
 					size="lg"
 					class="w-full"
-					onClickPromise={() => meeting.mutate(api.users.attendance.recallReturnRequest)}
+					onClickPromise={() => meeting.mutate(api.meeting.users.attendance.recallReturnRequest)}
 					type="button"
 				>
 					Återkalla begäran
@@ -47,7 +47,7 @@
 				variant="default"
 				size="lg"
 				class="w-full"
-				onClickPromise={() => meeting.mutate(api.users.attendance.requestReturnToMeeting)}
+				onClickPromise={() => meeting.mutate(api.meeting.users.attendance.requestReturnToMeeting)}
 				type="button"
 			>
 				Begär återkomst

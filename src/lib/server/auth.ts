@@ -21,5 +21,5 @@ export async function getCurrentUser() {
 		return null;
 	}
 
-	return await client.query(api.me.getCurrentUser, {}).catch(() => null);
+	return await client.query(api.app.me.getCurrentUser, {}).catch(() => null);
 }

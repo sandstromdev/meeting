@@ -1,25 +1,11 @@
 import { zid } from 'convex-helpers/server/zod4';
-import { query, type QueryCtx } from './_generated/server';
-import { authComponent } from './auth';
-import { authed } from './helpers/auth';
-import { pickParticipantData } from './helpers/users';
-import { z } from 'zod';
-import type { Id } from './_generated/dataModel';
-import type { UserIdentity } from 'convex/server';
+import type { QueryCtx } from '$convex/_generated/server';
+import type { Id } from '$convex/_generated/dataModel';
+import { authed } from '$convex/helpers/auth';
+import { pickParticipantData } from '$convex/helpers/users';
 import { hasRole } from '$lib/roles';
-
-export const getCurrentUser = query({
-	args: {},
-	handler: async (ctx) => {
-		const user = await ctx.auth.getUserIdentity();
-
-		if (!user) {
-			return null;
-		}
-
-		return authComponent.getAuthUser(ctx);
-	},
-});
+import type { UserIdentity } from 'convex/server';
+import { z } from 'zod';
 
 async function getMeetingParticipantInner(
 	ctx: QueryCtx & { user: UserIdentity },
@@ -37,6 +23,9 @@ async function getMeetingParticipantInner(
 
 	return pickParticipantData(me);
 }
+
+// --- Public queries ---
+
 export const getMeetingParticipant = authed
 	.query()
 	.input({ meetingId: zid('meetings') })

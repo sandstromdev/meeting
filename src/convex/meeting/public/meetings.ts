@@ -2,7 +2,9 @@ import { MeetingCode } from '$lib/validation';
 import { zid } from 'convex-helpers/server/zod4';
 import { authed } from '$convex/helpers/auth';
 import { c } from '$convex/helpers';
-import { getMeetingByCode } from './helpers/meeting';
+import { getMeetingByCode } from '$convex/helpers/meeting';
+
+// --- Public queries ---
 
 export const getMeetingById = authed
 	.query()
