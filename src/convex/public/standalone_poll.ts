@@ -5,29 +5,10 @@ import { AppError, appErrors } from '$convex/helpers/error';
 import {
 	getLatestStandalonePollResultSnapshot,
 	getStandalonePollOrThrow,
+	getVoterKey,
 } from '$convex/helpers/standalone_poll';
 import { zid } from 'convex-helpers/server/zod4';
 import { z } from 'zod';
-
-async function getVoterKey(
-	ctx: {
-		auth: { getUserIdentity: () => Promise<{ subject: string } | null> };
-	},
-	pollVisibilityMode: 'public' | 'account_required',
-	voterSessionToken?: string | null,
-) {
-	if (pollVisibilityMode === 'account_required') {
-		const identity = await ctx.auth.getUserIdentity();
-		AppError.assertNotNull(identity, appErrors.illegal_standalone_poll_action('auth_required'));
-		return `user:${identity.subject}`;
-	}
-
-	AppError.assert(
-		voterSessionToken != null,
-		appErrors.illegal_standalone_poll_action('missing_session_key'),
-	);
-	return `session:${voterSessionToken}`;
-}
 
 export const get_by_code = c
 	.query()
@@ -45,15 +26,9 @@ export const get_by_code = c
 
 		const identity = await ctx.auth.getUserIdentity();
 
-		if (poll.visibilityMode === 'account_required') {
-			AppError.assertNotNull(identity, appErrors.illegal_standalone_poll_action('auth_required'));
-		}
-
-		const voterKey = await getVoterKey(
-			ctx,
-			poll.visibilityMode,
-			args.voterSessionToken ?? null,
-		).catch(() => null);
+		const voterKey = await getVoterKey(ctx, poll.visibilityMode, args.voterSessionToken).catch(
+			() => null,
+		);
 
 		const myVotes = voterKey
 			? await ctx.db

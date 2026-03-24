@@ -209,7 +209,7 @@
 					<Card.Description>Den här omröstningen tar inte längre emot röster.</Card.Description>
 				</Card.Header>
 				<Card.Content class="space-y-4 pt-0">
-					{#if poll.isResultPublic || (currentUser?._id === poll.ownerUserId && poll.results)}
+					{#if poll.results && (poll.isResultPublic || currentUser?._id === poll.ownerUserId)}
 						<PollResultsDisplay data={{ results: poll.results }} showDetailedResults />
 					{/if}
 				</Card.Content>

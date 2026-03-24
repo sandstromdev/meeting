@@ -1,4 +1,5 @@
 import type { Doc, Id } from '$convex/_generated/dataModel';
+import type { Auth } from 'convex/server';
 import { stripSystemFields } from '.';
 import { AppError, appErrors } from './error';
 import type { Db } from './types';
@@ -61,4 +62,37 @@ export async function getLatestStandalonePollResultSnapshot(db: Db, pollId: Id<'
 		.withIndex('by_poll_and_closedAt', (q) => q.eq('pollId', pollId))
 		.order('desc')
 		.first();
+}
+
+export async function getVoterKey(
+	ctx: { auth: Auth },
+	pollVisibilityMode: 'public' | 'account_required',
+	idToken?: string | null,
+) {
+	let token = idToken;
+	if (pollVisibilityMode === 'account_required') {
+		const identity = await ctx.auth.getUserIdentity();
+		token = identity?.subject;
+	}
+
+	AppError.assertNotNull(token, appErrors.illegal_standalone_poll_action('missing_session_key'));
+
+	return formatVoterKey(pollVisibilityMode, token);
+}
+
+export async function formatVoterKey(
+	pollVisibilityMode: 'public' | 'account_required',
+	idToken?: string,
+) {
+	const hashed = new Uint8Array(
+		await crypto.subtle.digest('sha-256', new TextEncoder().encode(idToken)),
+	).toHex();
+
+	if (pollVisibilityMode === 'account_required') {
+		AppError.assertNotNull(idToken, appErrors.illegal_standalone_poll_action('auth_required'));
+		return `user:${hashed}`;
+	}
+
+	AppError.assert(idToken != null, appErrors.illegal_standalone_poll_action('missing_session_key'));
+	return `session:${hashed}`;
 }
