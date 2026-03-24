@@ -14,5 +14,5 @@ export function stableStringify(value: unknown): string {
 export async function checksumPayload(payload: unknown): Promise<string> {
 	const bytes = new TextEncoder().encode(stableStringify(payload));
 	const hash = await crypto.subtle.digest('SHA-256', bytes);
-	return [...new Uint8Array(hash)].map((b) => b.toString(16).padStart(2, '0')).join('');
+	return new Uint8Array(hash).toHex();
 }

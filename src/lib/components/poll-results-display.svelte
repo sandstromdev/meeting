@@ -1,48 +1,47 @@
 <script lang="ts">
-	import { api } from '$convex/_generated/api';
-	import type { Id } from '$convex/_generated/dataModel';
 	import type { OptionTotal } from '$convex/helpers/poll';
 	import Progress from '$lib/components/ui/progress/progress.svelte';
 	import Separator from '$lib/components/ui/separator/separator.svelte';
-	import { getMeetingContext } from '$lib/context.svelte';
-	import { usePageState } from '$lib/page-state.svelte';
 	import { ABSTAIN_OPTION_LABEL, getVoteShare } from '$lib/polls';
 	import { cn } from '$lib/utils';
-	import type { FunctionReturnType } from 'convex/server';
 
-	type Poll = NonNullable<FunctionReturnType<typeof api.users.poll.getCurrentPoll>>;
+	/** Snapshot shape returned by poll result queries (meeting or standalone). */
+	export type PollResultsDisplayData = {
+		complete?: boolean;
+		results: {
+			winners: Array<{ optionIndex: number; option: string; votes?: number }>;
+			optionTotals?: OptionTotal[] | undefined;
+			counts: { totalVotes: number; usableVotes: number; abstain: number };
+		};
+	};
 
-	const { poll }: { poll: Poll | null } = $props();
+	let {
+		data = null,
+		showDetailedResults = false,
+	}: {
+		data: PollResultsDisplayData | null;
+		showDetailedResults?: boolean;
+	} = $props();
 
-	const meeting = getMeetingContext();
-	const ps = usePageState();
-
-	const pollResults = meeting.query(api.users.poll.getPollResultsById, () =>
-		poll ? { pollId: poll.id } : 'skip',
-	);
-
-	const results = $derived(pollResults.data ?? null);
-
-	const winners = $derived(results?.results.winners ?? []);
+	const winners = $derived(data?.results.winners ?? []);
 
 	const optionTotals = $derived(
-		(results?.results.optionTotals ?? []).filter(
-			(option) => option.option !== ABSTAIN_OPTION_LABEL,
-		),
+		(data?.results.optionTotals ?? []).filter((option) => option.option !== ABSTAIN_OPTION_LABEL),
 	);
-	const totalVotes = $derived(results?.results.counts.totalVotes ?? 0);
-	const usableVotes = $derived(results?.results.counts.usableVotes ?? 0);
+	const totalVotes = $derived(data?.results.counts.totalVotes ?? 0);
+	const usableVotes = $derived(data?.results.counts.usableVotes ?? 0);
 
 	function isWinningOption(optionIndex: number) {
 		return winners.some((winner) => winner.optionIndex === optionIndex);
 	}
 </script>
 
-{#if results}
+{#if data}
 	<div
 		class={cn(
 			'rounded-lg border px-4 py-3',
-			winners.length > 0 && 'border-green-400 bg-green-50 text-green-800',
+			winners.length > 0 &&
+				'border-green-800/20 bg-green-50 text-green-800  dark:bg-green-700/10 dark:text-green-600',
 		)}
 	>
 		<div class="font-medium">Resultat</div>
@@ -60,7 +59,7 @@
 			{/if}
 		</div>
 	</div>
-	{#if poll?.isResultPublic || (!ps.isProjector && meeting.isAdmin && optionTotals.length > 0)}
+	{#if showDetailedResults}
 		<div class="space-y-4">
 			<div class="grid w-max grid-cols-2 gap-x-4 text-sm text-muted-foreground">
 				<span>Total mängd röster</span>
@@ -71,8 +70,8 @@
 
 				<span>Avstår</span>
 				<span>
-					{results.results.counts.abstain} st ({getVoteShare(
-						results.results.counts.abstain,
+					{data.results.counts.abstain} st ({getVoteShare(
+						data.results.counts.abstain,
 						totalVotes,
 					)}%)
 				</span>
@@ -82,23 +81,26 @@
 					{@render resultRow(option)}
 				{/each}
 				<Separator class="my-4" />
-				{#each optionTotals.slice(winners.length) as option, idx (option.optionIndex)}
+				{#each optionTotals.slice(winners.length) as option (option.optionIndex)}
 					{@render resultRow(option)}
 				{/each}
 			</ul>
 
-			<p class="text-sm text-muted-foreground">
-				Komplett resultat: {results.complete ? 'ja' : 'nej'}.
-			</p>
+			{#if data.complete !== undefined}
+				<p class="text-sm text-muted-foreground">
+					Komplett resultat: {data.complete ? 'ja' : 'nej'}.
+				</p>
+			{/if}
 		</div>
 	{/if}
 {/if}
 
-{#snippet resultRow(option: Omit<OptionTotal, 'votes'> & { votes: number | undefined })}
+{#snippet resultRow(option: { optionIndex: number; option: string; votes?: number })}
 	<li
 		class={cn(
 			'flex flex-col rounded-md border px-4 py-3',
-			isWinningOption(option.optionIndex) && 'border-green-400 bg-green-50 text-green-800',
+			isWinningOption(option.optionIndex) &&
+				'border-green-800/20 bg-green-50 text-green-800  dark:bg-green-700/10 dark:text-green-600',
 		)}
 	>
 		<div class="flex items-center justify-between gap-2">
