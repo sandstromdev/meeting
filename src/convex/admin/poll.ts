@@ -14,68 +14,29 @@ import {
 	assertPollEditable,
 	assertPollInMeeting,
 	buildPollResultSnapshot,
-	stripAbstain,
+	createPollHelper,
 	getLatestPollResultSnapshot,
 	getPollOrThrow,
+	optionsWithAbstainLast,
+	stripAbstain,
 	type OptionTotal,
 } from '$convex/helpers/poll';
 import { ABSTAIN_OPTION_LABEL, minimumVotesForMajority } from '$lib/polls';
-import { FullPollSchema, PollBaseSchema, PollDraftSchema, PollTypeSchema } from '$lib/validation';
+import { FullPollSchema, PollDraftSchema, RefinePollDraftSchema } from '$lib/validation';
 import { zid } from 'convex-helpers/server/zod4';
 import { z } from 'zod';
-
-function optionsWithAbstainLast(options: string[], allowsAbstain: boolean): string[] {
-	const withoutAbstain = options.filter((o) => o !== ABSTAIN_OPTION_LABEL);
-	return allowsAbstain ? [...withoutAbstain, ABSTAIN_OPTION_LABEL] : withoutAbstain;
-}
 
 export const createPoll = admin
 	.mutation()
 	.input({
 		agendaItemId: z.string().nullable(),
-		draft: PollDraftSchema,
+		draft: RefinePollDraftSchema,
 	})
 	.public(async ({ ctx, args }) => {
-		const agenda = ctx.meeting.agenda;
-
-		const found = args.agendaItemId ? findAgendaItemById(agenda, args.agendaItemId) : null;
-
-		if (args.agendaItemId) {
-			AppError.assertNotNull(found, appErrors.agenda_item_not_found(args.agendaItemId));
-		}
-
-		const draft = {
-			...args.draft,
-			meetingId: ctx.meeting._id,
-			agendaItemId: args.agendaItemId,
-			isOpen: false,
-			updatedAt: Date.now(),
-			openedAt: null,
-			closedAt: null,
-		};
-
-		draft.options = optionsWithAbstainLast(draft.options, draft.allowsAbstain);
-
-		const validated = PollBaseSchema.omit({ _id: true, _creationTime: true })
-			.and(PollTypeSchema)
-			.safeParse(draft);
-
-		AppError.assertZodSuccess(validated, (e) => {
-			console.log(z.prettifyError(e));
-			return appErrors.invalid_poll_draft(e);
+		return await createPollHelper(ctx, {
+			...args,
+			updateAgenda: true,
 		});
-
-		const pollId = await ctx.db.insert('polls', validated.data);
-
-		if (found) {
-			const nextAgenda = setPollIdsForItem(agenda, found.item.id, [...found.item.pollIds, pollId]);
-
-			await ctx.db.patch('meetings', ctx.meeting._id, {
-				agenda: nextAgenda,
-			});
-		}
-
-		return pollId;
 	});
 
 export const editPoll = admin
@@ -92,17 +53,40 @@ export const editPoll = admin
 
 		const nextAllowsAbstain = args.edits.allowsAbstain ?? poll.allowsAbstain;
 		const rawOptions = args.edits.options ?? poll.options;
-		const options = optionsWithAbstainLast(rawOptions, nextAllowsAbstain);
-		const userOptionsCount =
-			options[options.length - 1] === ABSTAIN_OPTION_LABEL ? options.length - 1 : options.length;
+		/** Draft-shaped options (no stored `Avstår` row) for `PollDraftSchema` / refine. */
+		const draftOptions = rawOptions.filter((o) => o !== ABSTAIN_OPTION_LABEL);
+		const mergedType = args.edits.type ?? poll.type;
 
-		AppError.assert(
-			userOptionsCount >= 1 && (userOptionsCount >= 2 || nextAllowsAbstain),
-			appErrors.invalid_poll_vote_limit({
-				maxVotesPerVoter: 1,
-				optionsCount: userOptionsCount,
-			}),
-		);
+		const draftForRefine =
+			mergedType === 'multi_winner'
+				? {
+						title: args.edits.title ?? poll.title,
+						options: draftOptions,
+						type: 'multi_winner' as const,
+						winningCount:
+							args.edits.winningCount ??
+							(poll.type === 'multi_winner' ? poll.winningCount : undefined),
+						isResultPublic: args.edits.isResultPublic ?? poll.isResultPublic,
+						allowsAbstain: nextAllowsAbstain,
+						maxVotesPerVoter: args.edits.maxVotesPerVoter ?? poll.maxVotesPerVoter,
+					}
+				: {
+						title: args.edits.title ?? poll.title,
+						options: draftOptions,
+						type: 'single_winner' as const,
+						winningCount: args.edits.winningCount ?? 1,
+						majorityRule:
+							args.edits.majorityRule ??
+							(poll.type === 'single_winner' ? poll.majorityRule : undefined),
+						isResultPublic: args.edits.isResultPublic ?? poll.isResultPublic,
+						allowsAbstain: nextAllowsAbstain,
+						maxVotesPerVoter: args.edits.maxVotesPerVoter ?? poll.maxVotesPerVoter,
+					};
+
+		const refinedDraft = RefinePollDraftSchema.safeParse(draftForRefine);
+		AppError.assertZodSuccess(refinedDraft, appErrors.invalid_poll_draft);
+
+		const options = optionsWithAbstainLast(rawOptions, nextAllowsAbstain);
 
 		let updatedFields = {
 			...poll,

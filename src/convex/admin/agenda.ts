@@ -2,7 +2,7 @@ import { internal } from '$convex/_generated/api';
 import {
 	appendToAgenda,
 	canMoveSubtree,
-	createNewAgendaItem,
+	createAgendaItemId,
 	findAgendaItemById,
 	findAgendaItemOrThrow,
 	getNextAgendaItem,
@@ -10,43 +10,70 @@ import {
 	moveSubtree,
 	removeItemKeepChildren,
 	removeSubtree,
-	updateAgendaItemById,
 	setPollIdsForItem,
+	updateAgendaItemById,
 	type AgendaItem,
 	type AgendaItemId,
 } from '$convex/helpers/agenda';
 import { admin } from '$convex/helpers/auth';
+import { AppError, appErrors } from '$convex/helpers/error';
+import {
+	assertPollEditable,
+	assertPollInMeeting,
+	createPollHelper,
+	getPollOrThrow,
+	optionsWithAbstainLast,
+} from '$convex/helpers/poll';
+import { FullPollSchema, PollDraftSchema, RefinePollDraftSchema } from '$lib/validation';
 import { zid } from 'convex-helpers/server/zod4';
 import { z } from 'zod';
+import type { Id } from '$convex/_generated/dataModel';
 
 export const createAgendaItem = admin
 	.mutation()
 	.input({
 		title: z.string().trim().nonempty(),
 		parentId: z.string().nonempty().optional(),
+		polls: z.array(RefinePollDraftSchema),
 	})
 	.public(async ({ ctx, args }) => {
 		const agenda = ctx.meeting.agenda;
 
 		const { parentId } = args;
 
+		const agendaItemId = createAgendaItemId();
+
+		console.log({ args, agendaItemId });
+
+		const pollIds = await Promise.all(
+			args.polls.map(async (poll) => {
+				return await createPollHelper(ctx, {
+					draft: poll,
+					agendaItemId,
+					updateAgenda: false,
+				});
+			}),
+		);
+
+		const newItem = {
+			id: agendaItemId,
+			title: args.title,
+			pollIds,
+			depth: 0,
+		} satisfies AgendaItem;
+
 		if (parentId) {
 			const parent = findAgendaItemOrThrow(agenda, parentId);
 
-			const newChild = createNewAgendaItem(args.title, parent.item.depth + 1);
-			const nextAgenda = appendToAgenda(agenda, parentId, newChild);
-
-			await ctx.db.patch('meetings', ctx.meeting._id, {
-				agenda: nextAgenda,
-				currentAgendaItemId: ctx.meeting.currentAgendaItemId ?? newChild.id,
-			});
-
-			return newChild;
+			newItem.depth = parent.item.depth + 1;
 		}
 
-		const newItem = createNewAgendaItem(args.title, 0);
+		const nextAgenda = appendToAgenda(agenda, newItem, parentId);
 
-		const nextAgenda = [...agenda, newItem];
+		console.log({
+			nextAgenda,
+			newItem,
+		});
 
 		await ctx.db.patch('meetings', ctx.meeting._id, {
 			agenda: nextAgenda,
@@ -61,17 +88,112 @@ export const updateAgendaItem = admin
 	.input({
 		agendaItemId: z.string().min(1),
 		title: z.string().trim().min(1).optional(),
+		polls: z.array(PollDraftSchema.extend({ id: zid('polls').optional() })),
 	})
 	.public(async ({ ctx, args }) => {
 		const agendaNow = ctx.meeting.agenda;
-		findAgendaItemOrThrow(agendaNow, args.agendaItemId);
 
-		const agenda = updateAgendaItemById(agendaNow, args.agendaItemId, (item) => ({
-			...item,
-			title: args.title ?? item.title,
+		const { item } = findAgendaItemOrThrow(agendaNow, args.agendaItemId);
+
+		for (const poll of args.polls) {
+			const refined = RefinePollDraftSchema.safeParse(poll);
+			AppError.assertZodSuccess(refined, appErrors.invalid_poll_draft);
+		}
+
+		const oldPollIds = item.pollIds;
+		const newPollIds = new Set<Id<'polls'>>();
+		const seenExisting = new Set<Id<'polls'>>();
+
+		for (const poll of args.polls) {
+			if (poll.id) {
+				AppError.assert(
+					!seenExisting.has(poll.id),
+					appErrors.bad_request({ reason: 'duplicate_poll_id_in_request', pollId: poll.id }),
+				);
+
+				seenExisting.add(poll.id);
+
+				AppError.assert(
+					oldPollIds.includes(poll.id),
+					appErrors.bad_request({ reason: 'poll_not_on_agenda_item', pollId: poll.id }),
+				);
+
+				const existing = await getPollOrThrow(ctx.db, poll.id);
+
+				assertPollInMeeting(existing, ctx.meeting._id);
+				assertPollEditable(existing);
+
+				const nextAllowsAbstain = poll.allowsAbstain;
+				const options = optionsWithAbstainLast(poll.options, nextAllowsAbstain);
+
+				const base = {
+					...existing,
+					title: poll.title,
+					options,
+					isResultPublic: poll.isResultPublic,
+					allowsAbstain: poll.allowsAbstain,
+					maxVotesPerVoter: poll.maxVotesPerVoter,
+					updatedAt: Date.now(),
+				};
+
+				const merged =
+					poll.type === 'multi_winner'
+						? (() => {
+								const winningCount = poll.winningCount;
+								AppError.assert(
+									winningCount != null && winningCount >= 1,
+									appErrors.invalid_poll_type_config({
+										kind: 'winningCount',
+										value: winningCount ?? 0,
+										optionsCount: poll.options.length,
+									}),
+								);
+								return { ...base, type: 'multi_winner' as const, winningCount };
+							})()
+						: (() => {
+								const majorityRule = poll.majorityRule;
+								AppError.assert(
+									majorityRule != null,
+									appErrors.invalid_poll_type_config({ kind: 'majorityRule_required' }),
+								);
+								return { ...base, type: 'single_winner' as const, majorityRule };
+							})();
+
+				const validated = FullPollSchema.safeParse(merged);
+				AppError.assertZodSuccess(validated, appErrors.invalid_poll_draft);
+
+				await ctx.db.replace('polls', poll.id, validated.data);
+				newPollIds.add(poll.id);
+			} else {
+				const pollId = await createPollHelper(ctx, {
+					draft: poll,
+					agendaItemId: args.agendaItemId,
+					updateAgenda: false,
+				});
+				newPollIds.add(pollId);
+			}
+		}
+
+		const removedPollIds = oldPollIds.filter((id) => !newPollIds.has(id));
+		const clearsCurrentPoll =
+			!!ctx.meeting.currentPollId && removedPollIds.includes(ctx.meeting.currentPollId);
+
+		if (removedPollIds.length > 0) {
+			await ctx.scheduler.runAfter(0, internal.admin.poll.cleanupPollAgendaItemIds, {
+				pollIds: removedPollIds,
+			});
+		}
+
+		const agenda = updateAgendaItemById(agendaNow, args.agendaItemId, (agendaItem) => ({
+			...agendaItem,
+			title: args.title ?? agendaItem.title,
+			pollIds: Array.from(newPollIds),
 		}));
 
-		await ctx.db.patch('meetings', ctx.meeting._id, { agenda });
+		await ctx.db.patch('meetings', ctx.meeting._id, {
+			agenda,
+			...(clearsCurrentPoll ? { currentPollId: null } : {}),
+		});
 
 		const foundAfter = findAgendaItemById(agenda, args.agendaItemId);
 

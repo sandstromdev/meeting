@@ -27,15 +27,15 @@
 
 		!meeting.isCurrentSpeaker &&
 			cs.type === 'point_of_order' &&
-			'border-blue-800/20 bg-blue-100 text-blue-900',
+			'border-blue-800/20 bg-blue-100 text-blue-900 dark:bg-blue-700/10 dark:text-blue-400',
 
 		!meeting.isCurrentSpeaker &&
 			cs.type === 'reply' &&
-			'border-yellow-800/20 bg-yellow-100 text-yellow-900',
+			'border-yellow-800/20 bg-yellow-100 text-yellow-900 dark:bg-yellow-700/10 dark:text-yellow-400',
 
 		!ps.isProjector &&
 			meeting.isCurrentSpeaker &&
-			'border-green-800/20 bg-green-100 text-green-900',
+			'border-green-800/20 bg-green-100 text-green-900 dark:bg-green-700/10 dark:text-green-400',
 	)}
 >
 	<div>
