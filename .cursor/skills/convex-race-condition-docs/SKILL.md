@@ -97,11 +97,19 @@ Use this structure unless the user requests something else:
 
 ## Writing Guidance
 
+### Metadata
+
+At least, include ai model name and datetime.
+
 ### Explain Convex Correctly
 
 When discussing concurrency in this project's Convex backend:
 
 - Explain that Convex uses optimistic concurrency control (OCC).
+- Explain that Convex does not provide uniqueness constraints or other relational database-style constraints by default.
+- Explain that mutations run as transactions on a read snapshot; if any document read by the mutation changes before commit, Convex retries the mutation.
+- Do not claim that two concurrent mutations can both commit from the same initial read state when that read set changes.
+- For patterns like `read existing -> delete existing -> insert new`, avoid claiming both concurrent writers can pass the same initial read and both commit; once the first commit changes the read input, the other attempt is retried against a new snapshot.
 - Do not call every query-then-update pattern a bug.
 - Treat many overlaps as retry scenarios unless there is a clear path to silent inconsistency or broken sequencing.
 - Highlight hot-document risk when many mutations patch the same document.
