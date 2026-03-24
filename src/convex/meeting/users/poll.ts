@@ -14,102 +14,7 @@ import {
 import { zid } from 'convex-helpers/server/zod4';
 import { z } from 'zod';
 
-export const vote = withMe
-	.mutation()
-	.input({
-		pollId: zid('polls'),
-		optionIndexes: z.array(z.number().int().nonnegative()).min(1),
-	})
-	.public(async ({ ctx, args }) => {
-		const poll = await getPollOrThrow(ctx.db, args.pollId);
-
-		assertPollInMeeting(poll, ctx.meeting._id);
-
-		AppError.assert(ctx.me.absentSince <= 0, appErrors.illegal_while_absent('vote'));
-		AppError.assert(poll.isOpen, appErrors.illegal_poll_action('vote_while_closed'));
-
-		const uniqueOptionIndexes = [...new Set(args.optionIndexes)];
-
-		AppError.assert(
-			uniqueOptionIndexes.length === args.optionIndexes.length,
-			appErrors.illegal_poll_action('duplicate_vote_option'),
-		);
-
-		const maxVotesPerVoter =
-			poll.type === 'multi_winner' ? poll.winningCount : poll.maxVotesPerVoter;
-
-		AppError.assert(
-			uniqueOptionIndexes.length <= maxVotesPerVoter,
-			appErrors.illegal_poll_action('too_many_votes'),
-		);
-
-		for (const optionIndex of uniqueOptionIndexes) {
-			AppError.assert(
-				optionIndex >= 0 && optionIndex < poll.options.length,
-				appErrors.invalid_poll_option(optionIndex),
-			);
-		}
-
-		const existingVotes = await ctx.db
-			.query('pollVotes')
-			.withIndex('by_poll_user', (q) => q.eq('pollId', args.pollId).eq('userId', ctx.me._id))
-			.collect();
-
-		if (existingVotes.length > 0) {
-			await Promise.all(existingVotes.map((v) => ctx.db.delete('pollVotes', v._id)));
-			await getVotesCounter(ctx.meeting._id, args.pollId).subtract(ctx, existingVotes.length);
-		}
-
-		await Promise.all(
-			uniqueOptionIndexes.map((optionIndex) =>
-				ctx.db.insert('pollVotes', {
-					meetingId: ctx.meeting._id,
-					pollId: args.pollId,
-					userId: ctx.me._id,
-					optionIndex,
-				}),
-			),
-		);
-
-		const counterUpdates: Promise<unknown>[] = [
-			getVotesCounter(ctx.meeting._id, args.pollId).add(ctx, uniqueOptionIndexes.length),
-		];
-		if (existingVotes.length === 0) {
-			counterUpdates.push(getVotersCounter(ctx.meeting._id, args.pollId).inc(ctx));
-		}
-		await Promise.all(counterUpdates);
-
-		return true;
-	});
-
-export const retractVote = withMe
-	.mutation()
-	.input({
-		pollId: zid('polls'),
-	})
-	.public(async ({ ctx, args }) => {
-		const poll = await getPollOrThrow(ctx.db, args.pollId);
-
-		assertPollInMeeting(poll, ctx.meeting._id);
-
-		AppError.assert(ctx.me.absentSince <= 0, appErrors.illegal_while_absent('vote'));
-		AppError.assert(poll.isOpen, appErrors.illegal_poll_action('vote_while_closed'));
-
-		const existingVotes = await ctx.db
-			.query('pollVotes')
-			.withIndex('by_poll_user', (q) => q.eq('pollId', args.pollId).eq('userId', ctx.me._id))
-			.collect();
-
-		if (existingVotes.length === 0) {
-			return true;
-		}
-
-		await Promise.all(existingVotes.map((v) => ctx.db.delete('pollVotes', v._id)));
-		await getVotesCounter(ctx.meeting._id, args.pollId).subtract(ctx, existingVotes.length);
-		await getVotersCounter(ctx.meeting._id, args.pollId).dec(ctx);
-
-		return true;
-	});
+// --- Public queries ---
 
 export const getPollsByAgendaItemId = withMe
 	.query()
@@ -265,4 +170,105 @@ export const getPollResultsById = withMe
 				counts: result.results.counts,
 			},
 		};
+	});
+
+// --- Public mutations ---
+
+export const vote = withMe
+	.mutation()
+	.input({
+		pollId: zid('polls'),
+		optionIndexes: z.array(z.number().int().nonnegative()).min(1),
+	})
+	.public(async ({ ctx, args }) => {
+		const poll = await getPollOrThrow(ctx.db, args.pollId);
+
+		assertPollInMeeting(poll, ctx.meeting._id);
+
+		AppError.assert(ctx.me.absentSince <= 0, appErrors.illegal_while_absent('vote'));
+		AppError.assert(poll.isOpen, appErrors.illegal_poll_action('vote_while_closed'));
+
+		const uniqueOptionIndexes = [...new Set(args.optionIndexes)];
+
+		AppError.assert(
+			uniqueOptionIndexes.length === args.optionIndexes.length,
+			appErrors.illegal_poll_action('duplicate_vote_option'),
+		);
+
+		const maxVotesPerVoter =
+			poll.type === 'multi_winner'
+				? (poll.winningCount ?? poll.maxVotesPerVoter)
+				: poll.maxVotesPerVoter;
+
+		AppError.assert(
+			uniqueOptionIndexes.length <= maxVotesPerVoter,
+			appErrors.illegal_poll_action('too_many_votes'),
+		);
+
+		for (const optionIndex of uniqueOptionIndexes) {
+			AppError.assert(
+				optionIndex >= 0 && optionIndex < poll.options.length,
+				appErrors.invalid_poll_option(optionIndex),
+			);
+		}
+
+		const existingVotes = await ctx.db
+			.query('pollVotes')
+			.withIndex('by_poll_user', (q) => q.eq('pollId', args.pollId).eq('userId', ctx.me._id))
+			.collect();
+
+		if (existingVotes.length > 0) {
+			await Promise.all(existingVotes.map((v) => ctx.db.delete('pollVotes', v._id)));
+			await getVotesCounter(ctx.meeting._id, args.pollId).subtract(ctx, existingVotes.length);
+		}
+
+		await Promise.all(
+			uniqueOptionIndexes.map((optionIndex) =>
+				ctx.db.insert('pollVotes', {
+					meetingId: ctx.meeting._id,
+					pollId: args.pollId,
+					userId: ctx.me._id,
+					optionIndex,
+				}),
+			),
+		);
+
+		const counterUpdates: Promise<unknown>[] = [
+			getVotesCounter(ctx.meeting._id, args.pollId).add(ctx, uniqueOptionIndexes.length),
+		];
+		if (existingVotes.length === 0) {
+			counterUpdates.push(getVotersCounter(ctx.meeting._id, args.pollId).inc(ctx));
+		}
+		await Promise.all(counterUpdates);
+
+		return true;
+	});
+
+export const retractVote = withMe
+	.mutation()
+	.input({
+		pollId: zid('polls'),
+	})
+	.public(async ({ ctx, args }) => {
+		const poll = await getPollOrThrow(ctx.db, args.pollId);
+
+		assertPollInMeeting(poll, ctx.meeting._id);
+
+		AppError.assert(ctx.me.absentSince <= 0, appErrors.illegal_while_absent('vote'));
+		AppError.assert(poll.isOpen, appErrors.illegal_poll_action('vote_while_closed'));
+
+		const existingVotes = await ctx.db
+			.query('pollVotes')
+			.withIndex('by_poll_user', (q) => q.eq('pollId', args.pollId).eq('userId', ctx.me._id))
+			.collect();
+
+		if (existingVotes.length === 0) {
+			return true;
+		}
+
+		await Promise.all(existingVotes.map((v) => ctx.db.delete('pollVotes', v._id)));
+		await getVotesCounter(ctx.meeting._id, args.pollId).subtract(ctx, existingVotes.length);
+		await getVotersCounter(ctx.meeting._id, args.pollId).dec(ctx);
+
+		return true;
 	});

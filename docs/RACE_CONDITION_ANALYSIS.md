@@ -37,20 +37,16 @@ Two active correctness risks remain where OCC does not reliably serialize behavi
 - `src/convex/helpers/poll.ts`
 - `src/convex/helpers/standalone_poll.ts`
 - `src/convex/helpers/counters.ts`
-- `src/convex/users/auth.ts`
-- `src/convex/users/meeting.ts`
-- `src/convex/users/queue.ts`
-- `src/convex/users/attendance.ts`
-- `src/convex/users/poll.ts`
-- `src/convex/admin/meeting.ts`
-- `src/convex/admin/agenda.ts`
-- `src/convex/admin/poll.ts`
-- `src/convex/admin/users.ts`
-- `src/convex/admin/standalone_poll.ts`
-- `src/convex/moderator/meeting.ts`
-- `src/convex/public/standalone_poll.ts`
-- `src/convex/heartbeat.ts`
-- `src/convex/backup.ts`
+- `src/convex/meeting/users/auth.ts`
+- `src/convex/meeting/users/queue.ts`
+- `src/convex/meeting/users/attendance.ts`
+- `src/convex/meeting/users/poll.ts`
+- `src/convex/meeting/admin/meeting.ts`
+- `src/convex/meeting/admin/agenda.ts`
+- `src/convex/meeting/admin/poll.ts`
+- `src/convex/meeting/admin/users.ts`
+- `src/convex/meeting/moderator/meeting.ts`
+- `src/convex/meeting/jobs/snapshots.ts`
 - `src/convex/crons.ts`
 
 ### Review Method
@@ -103,10 +99,7 @@ Each sensitive flow was mapped to:
 
 **Classification**: Active correctness risk
 
-**Where**:
-
-- `src/convex/users/poll.ts` (`vote`)
-- `src/convex/public/standalone_poll.ts` (`vote`)
+**Where**: `ensureParticipantInMeeting` in `src/convex/helpers/users.ts`, called by `meeting/users/auth.connect` and `meeting/admin/users.addParticipant`
 
 **Reasoning**:
 
@@ -124,31 +117,21 @@ Each sensitive flow was mapped to:
 
 **Classification**: Contention / retry risk
 
-**Where**:
+**Where**: Many mutations in `meeting/admin/meeting`, `meeting/admin/agenda`, `meeting/admin/poll`, `meeting/moderator/meeting`, `meeting/users/queue`, and `meeting/admin/users` patch `meetings`.
 
-- `admin/meeting`, `admin/agenda`, `admin/poll`, `moderator/meeting`, `users/queue`, `admin/users`
+**Why it matters**:
 
-**Reasoning**:
-
-- These flows frequently patch one `meetings` row (`agenda`, `currentAgendaItemId`, `currentPollId`, `currentSpeaker`, `previousSpeaker`, request flags, open/close state).
-- Under bursts, many valid operations collide even when touching different fields.
-
-**Practical impact**:
-
-- Retry-driven latency or occasional user-visible "action did not go through".
-- No confirmed silent corruption from this pattern alone.
+- Different controls still converge on one document.
+- OCC safely retries but conflict frequency grows during bursts.
+- End-user symptom is usually transient failed actions/latency, not confirmed silent corruption.
 
 ### 4) Agenda array rewrites increase collision surface
 
 **Classification**: Contention / retry risk
 
-**Where**:
+**Where**: Agenda operations in `src/convex/meeting/admin/agenda.ts` and poll operations that rewrite `meeting.agenda` associations in `src/convex/meeting/admin/poll.ts`
 
-- `src/convex/admin/agenda.ts`
-- `src/convex/helpers/poll.ts` (agenda linkage updates during poll creation)
-- `src/convex/admin/poll.ts` (agenda poll-id maintenance)
-
-**Reasoning**:
+**Why it matters**:
 
 - Full `agenda` array replacement is common for create/move/remove/update operations.
 - Longer/more complex mutations touching `agenda` are more likely to collide with speaker/poll control patches on `meetings`.
@@ -162,10 +145,7 @@ Each sensitive flow was mapped to:
 
 **Classification**: Contention / retry risk (low correctness risk)
 
-**Where**:
-
-- `src/convex/moderator/meeting.ts` (`nextSpeaker`, `previousSpeaker`)
-- `src/convex/users/queue.ts` (`doneSpeaking`, queue insert/recall)
+**Where**: `meeting/moderator/meeting.nextSpeaker`, `meeting/users/queue.doneSpeaking`, queue insert/remove flows
 
 **Reasoning**:
 
@@ -180,21 +160,12 @@ Each sensitive flow was mapped to:
 
 **Classification**: Contention / retry risk
 
-**Where**:
+**Where**: `meeting/admin/poll.openPoll`, `closePollByAdmin`, `closePollAndShowResults`, and `meeting/admin/meeting.toggleMeeting`
 
-- `src/convex/admin/poll.ts` (`openPoll`, `closePollByAdmin`, `closePollAndShowResults`, `cancelPoll`)
-- `src/convex/admin/meeting.ts` (`toggleMeeting`)
-- snapshot internals in `admin/poll` and `admin/standalone_poll`
+**Current behavior**:
 
-**Reasoning**:
-
-- Concurrent poll open/close/show actions contend on both poll rows and `meetings.currentPollId`.
-- Snapshot insertion guards on `closedAt` reduce duplicate snapshots for the same close event.
-
-**Practical impact**:
-
-- Retry-driven failures are plausible under admin bursts.
-- Snapshot duplication risk appears controlled for identical close timestamps.
+- Overlapping admin actions can collide on poll row and meeting pointer updates.
+- Poll snapshot insertion path is guarded by `closedAt` check in `insertPollResultSnapshot`, reducing duplicate snapshot writes for the same close timestamp.
 
 ### 7) Heartbeat upsert pattern can create duplicate rows
 
@@ -218,11 +189,7 @@ Each sensitive flow was mapped to:
 
 **Classification**: Low-risk pattern currently mitigated
 
-**Where**:
-
-- `logSpeakerSlot` scheduling `internal.admin.meeting.logSpeaker`
-- poll vote cleanup and poll-result snapshot actions
-- `backup.runOpenMeetingSnapshots`
+**Where**: `logSpeakerSlot` scheduling `internal.meeting.jobs.speaker_log.logSpeaker`, poll snapshot action (`internal.meeting.jobs.poll_close.createPollResultSnapshotAction`), vote cleanup (`internal.meeting.jobs.poll_cleanup.*`), meeting snapshot cron (`internal.meeting.jobs.snapshots.runOpenMeetingSnapshots`)
 
 **Reasoning**:
 
@@ -241,9 +208,8 @@ The highest-priority risks are the logical uniqueness gaps in participant creati
 
 ## Notes
 
-- This review intentionally distinguishes logical uniqueness races from normal OCC retries.
-- Prior analysis themes about `meetings` hot-spot behavior remain valid in current code.
-- The new/clearer active concern in this pass is voter-level upsert concurrency in both meeting and standalone poll vote flows.
+- `meeting/users/meeting.getData` normalizes `currentAgendaItemId` in query output if the stored ID is no longer present; this is read-side repair, not a write race.
+- Identity mapping still uses `ctx.user.subject` in participant lookup and connect paths; keep join and lookup identity source aligned if auth identity handling changes.
 
 ## Summary
 

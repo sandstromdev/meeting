@@ -10,7 +10,7 @@
 	const meeting = getMeetingContext();
 	const currentAgendaItem = $derived(meeting.agenda.currentItem ?? null);
 	const currentPollId = $derived(meeting.meeting.currentPollId);
-	const pollsResult = meeting.adminQuery(api.admin.poll.getPollsByAgendaItemId, () =>
+	const pollsResult = meeting.adminQuery(api.meeting.admin.poll.getPollsByAgendaItemId, () =>
 		currentAgendaItem ? { agendaItemId: currentAgendaItem.id } : 'skip',
 	);
 
@@ -57,7 +57,9 @@
 									variant="outline"
 									onClickPromise={() =>
 										notifyMutation('Omröstning stängd.', () =>
-											meeting.adminMutate(api.admin.poll.closePollByAdmin, { pollId: poll._id }),
+											meeting.adminMutate(api.meeting.admin.poll.closePollByAdmin, {
+												pollId: poll._id,
+											}),
 										)}
 								>
 									Stäng
@@ -67,7 +69,9 @@
 									size="sm"
 									onClickPromise={() =>
 										notifyMutation('Resultat visas för deltagare.', () =>
-											meeting.adminMutate(api.admin.poll.showPollResults, { pollId: poll._id }),
+											meeting.adminMutate(api.meeting.admin.poll.showPollResults, {
+												pollId: poll._id,
+											}),
 										)}>Visa resultat</Button
 								>
 								<Button
@@ -75,7 +79,9 @@
 									variant="outline"
 									onClickPromise={() =>
 										notifyMutation('Omröstning duplicerad.', () =>
-											meeting.adminMutate(api.admin.poll.duplicatePoll, { pollId: poll._id }),
+											meeting.adminMutate(api.meeting.admin.poll.duplicatePoll, {
+												pollId: poll._id,
+											}),
 										)}
 								>
 									Duplicera
@@ -91,7 +97,7 @@
 												notifyMutation(
 													'Omröstning borttagen.',
 													() =>
-														meeting.adminMutate(api.admin.poll.removePoll, {
+														meeting.adminMutate(api.meeting.admin.poll.removePoll, {
 															pollId: poll._id,
 														}),
 													{ rethrow: true },
@@ -105,7 +111,7 @@
 									size="sm"
 									onClickPromise={() =>
 										notifyMutation('Omröstning öppnad.', () =>
-											meeting.adminMutate(api.admin.poll.openPoll, { pollId: poll._id }),
+											meeting.adminMutate(api.meeting.admin.poll.openPoll, { pollId: poll._id }),
 										)}>Öppna</Button
 								>
 							{/if}

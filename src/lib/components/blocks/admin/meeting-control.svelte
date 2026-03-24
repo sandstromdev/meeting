@@ -36,12 +36,12 @@
 	async function handleToggleMeeting() {
 		const wasOpen = doc.isOpen;
 		await notifyMutation(wasOpen ? 'Mötet stängdes.' : 'Mötet öppnades.', () =>
-			meeting.adminMutate(api.admin.meeting.toggleMeeting),
+			meeting.adminMutate(api.meeting.admin.meeting.toggleMeeting),
 		);
 	}
 
 	async function handleTriggerSnapshot() {
-		const result = await meeting.adminMutate(api.admin.meeting.triggerMeetingSnapshot);
+		const result = await meeting.adminMutate(api.meeting.admin.meeting.triggerMeetingSnapshot);
 		if (result === undefined) {
 			return;
 		}
@@ -63,7 +63,7 @@
 			onConfirm: () =>
 				notifyMutation(
 					'Mötet återställdes.',
-					() => meeting.adminMutate(api.admin.meeting.resetMeeting),
+					() => meeting.adminMutate(api.meeting.admin.meeting.resetMeeting),
 					{
 						rethrow: true,
 					},
@@ -93,7 +93,7 @@
 			await notifyMutation(
 				'Mötesdata sparades.',
 				() =>
-					meeting.adminMutate(api.admin.meeting.updateMeetingData, {
+					meeting.adminMutate(api.meeting.admin.meeting.updateMeetingData, {
 						title: title.trim(),
 						code: code.trim(),
 						date: dateTs,

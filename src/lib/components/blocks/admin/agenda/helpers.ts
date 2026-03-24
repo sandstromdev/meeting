@@ -24,7 +24,7 @@ export function removeAgendaItemWithChoice(meeting: MeetingState, itemId: string
 				notifyMutation(
 					'Underpunkt borttagen.',
 					() =>
-						meeting.adminMutate(api.admin.agenda.removeAgendaItem, {
+						meeting.adminMutate(api.meeting.admin.agenda.removeAgendaItem, {
 							agendaItemId: itemId,
 							deletionMode: 'delete_subtree',
 						}),
@@ -50,7 +50,7 @@ export function removeAgendaItemWithChoice(meeting: MeetingState, itemId: string
 					notifyMutation(
 						'Underpunkt borttagen (djupare nivåer behölls).',
 						() =>
-							meeting.adminMutate(api.admin.agenda.removeAgendaItem, {
+							meeting.adminMutate(api.meeting.admin.agenda.removeAgendaItem, {
 								agendaItemId: itemId,
 								deletionMode: 'keep_children',
 							}),
@@ -64,7 +64,7 @@ export function removeAgendaItemWithChoice(meeting: MeetingState, itemId: string
 				variant: 'destructive',
 				onClick: () => {
 					notifyMutation('Underpunkt borttagen (djupare nivåer behölls).', () =>
-						meeting.adminMutate(api.admin.agenda.removeAgendaItem, {
+						meeting.adminMutate(api.meeting.admin.agenda.removeAgendaItem, {
 							agendaItemId: itemId,
 							deletionMode: 'delete_subtree',
 						}),

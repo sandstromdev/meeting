@@ -7,6 +7,6 @@ export const load = (async ({ url }) => {
 	redirectIfNotAuthed(`/sign-in?redirect=${encodeURIComponent(url.pathname)}`);
 
 	return {
-		currentUser: await convexLoad(api.me.getCurrentUser, {}),
+		currentUser: await convexLoad(api.app.me.getCurrentUser, {}),
 	};
 }) satisfies LayoutServerLoad;

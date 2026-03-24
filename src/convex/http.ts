@@ -31,10 +31,13 @@ http.route({
 		}
 
 		try {
-			const payload = await ctx.runQuery(internal.backup.getMeetingSnapshotForExport, {
-				meetingId: meetingId,
-				tokenIdentifier: identity.subject,
-			});
+			const payload = await ctx.runQuery(
+				internal.meeting.jobs.snapshots.getMeetingSnapshotForExport,
+				{
+					meetingId: meetingId,
+					tokenIdentifier: identity.subject,
+				},
+			);
 			if (payload === null) {
 				return appErrors.meeting_not_found({ meetingId }).toJsonResponse();
 			}

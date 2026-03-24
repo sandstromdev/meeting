@@ -5,12 +5,16 @@ import { MeetingCode } from '$lib/validation';
 import { zid } from 'convex-helpers/server/zod4';
 import { ensureParticipantInMeeting, pickParticipantData } from '$convex/helpers/users';
 
+// --- Public queries ---
+
 export const getUserData = withMe
 	.input({ meetingId: zid('meetings') })
 	.query()
 	.public(async ({ ctx, args }) => {
 		return pickParticipantData(await getMeetingParticipant(ctx, args.meetingId));
 	});
+
+// --- Public mutations ---
 
 export const connect = authed
 	.mutation()

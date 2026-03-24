@@ -40,7 +40,7 @@
 		await notifyMutation(
 			'Underpunkt tillagd.',
 			() =>
-				meeting.adminMutate(api.admin.agenda.createAgendaItem, {
+				meeting.adminMutate(api.meeting.admin.agenda.createAgendaItem, {
 					title: newSubItemTitle.trim(),
 					parentId: parentItemId,
 					polls: [],

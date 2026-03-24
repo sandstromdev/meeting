@@ -9,7 +9,7 @@ Use this when scoping tickets so work is additive rather than duplicated.
 **Meetings**
 
 - Documents have `code`, `title`, `date`, `agenda`, `isOpen`, `startedAt`, speaker queue / current speaker state, and related request slots (break, point of order, reply). Index `by_code` exists; there is **no** app mutation that inserts a new meeting row—meetings are expected to be provisioned outside the app today.
-- Admins can update `title`, `code`, and `date` in-meeting via `admin.updateMeetingData` (code uniqueness enforced). Open/close session is `toggleMeeting` (boolean `isOpen`), not a full lifecycle `status` enum yet.
+- Admins can update `title`, `code`, and `date` in-meeting via `meeting/admin/meeting:updateMeetingData` (code uniqueness enforced). Open/close session is `toggleMeeting` (boolean `isOpen`), not a full lifecycle `status` enum yet.
 
 **Join and participants**
 
@@ -17,7 +17,7 @@ Use this when scoping tickets so work is additive rather than duplicated.
 
 **Live meeting features**
 
-- Agenda editing, polls, voting, projector/admin/moderator surfaces, snapshots/backup helpers, heartbeats.
+- Agenda editing, polls, voting, projector/admin/moderator surfaces, snapshots/backup helpers.
 
 **Auth and admin shell**
 

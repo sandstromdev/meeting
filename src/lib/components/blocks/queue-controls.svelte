@@ -51,7 +51,7 @@
 			<Button
 				class="mx-auto w-full"
 				{size}
-				onClickPromise={() => meeting.mutate(api.users.queue.doneSpeaking)}
+				onClickPromise={() => meeting.mutate(api.meeting.users.queue.doneSpeaking)}
 			>
 				Klar
 			</Button>
@@ -62,10 +62,10 @@
 				disabled={!isCurrentSpeaker && !canJoinQueue && !isInQueue}
 				onClickPromise={() =>
 					isCurrentSpeaker
-						? meeting.mutate(api.users.queue.doneSpeaking)
+						? meeting.mutate(api.meeting.users.queue.doneSpeaking)
 						: isInQueue
-							? meeting.mutate(api.users.queue.recallSpeakerQueueRequest)
-							: meeting.mutate(api.users.queue.placeInSpeakerQueue)}
+							? meeting.mutate(api.meeting.users.queue.recallSpeakerQueueRequest)
+							: meeting.mutate(api.meeting.users.queue.placeInSpeakerQueue)}
 			>
 				{#if isInQueue}
 					<LogOutIcon class="size-4" />
@@ -98,7 +98,7 @@
 							variant="outline"
 							{size}
 							onClickPromise={() =>
-								meeting.mutate(api.users.queue.request, { type: 'pointOfOrder' })}
+								meeting.mutate(api.meeting.users.queue.request, { type: 'pointOfOrder' })}
 							type="button"
 						>
 							Ordningsfråga
@@ -108,7 +108,7 @@
 							variant="outline"
 							{size}
 							onClickPromise={() =>
-								meeting.mutate(api.users.queue.recallRequest, { type: 'pointOfOrder' })}
+								meeting.mutate(api.meeting.users.queue.recallRequest, { type: 'pointOfOrder' })}
 							type="button"
 						>
 							Återkalla ordningsfråga
@@ -118,7 +118,8 @@
 						<Button
 							variant="outline"
 							{size}
-							onClickPromise={() => meeting.mutate(api.users.queue.request, { type: 'reply' })}
+							onClickPromise={() =>
+								meeting.mutate(api.meeting.users.queue.request, { type: 'reply' })}
 							type="button"
 						>
 							Begär replik
@@ -128,7 +129,7 @@
 							variant="outline"
 							{size}
 							onClickPromise={() =>
-								meeting.mutate(api.users.queue.recallRequest, { type: 'reply' })}
+								meeting.mutate(api.meeting.users.queue.recallRequest, { type: 'reply' })}
 							type="button"
 						>
 							Återkalla replik
@@ -139,7 +140,8 @@
 							disabled={!queue.canRequestBreak}
 							variant="outline"
 							{size}
-							onClickPromise={() => meeting.mutate(api.users.queue.request, { type: 'break' })}
+							onClickPromise={() =>
+								meeting.mutate(api.meeting.users.queue.request, { type: 'break' })}
 							type="button"
 						>
 							Föreslå streck
@@ -149,7 +151,7 @@
 							variant="outline"
 							{size}
 							onClickPromise={() =>
-								meeting.mutate(api.users.queue.recallRequest, { type: 'break' })}
+								meeting.mutate(api.meeting.users.queue.recallRequest, { type: 'break' })}
 							type="button"
 						>
 							Återkalla streck
@@ -173,7 +175,7 @@
 					description: isInQueue
 						? 'Om du lämnar mötet kommer du förlora din plats i kön. För att komma tillbaka behöver du bli godkänd av mötesadmin.'
 						: 'För att komma tillbaka behöver du bli godkänd av mötesadmin.',
-					onConfirm: () => meeting.mutate(api.users.attendance.leaveMeeting),
+					onConfirm: () => meeting.mutate(api.meeting.users.attendance.leaveMeeting),
 				})}
 			type="button"
 		>

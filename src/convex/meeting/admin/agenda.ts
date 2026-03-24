@@ -29,6 +29,8 @@ import { zid } from 'convex-helpers/server/zod4';
 import { z } from 'zod';
 import type { Id } from '$convex/_generated/dataModel';
 
+// --- Public mutations ---
+
 export const createAgendaItem = admin
 	.mutation()
 	.input({
@@ -179,7 +181,7 @@ export const updateAgendaItem = admin
 			!!ctx.meeting.currentPollId && removedPollIds.includes(ctx.meeting.currentPollId);
 
 		if (removedPollIds.length > 0) {
-			await ctx.scheduler.runAfter(0, internal.admin.poll.cleanupPollAgendaItemIds, {
+			await ctx.scheduler.runAfter(0, internal.meeting.jobs.poll_cleanup.cleanupPollAgendaItemIds, {
 				pollIds: removedPollIds,
 			});
 		}
@@ -247,7 +249,7 @@ export const removeAgendaItem = admin
 			!!ctx.meeting.currentPollId && affectedPolls.includes(ctx.meeting.currentPollId);
 
 		if (affectedPolls.length > 0) {
-			await ctx.scheduler.runAfter(0, internal.admin.poll.cleanupPollAgendaItemIds, {
+			await ctx.scheduler.runAfter(0, internal.meeting.jobs.poll_cleanup.cleanupPollAgendaItemIds, {
 				pollIds: affectedPolls,
 			});
 		}

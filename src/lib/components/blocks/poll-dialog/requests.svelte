@@ -10,7 +10,7 @@
 
 	const meeting = getMeetingContext();
 
-	const returnRequestsResult = meeting.adminQuery(api.admin.meeting.getReturnRequests);
+	const returnRequestsResult = meeting.adminQuery(api.meeting.admin.meeting.getReturnRequests);
 
 	const returnRequests = $derived(returnRequestsResult.data ?? []);
 </script>
@@ -31,12 +31,12 @@
 						duration={request.requestedAt}
 						variant="warning"
 						approve={async () => {
-							await meeting.adminMutate(api.admin.meeting.approveReturnRequest, {
+							await meeting.adminMutate(api.meeting.admin.meeting.approveReturnRequest, {
 								userId: request.userId,
 							});
 						}}
 						deny={async () => {
-							await meeting.adminMutate(api.admin.meeting.denyReturnRequest, {
+							await meeting.adminMutate(api.meeting.admin.meeting.denyReturnRequest, {
 								userId: request.userId,
 							});
 						}}

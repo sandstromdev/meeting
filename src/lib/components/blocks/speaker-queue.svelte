@@ -80,8 +80,8 @@
 			meeting.meeting.break.type === 'requested' ? 'default' : 'destructive',
 			meeting.meeting.break.type === 'accepted'
 				? undefined
-				: () => meeting.adminMutate(api.admin.meeting.acceptBreak),
-			() => meeting.adminMutate(api.admin.meeting.clearBreak),
+				: () => meeting.adminMutate(api.meeting.admin.meeting.acceptBreak),
+			() => meeting.adminMutate(api.meeting.admin.meeting.clearBreak),
 		)}
 	{/if}
 
@@ -94,8 +94,8 @@
 			meeting.meeting.pointOfOrder.type === 'requested' ? 'warning' : 'default',
 			meeting.meeting.pointOfOrder.type === 'accepted'
 				? undefined
-				: () => meeting.adminMutate(api.admin.meeting.acceptPointOfOrder),
-			() => meeting.adminMutate(api.admin.meeting.clearPointOfOrder),
+				: () => meeting.adminMutate(api.meeting.admin.meeting.acceptPointOfOrder),
+			() => meeting.adminMutate(api.meeting.admin.meeting.clearPointOfOrder),
 		)}
 	{/if}
 
@@ -108,8 +108,8 @@
 			meeting.meeting.reply.type === 'requested' ? 'warning' : 'default',
 			meeting.meeting.reply.type === 'accepted'
 				? undefined
-				: () => meeting.adminMutate(api.admin.meeting.acceptReply),
-			() => meeting.adminMutate(api.admin.meeting.clearReply),
+				: () => meeting.adminMutate(api.meeting.admin.meeting.acceptReply),
+			() => meeting.adminMutate(api.meeting.admin.meeting.clearReply),
 		)}
 	{/if}
 
@@ -147,9 +147,12 @@
 										description:
 											'Är du säker på att du vill ta bort denna person från talarlistan?',
 										onConfirm: () =>
-											meeting.moderatorMutate(api.moderator.meeting.removeFromSpeakerQueue, {
-												entryId: entry._id,
-											}),
+											meeting.moderatorMutate(
+												api.meeting.moderator.meeting.removeFromSpeakerQueue,
+												{
+													entryId: entry._id,
+												},
+											),
 									})}
 								aria-label="Ta bort"
 							>

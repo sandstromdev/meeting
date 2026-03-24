@@ -11,7 +11,7 @@ export const connectForm = form(ConnectFormSchema, async (data, issue) => {
 	const convex = getConvexClient();
 
 	try {
-		const id = await convex.mutation(api.users.auth.connect, data);
+		const id = await convex.mutation(api.meeting.users.auth.connect, data);
 
 		setMeetingCookie(event.cookies, id);
 	} catch (e) {

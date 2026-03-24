@@ -21,7 +21,7 @@ export const load = (async ({ locals, cookies, url }) => {
 
 	try {
 		meeting = await convexLoad(
-			api.users.meeting.getData,
+			api.meeting.users.meeting.getData,
 			{ meetingId: locals.meetingId },
 			{ token: locals.token },
 		);

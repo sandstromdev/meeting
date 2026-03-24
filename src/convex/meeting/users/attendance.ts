@@ -3,6 +3,8 @@ import { AppError, appErrors } from '$convex/helpers/error';
 import { getAbsentCounter } from '$convex/helpers/counters';
 import { completeReturnToMeeting } from '$convex/helpers/meeting';
 
+// --- Public mutations ---
+
 export const leaveMeeting = withMe.mutation().public(async ({ ctx }) => {
 	const { db, me, meeting } = ctx;
 

@@ -44,7 +44,7 @@
 				notifyMutation(
 					isAbsent ? `${name} markerades som närvarande.` : `${name} markerades som frånvarande.`,
 					() =>
-						meeting.adminMutate(api.admin.users.setParticipantAbsent, {
+						meeting.adminMutate(api.meeting.admin.users.setParticipantAbsent, {
 							userId: _id,
 							absent: !isAbsent,
 						}),
@@ -62,7 +62,7 @@
 			onConfirm: () =>
 				notifyMutation(
 					`${name} togs bort från mötet.`,
-					() => meeting.adminMutate(api.admin.users.removeParticipant, { userId: _id }),
+					() => meeting.adminMutate(api.meeting.admin.users.removeParticipant, { userId: _id }),
 					{ rethrow: true },
 				),
 		});
@@ -80,7 +80,7 @@
 				notifyMutation(
 					isBanned ? `Avstängning hävd för ${name}.` : `${name} stängdes av från mötet.`,
 					() =>
-						meeting.adminMutate(api.admin.users.setParticipantBanned, {
+						meeting.adminMutate(api.meeting.admin.users.setParticipantBanned, {
 							userId: _id,
 							banned: !isBanned,
 						}),
@@ -91,7 +91,7 @@
 
 	const convex = useConvexClient();
 	async function handleCopyLoginLink() {
-		const email = await convex.query(api.admin.users.getParticipantEmail, {
+		const email = await convex.query(api.meeting.admin.users.getParticipantEmail, {
 			userId,
 			meetingId: meeting.id,
 		});

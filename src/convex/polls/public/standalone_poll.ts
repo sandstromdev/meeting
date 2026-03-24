@@ -10,7 +10,9 @@ import {
 import { zid } from 'convex-helpers/server/zod4';
 import { z } from 'zod';
 
-export const get_by_code = c
+// --- Public queries ---
+
+export const getByCode = c
 	.query()
 	.input({
 		code: z.string().trim().min(4),
@@ -76,7 +78,7 @@ export const get_by_code = c
 		};
 	});
 
-export const get_vote_counts = c
+export const getVoteCounts = c
 	.query()
 	.input({ pollId: zid('standalonePolls') })
 	.public(async ({ ctx, args }) => {
@@ -94,6 +96,37 @@ export const get_vote_counts = c
 
 		return { votesCount, votersCount };
 	});
+
+export const getResultsByPollId = c
+	.query()
+	.input({ pollId: zid('standalonePolls') })
+	.public(async ({ ctx, args }) => {
+		const poll = await getStandalonePollOrThrow(ctx.db, args.pollId);
+		if (poll.isOpen || poll.closedAt == null) {
+			return null;
+		}
+
+		const result = await getLatestStandalonePollResultSnapshot(ctx.db, poll._id);
+		if (!result || !poll.isResultPublic) {
+			return null;
+		}
+
+		return {
+			pollId: poll._id,
+			complete: result.complete,
+			results: result.results,
+		};
+	});
+
+export const getMyOwnedPolls = authed.query().public(async ({ ctx }) => {
+	return await ctx.db
+		.query('standalonePolls')
+		.withIndex('by_ownerUserId_and_updatedAt', (q) => q.eq('ownerUserId', ctx.user.subject))
+		.order('desc')
+		.collect();
+});
+
+// --- Public mutations ---
 
 export const vote = c
 	.mutation()
@@ -113,7 +146,9 @@ export const vote = c
 		);
 
 		const maxVotesPerVoter =
-			poll.type === 'multi_winner' ? poll.winningCount : poll.maxVotesPerVoter;
+			poll.type === 'multi_winner'
+				? (poll.winningCount ?? poll.maxVotesPerVoter)
+				: poll.maxVotesPerVoter;
 		AppError.assert(
 			uniqueOptionIndexes.length <= maxVotesPerVoter,
 			appErrors.illegal_standalone_poll_action('too_many_votes'),
@@ -161,7 +196,7 @@ export const vote = c
 		return true;
 	});
 
-export const retract_vote = c
+export const retractVote = c
 	.mutation()
 	.input({
 		pollId: zid('standalonePolls'),
@@ -187,32 +222,3 @@ export const retract_vote = c
 		await getStandaloneVotersCounter(args.pollId).dec(ctx);
 		return true;
 	});
-
-export const get_results_by_poll_id = c
-	.query()
-	.input({ pollId: zid('standalonePolls') })
-	.public(async ({ ctx, args }) => {
-		const poll = await getStandalonePollOrThrow(ctx.db, args.pollId);
-		if (poll.isOpen || poll.closedAt == null) {
-			return null;
-		}
-
-		const result = await getLatestStandalonePollResultSnapshot(ctx.db, poll._id);
-		if (!result || !poll.isResultPublic) {
-			return null;
-		}
-
-		return {
-			pollId: poll._id,
-			complete: result.complete,
-			results: result.results,
-		};
-	});
-
-export const get_my_owned_polls = authed.query().public(async ({ ctx }) => {
-	return await ctx.db
-		.query('standalonePolls')
-		.withIndex('by_ownerUserId_and_updatedAt', (q) => q.eq('ownerUserId', ctx.user.subject))
-		.order('desc')
-		.collect();
-});

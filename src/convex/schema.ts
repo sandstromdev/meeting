@@ -100,21 +100,17 @@ const pollBaseFields = {
 	updatedAt: v.number(),
 };
 
-/** Discriminated union: multi_winner requires winningCount, single_winner requires majorityRule. */
-export const Poll = v.union(
-	v.object({
-		...pollBaseFields,
-		type: v.literal('multi_winner'),
-		/** How many top options win. */
-		winningCount: v.number(),
-	}),
-	v.object({
-		...pollBaseFields,
-		type: v.literal('single_winner'),
-		/** What counts as majority (of votes cast). */
-		majorityRule: majorityRule,
-	}),
-);
+/** `type` is source of truth; branch-specific fields are optional at rest (Zod enforces on write). */
+const pollTypeConfigFields = {
+	type: pollType,
+	winningCount: v.optional(v.number()),
+	majorityRule: v.optional(majorityRule),
+};
+
+export const Poll = v.object({
+	...pollBaseFields,
+	...pollTypeConfigFields,
+});
 export type Poll = typeof Poll.type;
 
 const standalonePollBaseFields = {
@@ -132,18 +128,10 @@ const standalonePollBaseFields = {
 	updatedAt: v.number(),
 };
 
-export const StandalonePoll = v.union(
-	v.object({
-		...standalonePollBaseFields,
-		type: v.literal('multi_winner'),
-		winningCount: v.number(),
-	}),
-	v.object({
-		...standalonePollBaseFields,
-		type: v.literal('single_winner'),
-		majorityRule: majorityRule,
-	}),
-);
+export const StandalonePoll = v.object({
+	...standalonePollBaseFields,
+	...pollTypeConfigFields,
+});
 
 export const StandalonePollVote = v.object({
 	pollId: v.id('standalonePolls'),
@@ -270,12 +258,6 @@ export const MeetingParticipant = v.object({
 	banned: v.boolean(),
 });
 
-/** Tracks participant activity by tokenIdentifier (separate from meetingParticipants). */
-export const Heartbeat = v.object({
-	tokenIdentifier: v.string(),
-	lastSeenAt: v.number(),
-});
-
 export const User = v.object({
 	email: v.string(),
 	role: v.union(v.literal('admin'), v.literal('user')),
@@ -343,10 +325,6 @@ export default defineSchema(
 			'pollId',
 			'closedAt',
 		]),
-
-		heartbeats: defineTable(Heartbeat)
-			.index('by_token', ['tokenIdentifier'])
-			.index('by_lastSeenAt', ['lastSeenAt']),
 	},
 	{ schemaValidation: true },
 );

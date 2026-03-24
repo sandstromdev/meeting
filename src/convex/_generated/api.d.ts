@@ -8,17 +8,11 @@
  * @module
  */
 
-import type * as admin_agenda from "../admin/agenda.js";
-import type * as admin_global from "../admin/global.js";
-import type * as admin_heartbeat from "../admin/heartbeat.js";
-import type * as admin_meeting from "../admin/meeting.js";
-import type * as admin_poll from "../admin/poll.js";
-import type * as admin_standalone_poll from "../admin/standalone_poll.js";
-import type * as admin_users from "../admin/users.js";
+import type * as app_admin_global from "../app/admin/global.js";
+import type * as app_me from "../app/me.js";
+import type * as app_migrations_verify_poll_flat_schema from "../app/migrations/verify_poll_flat_schema.js";
 import type * as auth from "../auth.js";
-import type * as backup from "../backup.js";
 import type * as crons from "../crons.js";
-import type * as heartbeat from "../heartbeat.js";
 import type * as helpers_agenda from "../helpers/agenda.js";
 import type * as helpers_auth from "../helpers/auth.js";
 import type * as helpers_builder_index from "../helpers/builder/index.js";
@@ -34,15 +28,25 @@ import type * as helpers_standalone_poll from "../helpers/standalone_poll.js";
 import type * as helpers_types from "../helpers/types.js";
 import type * as helpers_users from "../helpers/users.js";
 import type * as http from "../http.js";
-import type * as me from "../me.js";
-import type * as meetings from "../meetings.js";
-import type * as moderator_meeting from "../moderator/meeting.js";
-import type * as public_standalone_poll from "../public/standalone_poll.js";
-import type * as users_attendance from "../users/attendance.js";
-import type * as users_auth from "../users/auth.js";
-import type * as users_meeting from "../users/meeting.js";
-import type * as users_poll from "../users/poll.js";
-import type * as users_queue from "../users/queue.js";
+import type * as meeting_admin_agenda from "../meeting/admin/agenda.js";
+import type * as meeting_admin_meeting from "../meeting/admin/meeting.js";
+import type * as meeting_admin_poll from "../meeting/admin/poll.js";
+import type * as meeting_admin_users from "../meeting/admin/users.js";
+import type * as meeting_jobs_poll_cleanup from "../meeting/jobs/poll_cleanup.js";
+import type * as meeting_jobs_poll_close from "../meeting/jobs/poll_close.js";
+import type * as meeting_jobs_snapshots from "../meeting/jobs/snapshots.js";
+import type * as meeting_jobs_speaker_log from "../meeting/jobs/speaker_log.js";
+import type * as meeting_moderator_meeting from "../meeting/moderator/meeting.js";
+import type * as meeting_public_meetings from "../meeting/public/meetings.js";
+import type * as meeting_users_attendance from "../meeting/users/attendance.js";
+import type * as meeting_users_auth from "../meeting/users/auth.js";
+import type * as meeting_users_meeting from "../meeting/users/meeting.js";
+import type * as meeting_users_participant from "../meeting/users/participant.js";
+import type * as meeting_users_poll from "../meeting/users/poll.js";
+import type * as meeting_users_queue from "../meeting/users/queue.js";
+import type * as polls_admin_standalone_poll from "../polls/admin/standalone_poll.js";
+import type * as polls_jobs_standalone_polls from "../polls/jobs/standalone_polls.js";
+import type * as polls_public_standalone_poll from "../polls/public/standalone_poll.js";
 
 import type {
   ApiFromModules,
@@ -51,17 +55,11 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
-  "admin/agenda": typeof admin_agenda;
-  "admin/global": typeof admin_global;
-  "admin/heartbeat": typeof admin_heartbeat;
-  "admin/meeting": typeof admin_meeting;
-  "admin/poll": typeof admin_poll;
-  "admin/standalone_poll": typeof admin_standalone_poll;
-  "admin/users": typeof admin_users;
+  "app/admin/global": typeof app_admin_global;
+  "app/me": typeof app_me;
+  "app/migrations/verify_poll_flat_schema": typeof app_migrations_verify_poll_flat_schema;
   auth: typeof auth;
-  backup: typeof backup;
   crons: typeof crons;
-  heartbeat: typeof heartbeat;
   "helpers/agenda": typeof helpers_agenda;
   "helpers/auth": typeof helpers_auth;
   "helpers/builder/index": typeof helpers_builder_index;
@@ -77,15 +75,25 @@ declare const fullApi: ApiFromModules<{
   "helpers/types": typeof helpers_types;
   "helpers/users": typeof helpers_users;
   http: typeof http;
-  me: typeof me;
-  meetings: typeof meetings;
-  "moderator/meeting": typeof moderator_meeting;
-  "public/standalone_poll": typeof public_standalone_poll;
-  "users/attendance": typeof users_attendance;
-  "users/auth": typeof users_auth;
-  "users/meeting": typeof users_meeting;
-  "users/poll": typeof users_poll;
-  "users/queue": typeof users_queue;
+  "meeting/admin/agenda": typeof meeting_admin_agenda;
+  "meeting/admin/meeting": typeof meeting_admin_meeting;
+  "meeting/admin/poll": typeof meeting_admin_poll;
+  "meeting/admin/users": typeof meeting_admin_users;
+  "meeting/jobs/poll_cleanup": typeof meeting_jobs_poll_cleanup;
+  "meeting/jobs/poll_close": typeof meeting_jobs_poll_close;
+  "meeting/jobs/snapshots": typeof meeting_jobs_snapshots;
+  "meeting/jobs/speaker_log": typeof meeting_jobs_speaker_log;
+  "meeting/moderator/meeting": typeof meeting_moderator_meeting;
+  "meeting/public/meetings": typeof meeting_public_meetings;
+  "meeting/users/attendance": typeof meeting_users_attendance;
+  "meeting/users/auth": typeof meeting_users_auth;
+  "meeting/users/meeting": typeof meeting_users_meeting;
+  "meeting/users/participant": typeof meeting_users_participant;
+  "meeting/users/poll": typeof meeting_users_poll;
+  "meeting/users/queue": typeof meeting_users_queue;
+  "polls/admin/standalone_poll": typeof polls_admin_standalone_poll;
+  "polls/jobs/standalone_polls": typeof polls_jobs_standalone_polls;
+  "polls/public/standalone_poll": typeof polls_public_standalone_poll;
 }>;
 
 /**

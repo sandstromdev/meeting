@@ -41,7 +41,7 @@ export async function getMeeting(cookies: Cookies) {
 
 	const convex = getConvexClient();
 
-	return convex.query(api.meetings.getMeetingById, { meetingId });
+	return convex.query(api.meeting.public.meetings.getMeetingById, { meetingId });
 }
 
 export async function getMeetingData(cookies: Cookies) {
@@ -53,5 +53,5 @@ export async function getMeetingData(cookies: Cookies) {
 
 	const convex = getConvexClient();
 
-	return convex.query(api.users.meeting.getData, { meetingId }).catch(() => null);
+	return convex.query(api.meeting.users.meeting.getData, { meetingId }).catch(() => null);
 }

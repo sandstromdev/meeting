@@ -167,7 +167,7 @@
 					disabled={item.id === as.currentAgendaItemId}
 					type="button"
 					onClickPromise={() =>
-						meeting.adminMutate(api.admin.agenda.setCurrentAgendaItem, {
+						meeting.adminMutate(api.meeting.admin.agenda.setCurrentAgendaItem, {
 							agendaItemId: item.id,
 						})}
 				>
@@ -192,7 +192,7 @@
 							variant="ghost"
 							type="button"
 							onClickPromise={() =>
-								meeting.adminMutate(api.admin.agenda.moveAgendaItem, {
+								meeting.adminMutate(api.meeting.admin.agenda.moveAgendaItem, {
 									agendaItemId: item.id,
 									direction: 'in',
 								})}
@@ -205,7 +205,7 @@
 							variant="ghost"
 							type="button"
 							onClickPromise={() =>
-								meeting.adminMutate(api.admin.agenda.moveAgendaItem, {
+								meeting.adminMutate(api.meeting.admin.agenda.moveAgendaItem, {
 									agendaItemId: item.id,
 									direction: 'out',
 								})}
@@ -219,7 +219,7 @@
 							variant="ghost"
 							type="button"
 							onClickPromise={() =>
-								meeting.adminMutate(api.admin.agenda.moveAgendaItem, {
+								meeting.adminMutate(api.meeting.admin.agenda.moveAgendaItem, {
 									agendaItemId: item.id,
 									direction: 'up',
 								})}
@@ -232,7 +232,7 @@
 							variant="ghost"
 							type="button"
 							onClickPromise={() =>
-								meeting.adminMutate(api.admin.agenda.moveAgendaItem, {
+								meeting.adminMutate(api.meeting.admin.agenda.moveAgendaItem, {
 									agendaItemId: item.id,
 									direction: 'down',
 								})}

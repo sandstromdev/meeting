@@ -4,6 +4,8 @@ import { logSpeakerSlot } from '$convex/helpers/meeting';
 import { zid } from 'convex-helpers/server/zod4';
 import { z } from 'zod';
 
+// --- Public queries ---
+
 export const getPreviousSpeakers = moderator
 	.query()
 	.input({ take: z.number().default(10) })
@@ -29,6 +31,8 @@ export const getPreviousSpeakers = moderator
 export const getPreviousSpeaker = moderator.query().public(async ({ ctx: { meeting } }) => {
 	return meeting.previousSpeaker ?? null;
 });
+
+// --- Public mutations ---
 
 export const removeFromSpeakerQueue = moderator
 	.mutation()
