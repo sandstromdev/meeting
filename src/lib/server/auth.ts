@@ -17,5 +17,9 @@ export function getAuthedRequestEvent() {
 export async function getCurrentUser() {
 	const client = getConvexClient();
 
-	return await client.query(api.me.getCurrentUser, {}).catch(() => undefined);
+	if (!getRequestEvent().locals.token) {
+		return null;
+	}
+
+	return await client.query(api.me.getCurrentUser, {}).catch(() => null);
 }

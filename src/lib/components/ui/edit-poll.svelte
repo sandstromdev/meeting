@@ -403,7 +403,7 @@
 						<Field.Legend>Säkerhet</Field.Legend>
 						<Field.Description>Vem kan komma åt omröstningen?</Field.Description>
 						<RadioGroup.Root bind:value={visibilityMode} class="grid auto-fill-sm gap-2">
-							<Field.Label for="visibilityMode">
+							<Field.Label for="account_required">
 								<Field.Field orientation="horizontal">
 									<RadioGroup.Item value="account_required" id="account_required" />
 									<Field.Content>
@@ -414,7 +414,7 @@
 									</Field.Content>
 								</Field.Field>
 							</Field.Label>
-							<Field.Label>
+							<Field.Label for="public">
 								<Field.Field orientation="horizontal">
 									<RadioGroup.Item value="public" id="public" />
 									<Field.Content>

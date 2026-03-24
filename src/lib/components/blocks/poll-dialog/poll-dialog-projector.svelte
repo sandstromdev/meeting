@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { api } from '$convex/_generated/api';
-	import Results from '$lib/components/blocks/poll-dialog/results.svelte';
+	import PollResultsDisplay from '$lib/components/poll-results-display.svelte';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
 	import Progress from '$lib/components/ui/progress/progress.svelte';
 	import { getMeetingContext } from '$lib/context.svelte';
+	import { usePageState } from '$lib/page-state.svelte';
 	import { getVoteShare } from '$lib/polls';
 	import type { FunctionReturnType } from 'convex/server';
 
@@ -18,6 +19,18 @@
 	let { poll, counters }: { poll: Poll; counters: PollCounters } = $props();
 
 	const meeting = getMeetingContext();
+	const ps = usePageState();
+
+	const pollResults = meeting.query(api.users.poll.getPollResultsById, () =>
+		!poll.isOpen ? { pollId: poll.id } : 'skip',
+	);
+
+	const showPollDetailedResults = $derived(
+		poll.isResultPublic ||
+			(!ps.isProjector &&
+				meeting.isAdmin &&
+				(pollResults.data?.results.optionTotals?.length ?? 0) > 0),
+	);
 
 	let open = $derived(!!poll && !meeting.isAbsent);
 </script>
@@ -44,7 +57,10 @@
 					</div>
 				</div>
 			</div>
-			<Results {poll} />
+			<PollResultsDisplay
+				data={pollResults.data ?? null}
+				showDetailedResults={showPollDetailedResults}
+			/>
 		</div>
 	</AlertDialog.Content>
 </AlertDialog.Root>

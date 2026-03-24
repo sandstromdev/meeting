@@ -9,17 +9,12 @@ import {
 import { zid } from 'convex-helpers/server/zod4';
 import { z } from 'zod';
 
-function normalizeVoterSessionKey(input: string | null | undefined) {
-	const value = input?.trim();
-	return value && value.length > 0 ? value : null;
-}
-
 async function getVoterKey(
 	ctx: {
 		auth: { getUserIdentity: () => Promise<{ subject: string } | null> };
 	},
 	pollVisibilityMode: 'public' | 'account_required',
-	voterSessionKey?: string | null,
+	voterSessionToken?: string | null,
 ) {
 	if (pollVisibilityMode === 'account_required') {
 		const identity = await ctx.auth.getUserIdentity();
@@ -27,37 +22,39 @@ async function getVoterKey(
 		return `user:${identity.subject}`;
 	}
 
-	const normalizedKey = normalizeVoterSessionKey(voterSessionKey);
 	AppError.assert(
-		normalizedKey != null,
+		voterSessionToken != null,
 		appErrors.illegal_standalone_poll_action('missing_session_key'),
 	);
-	return `session:${normalizedKey}`;
+	return `session:${voterSessionToken}`;
 }
 
 export const get_by_code = c
 	.query()
 	.input({
 		code: z.string().trim().min(4),
-		voterSessionKey: z.string().nullable().optional(),
+		voterSessionToken: z.string().nullable().optional(),
 	})
 	.public(async ({ ctx, args }) => {
 		const poll = await ctx.db
 			.query('standalonePolls')
 			.withIndex('by_code', (q) => q.eq('code', args.code.toUpperCase()))
 			.unique();
+
 		AppError.assertNotNull(poll, appErrors.standalone_poll_code_not_found(args.code));
 
-		const [votesCount, votersCount] = await Promise.all([
-			getStandaloneVotesCounter(poll._id).count(ctx),
-			getStandaloneVotersCounter(poll._id).count(ctx),
-		]);
+		const identity = await ctx.auth.getUserIdentity();
+
+		if (poll.visibilityMode === 'account_required') {
+			AppError.assertNotNull(identity, appErrors.illegal_standalone_poll_action('auth_required'));
+		}
 
 		const voterKey = await getVoterKey(
 			ctx,
 			poll.visibilityMode,
-			args.voterSessionKey ?? null,
+			args.voterSessionToken ?? null,
 		).catch(() => null);
+
 		const myVotes = voterKey
 			? await ctx.db
 					.query('standalonePollVotes')
@@ -71,7 +68,11 @@ export const get_by_code = c
 			!poll.isOpen && poll.closedAt != null
 				? await getLatestStandalonePollResultSnapshot(ctx.db, poll._id)
 				: null;
-		const canSeeOptionTotals = !poll.isOpen && poll.closedAt != null && poll.isResultPublic;
+
+		const canSeeOptionTotals =
+			!poll.isOpen &&
+			poll.closedAt != null &&
+			(poll.isResultPublic || identity?.subject === poll.ownerUserId);
 
 		return {
 			id: poll._id,
@@ -82,12 +83,11 @@ export const get_by_code = c
 			isOpen: poll.isOpen,
 			isResultPublic: poll.isResultPublic,
 			allowsAbstain: poll.allowsAbstain,
+			ownerUserId: poll.ownerUserId,
 			maxVotesPerVoter: poll.maxVotesPerVoter,
 			visibilityMode: poll.visibilityMode,
 			hasVoted: myVotes.length > 0,
 			myVoteOptionIndexes: myVotes.map((vote) => vote.optionIndex),
-			votesCount,
-			votersCount,
 			results:
 				latestResult && canSeeOptionTotals
 					? {
@@ -101,12 +101,31 @@ export const get_by_code = c
 		};
 	});
 
+export const get_vote_counts = c
+	.query()
+	.input({ pollId: zid('standalonePolls') })
+	.public(async ({ ctx, args }) => {
+		const poll = await getStandalonePollOrThrow(ctx.db, args.pollId);
+
+		if (poll.visibilityMode === 'account_required') {
+			const identity = await ctx.auth.getUserIdentity();
+			AppError.assertNotNull(identity, appErrors.illegal_standalone_poll_action('auth_required'));
+		}
+
+		const [votesCount, votersCount] = await Promise.all([
+			getStandaloneVotesCounter(args.pollId).count(ctx),
+			getStandaloneVotersCounter(args.pollId).count(ctx),
+		]);
+
+		return { votesCount, votersCount };
+	});
+
 export const vote = c
 	.mutation()
 	.input({
 		pollId: zid('standalonePolls'),
 		optionIndexes: z.array(z.number().int().nonnegative()).min(1),
-		voterSessionKey: z.string().nullable().optional(),
+		voterSessionToken: z.string().nullable().optional(),
 	})
 	.public(async ({ ctx, args }) => {
 		const poll = await getStandalonePollOrThrow(ctx.db, args.pollId);
@@ -131,7 +150,7 @@ export const vote = c
 			);
 		}
 
-		const voterKey = await getVoterKey(ctx, poll.visibilityMode, args.voterSessionKey ?? null);
+		const voterKey = await getVoterKey(ctx, poll.visibilityMode, args.voterSessionToken ?? null);
 		const existingVotes = await ctx.db
 			.query('standalonePollVotes')
 			.withIndex('by_poll_and_voterKey', (q) =>
@@ -171,12 +190,12 @@ export const retract_vote = c
 	.mutation()
 	.input({
 		pollId: zid('standalonePolls'),
-		voterSessionKey: z.string().nullable().optional(),
+		voterSessionToken: z.string().nullable().optional(),
 	})
 	.public(async ({ ctx, args }) => {
 		const poll = await getStandalonePollOrThrow(ctx.db, args.pollId);
 		AppError.assert(poll.isOpen, appErrors.illegal_standalone_poll_action('vote_while_closed'));
-		const voterKey = await getVoterKey(ctx, poll.visibilityMode, args.voterSessionKey ?? null);
+		const voterKey = await getVoterKey(ctx, poll.visibilityMode, args.voterSessionToken ?? null);
 
 		const existingVotes = await ctx.db
 			.query('standalonePollVotes')

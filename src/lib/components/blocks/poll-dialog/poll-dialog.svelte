@@ -2,7 +2,7 @@
 	import { api } from '$convex/_generated/api';
 	import PollDialogProjector from '$lib/components/blocks/poll-dialog/poll-dialog-projector.svelte';
 	import Requests from '$lib/components/blocks/poll-dialog/requests.svelte';
-	import Results from '$lib/components/blocks/poll-dialog/results.svelte';
+	import PollResultsDisplay from '$lib/components/poll-results-display.svelte';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
 	import { Button } from '$lib/components/ui/button';
 	import Checkbox from '$lib/components/ui/checkbox/checkbox.svelte';
@@ -32,6 +32,19 @@
 	let previousVoteOptionIndexes = $state<number[]>([]);
 
 	const poll = $derived(currentPoll.data ?? null);
+
+	const pollResults = meeting.query(api.users.poll.getPollResultsById, () =>
+		poll && !poll.isOpen ? { pollId: poll.id } : 'skip',
+	);
+
+	const showPollDetailedResults = $derived(
+		poll
+			? poll.isResultPublic ||
+					(!ps.isProjector &&
+						meeting.isAdmin &&
+						(pollResults.data?.results.optionTotals?.length ?? 0) > 0)
+			: false,
+	);
 
 	$effect(() => {
 		if (poll?.hasVoted && poll.isOpen && isChangingVote) {
@@ -273,7 +286,10 @@
 							</div>
 						{/if}
 					{:else}
-						<Results {poll} />
+						<PollResultsDisplay
+							data={pollResults.data ?? null}
+							showDetailedResults={showPollDetailedResults}
+						/>
 					{/if}
 
 					{#if meeting.isAdmin}
