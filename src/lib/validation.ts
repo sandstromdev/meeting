@@ -118,6 +118,60 @@ export const RefinePollDraftSchema = PollDraftSchema.superRefine((data, ctx) => 
 
 export type PollDraft = z.infer<typeof PollDraftSchema>;
 
+/** Flat poll type fields; use with `refinePollRowTypeConfig` when `options` is present (stored rows / inserts). */
+export const pollTypeConfigZod = z.object({
+	type: z.enum(POLL_TYPES),
+	winningCount: z.number().min(1).optional(),
+	majorityRule: z.enum(MAJORITY_RULES).optional(),
+});
+
+export type PollTypeConfig = z.infer<typeof pollTypeConfigZod>;
+
+/** Enforces branch invariants given `options` (same rules as draft refine; allows legacy single_winner without winningCount). */
+export function refinePollRowTypeConfig(
+	data: PollTypeConfig & { options: readonly string[] },
+	ctx: z.RefinementCtx,
+) {
+	const { options } = data;
+
+	if (data.type === 'single_winner') {
+		if (data.winningCount !== undefined && data.winningCount !== 1) {
+			ctx.addIssue({
+				code: 'custom',
+				path: ['winningCount'],
+				message: 'Antal vinnare måste vara 1 för omröstningar med endast en vinnare',
+			});
+		}
+
+		if (!data.majorityRule) {
+			ctx.addIssue({
+				code: 'custom',
+				path: ['majorityRule'],
+				message: 'Majoritetsregel är obligatorisk för omröstningar med endast en vinnare',
+			});
+		}
+	}
+
+	if (data.type === 'multi_winner') {
+		if (!data.winningCount) {
+			ctx.addIssue({
+				code: 'custom',
+				path: ['winningCount'],
+				message: 'Antal vinnare är obligatoriskt för omröstningar med flera vinnare',
+			});
+		} else if (data.winningCount < 1 || data.winningCount > options.length) {
+			ctx.addIssue({
+				code: 'custom',
+				path: ['winningCount'],
+				message: 'Antal vinnare måste vara mellan 1 och antal alternativ',
+			});
+		}
+	}
+}
+
+/** Alias for `pollTypeConfigZod` (use with `refinePollRowTypeConfig` when building insert/row parsers). */
+export const PollTypeSchema = pollTypeConfigZod;
+
 export const PollBaseSchema = z.object({
 	_id: zid('polls'),
 	_creationTime: z.number(),
@@ -134,18 +188,14 @@ export const PollBaseSchema = z.object({
 	updatedAt: z.number(),
 });
 
-export const PollTypeSchema = z.discriminatedUnion('type', [
-	z.object({
-		type: z.literal('multi_winner'),
-		winningCount: z.number().min(1),
-	}),
-	z.object({
-		type: z.literal('single_winner'),
-		majorityRule: z.enum(MAJORITY_RULES),
-	}),
-]);
+export const FullPollSchema = PollBaseSchema.and(pollTypeConfigZod).superRefine((data, ctx) =>
+	refinePollRowTypeConfig(data, ctx),
+);
 
-export const FullPollSchema = PollBaseSchema.and(PollTypeSchema);
+/** Poll payload as stored inside `pollResults.poll` (no Convex system fields). */
+export const PollEmbeddedSnapshotSchema = PollBaseSchema.omit({ _id: true, _creationTime: true })
+	.and(pollTypeConfigZod)
+	.superRefine((data, ctx) => refinePollRowTypeConfig(data, ctx));
 
 export const StandalonePollBaseSchema = z.object({
 	_id: zid('standalonePolls'),
@@ -164,7 +214,17 @@ export const StandalonePollBaseSchema = z.object({
 	updatedAt: z.number(),
 });
 
-export const FullStandalonePollSchema = StandalonePollBaseSchema.and(PollTypeSchema);
+export const FullStandalonePollSchema = StandalonePollBaseSchema.and(pollTypeConfigZod).superRefine(
+	(data, ctx) => refinePollRowTypeConfig(data, ctx),
+);
+
+/** Standalone poll payload as stored inside `standalonePollResults.poll`. */
+export const StandalonePollEmbeddedSnapshotSchema = StandalonePollBaseSchema.omit({
+	_id: true,
+	_creationTime: true,
+})
+	.and(pollTypeConfigZod)
+	.superRefine((data, ctx) => refinePollRowTypeConfig(data, ctx));
 
 export const RoleSchema = z.enum(ROLES);
 

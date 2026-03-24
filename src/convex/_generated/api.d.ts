@@ -10,7 +10,6 @@
 
 import type * as app_admin_global from "../app/admin/global.js";
 import type * as app_me from "../app/me.js";
-import type * as app_migrations_verify_poll_flat_schema from "../app/migrations/verify_poll_flat_schema.js";
 import type * as auth from "../auth.js";
 import type * as crons from "../crons.js";
 import type * as helpers_agenda from "../helpers/agenda.js";
@@ -44,6 +43,7 @@ import type * as meeting_users_meeting from "../meeting/users/meeting.js";
 import type * as meeting_users_participant from "../meeting/users/participant.js";
 import type * as meeting_users_poll from "../meeting/users/poll.js";
 import type * as meeting_users_queue from "../meeting/users/queue.js";
+import type * as migrations_verify_poll_flat_schema from "../migrations/verify_poll_flat_schema.js";
 import type * as polls_admin_standalone_poll from "../polls/admin/standalone_poll.js";
 import type * as polls_jobs_standalone_polls from "../polls/jobs/standalone_polls.js";
 import type * as polls_public_standalone_poll from "../polls/public/standalone_poll.js";
@@ -57,7 +57,6 @@ import type {
 declare const fullApi: ApiFromModules<{
   "app/admin/global": typeof app_admin_global;
   "app/me": typeof app_me;
-  "app/migrations/verify_poll_flat_schema": typeof app_migrations_verify_poll_flat_schema;
   auth: typeof auth;
   crons: typeof crons;
   "helpers/agenda": typeof helpers_agenda;
@@ -91,6 +90,7 @@ declare const fullApi: ApiFromModules<{
   "meeting/users/participant": typeof meeting_users_participant;
   "meeting/users/poll": typeof meeting_users_poll;
   "meeting/users/queue": typeof meeting_users_queue;
+  "migrations/verify_poll_flat_schema": typeof migrations_verify_poll_flat_schema;
   "polls/admin/standalone_poll": typeof polls_admin_standalone_poll;
   "polls/jobs/standalone_polls": typeof polls_jobs_standalone_polls;
   "polls/public/standalone_poll": typeof polls_public_standalone_poll;

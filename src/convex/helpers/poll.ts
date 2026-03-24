@@ -5,7 +5,7 @@ import type { StripSystemFields } from '$lib/types';
 import type { PollDraft } from '$lib/validation';
 import { stripSystemFields } from '.';
 import { AppError, appErrors } from './error';
-import { PollBaseSchema, PollTypeSchema } from '$lib/validation';
+import { PollBaseSchema, PollTypeSchema, refinePollRowTypeConfig } from '$lib/validation';
 import { findAgendaItemById, setPollIdsForItem } from './agenda';
 import type { Db } from './types';
 import { z } from 'zod';
@@ -112,6 +112,7 @@ export async function createPollHelper(
 
 	const validated = PollBaseSchema.omit({ _id: true, _creationTime: true })
 		.and(PollTypeSchema)
+		.superRefine((data, ctx) => refinePollRowTypeConfig(data, ctx))
 		.safeParse(draft);
 
 	AppError.assertZodSuccess(validated, (e) => {
