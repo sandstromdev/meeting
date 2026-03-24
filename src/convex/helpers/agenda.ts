@@ -336,6 +336,6 @@ export function createNewAgendaItem(title: string, depth = 0) {
 	} satisfies AgendaItem;
 }
 
-export function appendToAgenda(agenda: Agenda, parentId: string, newItem: AgendaItem) {
-	return insertChildAfterSubtree(agenda, parentId, newItem);
+export function appendToAgenda(agenda: Agenda, newItem: AgendaItem, parentId?: string) {
+	return parentId ? insertChildAfterSubtree(agenda, parentId, newItem) : [...agenda, newItem];
 }

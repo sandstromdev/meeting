@@ -29,8 +29,9 @@
 	class={cn(
 		'flex items-center gap-2 rounded-md border border-current/10 py-2 pr-1 pl-3 text-sm',
 		variant === 'default' && 'bg-card text-card-foreground',
-		variant === 'warning' && 'bg-yellow-50 text-yellow-800',
-		variant === 'destructive' && 'bg-red-50 text-red-800',
+		variant === 'warning' &&
+			'bg-yellow-50 text-yellow-800 dark:bg-yellow-700/10 dark:text-yellow-400',
+		variant === 'destructive' && 'bg-destructive/10 text-destructive',
 	)}
 >
 	<div>

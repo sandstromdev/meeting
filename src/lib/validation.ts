@@ -1,6 +1,6 @@
 import { zid } from 'convex-helpers/server/zod4';
 import * as z from 'zod';
-import { MAJORITY_RULES, POLL_TYPES } from './polls';
+import { ABSTAIN_OPTION_LABEL, MAJORITY_RULES, POLL_TYPES } from './polls';
 import { ROLES } from './roles';
 import { sv } from 'zod/v4/locales';
 
@@ -34,7 +34,14 @@ export const AdminNotificationSchema = z.object({
 
 export const PollDraftSchema = z.object({
 	title: z.string().min(1),
-	options: z.array(z.string().min(1)).min(1),
+	options: z
+		.array(
+			z
+				.string()
+				.min(1)
+				.refine((o) => o !== ABSTAIN_OPTION_LABEL),
+		)
+		.min(1),
 	type: z.enum(POLL_TYPES),
 	winningCount: z.number().min(1).optional(),
 	majorityRule: z.enum(MAJORITY_RULES).optional(),
@@ -46,6 +53,9 @@ export const StandaloneVisibilitySchema = z.enum(['public', 'account_required'])
 export type StandaloneVisibility = z.infer<typeof StandaloneVisibilitySchema>;
 
 export const RefinePollDraftSchema = PollDraftSchema.superRefine((data, ctx) => {
+	const { options, allowsAbstain } = data;
+	const votableSlots = options.length + (allowsAbstain ? 1 : 0);
+
 	if (data.type === 'single_winner') {
 		if (data.winningCount !== 1) {
 			ctx.addIssue({
@@ -70,7 +80,7 @@ export const RefinePollDraftSchema = PollDraftSchema.superRefine((data, ctx) => 
 				path: ['winningCount'],
 				message: 'Antal vinnare är obligatoriskt för omröstningar med flera vinnare',
 			});
-		} else if (data.winningCount < 1 || data.winningCount > data.options.length) {
+		} else if (data.winningCount < 1 || data.winningCount > options.length) {
 			ctx.addIssue({
 				code: 'custom',
 				path: ['winningCount'],
@@ -79,7 +89,7 @@ export const RefinePollDraftSchema = PollDraftSchema.superRefine((data, ctx) => 
 		}
 	}
 
-	if (data.maxVotesPerVoter > data.options.length) {
+	if (data.maxVotesPerVoter > votableSlots) {
 		ctx.addIssue({
 			code: 'custom',
 			path: ['maxVotesPerVoter'],
@@ -87,7 +97,7 @@ export const RefinePollDraftSchema = PollDraftSchema.superRefine((data, ctx) => 
 		});
 	}
 
-	if (data.options.length < 2 && !data.allowsAbstain) {
+	if (options.length < 2 && !allowsAbstain) {
 		ctx.addIssue({
 			code: 'custom',
 			path: ['options'],
@@ -95,9 +105,9 @@ export const RefinePollDraftSchema = PollDraftSchema.superRefine((data, ctx) => 
 		});
 	}
 
-	const set = new Set(data.options.map((o) => o.trim().toLocaleLowerCase()));
+	const set = new Set(options.map((o) => o.trim().toLocaleLowerCase()));
 
-	if (set.size !== data.options.length) {
+	if (set.size !== options.length) {
 		ctx.addIssue({
 			code: 'custom',
 			path: ['options'],

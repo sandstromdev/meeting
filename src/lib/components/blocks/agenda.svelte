@@ -2,6 +2,7 @@
 	import { api } from '$convex/_generated/api';
 	import { canMoveSubtree } from '$convex/helpers/agenda';
 	import EditAgendaItem from '$lib/components/blocks/admin/agenda/edit-agenda-item.svelte';
+	import { removeAgendaItemWithChoice } from '$lib/components/blocks/admin/agenda/helpers';
 	import { Button } from '$lib/components/ui/button';
 	import {
 		Collapsible,
@@ -69,52 +70,6 @@
 			return false;
 		}
 		return agenda[nextSiblingIndex].depth === current.depth;
-	}
-
-	function hasChildren(index: number) {
-		const current = agenda[index];
-		const next = agenda[index + 1];
-		return !!current && !!next && next.depth > current.depth;
-	}
-
-	function removeAgendaItemWithChoice(itemId: string, index: number) {
-		if (!hasChildren(index)) {
-			confirm({
-				title: 'Ta bort punkt?',
-				description: 'Är du säker på att du vill ta bort denna punkt?',
-				onConfirm: () =>
-					meeting.adminMutate(api.admin.agenda.removeAgendaItem, {
-						agendaItemId: itemId,
-						deletionMode: 'delete_subtree',
-					}),
-			});
-			return;
-		}
-
-		confirm({
-			title: 'Punkten har underpunkter',
-			description: 'Vill du behålla underpunkterna och bara ta bort huvudpunkten?',
-			confirm: { text: 'Behåll underpunkter' },
-			cancel: { text: 'Ta bort allt' },
-			onConfirm: () =>
-				meeting.adminMutate(api.admin.agenda.removeAgendaItem, {
-					agendaItemId: itemId,
-					deletionMode: 'keep_children',
-				}),
-			onCancel: () => {
-				confirm({
-					title: 'Ta bort punkt och underpunkter?',
-					description: 'Detta tar bort punkten och alla underpunkter permanent.',
-					confirm: { text: 'Ta bort alla' },
-					cancel: { text: 'Avbryt' },
-					onConfirm: () =>
-						meeting.adminMutate(api.admin.agenda.removeAgendaItem, {
-							agendaItemId: itemId,
-							deletionMode: 'delete_subtree',
-						}),
-				});
-			},
-		});
 	}
 
 	const mainStart = $derived(Math.max(0, as.currentIndex - 1));
@@ -202,7 +157,7 @@
 				'flex gap-2 p-4 text-sm',
 				meeting.isAdmin && 'p-2',
 				hasBeenCompleted(index) && 'bg-muted/50 text-muted-foreground',
-				item.id === as.currentAgendaItemId && 'bg-sky-100 text-sky-500',
+				item.id === as.currentAgendaItemId && 'bg-primary/10 text-primary',
 			)}
 		>
 			{#if meeting.isAdmin}
@@ -298,7 +253,7 @@
 							variant="ghost"
 							class="text-destructive hover:bg-destructive/10 hover:text-destructive"
 							type="button"
-							onclick={() => removeAgendaItemWithChoice(item.id, index)}
+							onclick={() => removeAgendaItemWithChoice(meeting, item.id)}
 						>
 							<Trash2Icon class="size-4" />
 						</Button>
