@@ -11,7 +11,7 @@ export function createAgendaItemId() {
 export type AgendaItem = {
 	id: AgendaItemId;
 	title: string;
-	pollIds: Id<'polls'>[];
+	pollIds: Id<'meetingPolls'>[];
 	depth: number;
 };
 
@@ -79,7 +79,7 @@ export function updateAgendaItemById(
 	return agenda.map((item) => (item.id === id ? updater(item) : item));
 }
 
-export function setPollIdsForItem(agenda: Agenda, id: AgendaItemId, pollIds: Id<'polls'>[]) {
+export function setPollIdsForItem(agenda: Agenda, id: AgendaItemId, pollIds: Id<'meetingPolls'>[]) {
 	return updateAgendaItemById(agenda, id, (item) => ({ ...item, pollIds }));
 }
 

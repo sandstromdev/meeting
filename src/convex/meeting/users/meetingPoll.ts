@@ -7,10 +7,10 @@ import {
 } from '$convex/helpers/counters';
 import { AppError, appErrors } from '$convex/helpers/error';
 import {
-	assertPollInMeeting,
-	getLatestPollResultSnapshot,
-	getPollOrThrow,
-} from '$convex/helpers/poll';
+	assertMeetingPollInMeeting,
+	getLatestMeetingPollResultSnapshot,
+	getMeetingPollOrThrow,
+} from '$convex/helpers/meetingPoll';
 import { zid } from 'convex-helpers/server/zod4';
 import { z } from 'zod';
 
@@ -26,7 +26,7 @@ export const getPollsByAgendaItemId = withMe
 			getParticipantCounter(ctx.meeting._id).count(ctx),
 			getAbsentCounter(ctx.meeting._id).count(ctx),
 			ctx.db
-				.query('polls')
+				.query('meetingPolls')
 				.withIndex('by_meeting_agendaItem', (q) =>
 					q.eq('meetingId', ctx.meeting._id).eq('agendaItemId', args.agendaItemId),
 				)
@@ -41,7 +41,7 @@ export const getPollsByAgendaItemId = withMe
 					getVotesCounter(ctx.meeting._id, poll._id).count(ctx),
 					getVotersCounter(ctx.meeting._id, poll._id).count(ctx),
 					ctx.db
-						.query('pollVotes')
+						.query('meetingPollVotes')
 						.withIndex('by_poll_user', (q) => q.eq('pollId', poll._id).eq('userId', ctx.me._id))
 						.collect(),
 				]);
@@ -51,7 +51,7 @@ export const getPollsByAgendaItemId = withMe
 
 				const latestResult =
 					!poll.isOpen && poll.closedAt != null
-						? await getLatestPollResultSnapshot(ctx.db, poll._id)
+						? await getLatestMeetingPollResultSnapshot(ctx.db, poll._id)
 						: null;
 
 				return {
@@ -79,14 +79,14 @@ export const getCurrentPoll = withMe.query().public(async ({ ctx }) => {
 		return null;
 	}
 
-	const poll = await ctx.db.get('polls', pollId);
+	const poll = await ctx.db.get('meetingPolls', pollId);
 
 	if (!poll || poll.meetingId !== ctx.meeting._id) {
 		return null;
 	}
 
 	let votes = await ctx.db
-		.query('pollVotes')
+		.query('meetingPollVotes')
 		.withIndex('by_poll_user', (q) => q.eq('pollId', poll._id).eq('userId', ctx.me._id))
 		.collect();
 
@@ -112,8 +112,8 @@ export const getCurrentPollCounters = withMe.query().public(async ({ ctx }) => {
 		return null;
 	}
 
-	const poll = await getPollOrThrow(ctx.db, ctx.meeting.currentPollId);
-	assertPollInMeeting(poll, ctx.meeting._id);
+	const poll = await getMeetingPollOrThrow(ctx.db, ctx.meeting.currentPollId);
+	assertMeetingPollInMeeting(poll, ctx.meeting._id);
 
 	const [participants, absentees, votersCount, votesCount] = await Promise.all([
 		getParticipantCounter(ctx.meeting._id).count(ctx),
@@ -134,16 +134,16 @@ export const getCurrentPollCounters = withMe.query().public(async ({ ctx }) => {
 export const getPollResultsById = withMe
 	.query()
 	.input({
-		pollId: zid('polls'),
+		pollId: zid('meetingPolls'),
 	})
 	.public(async ({ ctx, args }) => {
-		const poll = await getPollOrThrow(ctx.db, args.pollId);
-		assertPollInMeeting(poll, ctx.meeting._id);
+		const poll = await getMeetingPollOrThrow(ctx.db, args.pollId);
+		assertMeetingPollInMeeting(poll, ctx.meeting._id);
 
 		if (poll.isOpen || poll.closedAt == null) {
 			return null;
 		}
-		const result = await getLatestPollResultSnapshot(ctx.db, poll._id);
+		const result = await getLatestMeetingPollResultSnapshot(ctx.db, poll._id);
 
 		if (!result) {
 			return null;
@@ -177,22 +177,22 @@ export const getPollResultsById = withMe
 export const vote = withMe
 	.mutation()
 	.input({
-		pollId: zid('polls'),
+		pollId: zid('meetingPolls'),
 		optionIndexes: z.array(z.number().int().nonnegative()).min(1),
 	})
 	.public(async ({ ctx, args }) => {
-		const poll = await getPollOrThrow(ctx.db, args.pollId);
+		const poll = await getMeetingPollOrThrow(ctx.db, args.pollId);
 
-		assertPollInMeeting(poll, ctx.meeting._id);
+		assertMeetingPollInMeeting(poll, ctx.meeting._id);
 
 		AppError.assert(ctx.me.absentSince <= 0, appErrors.illegal_while_absent('vote'));
-		AppError.assert(poll.isOpen, appErrors.illegal_poll_action('vote_while_closed'));
+		AppError.assert(poll.isOpen, appErrors.illegal_meeting_poll_action('vote_while_closed'));
 
 		const uniqueOptionIndexes = [...new Set(args.optionIndexes)];
 
 		AppError.assert(
 			uniqueOptionIndexes.length === args.optionIndexes.length,
-			appErrors.illegal_poll_action('duplicate_vote_option'),
+			appErrors.illegal_meeting_poll_action('duplicate_vote_option'),
 		);
 
 		const maxVotesPerVoter =
@@ -202,7 +202,7 @@ export const vote = withMe
 
 		AppError.assert(
 			uniqueOptionIndexes.length <= maxVotesPerVoter,
-			appErrors.illegal_poll_action('too_many_votes'),
+			appErrors.illegal_meeting_poll_action('too_many_votes'),
 		);
 
 		for (const optionIndex of uniqueOptionIndexes) {
@@ -213,18 +213,18 @@ export const vote = withMe
 		}
 
 		const existingVotes = await ctx.db
-			.query('pollVotes')
+			.query('meetingPollVotes')
 			.withIndex('by_poll_user', (q) => q.eq('pollId', args.pollId).eq('userId', ctx.me._id))
 			.collect();
 
 		if (existingVotes.length > 0) {
-			await Promise.all(existingVotes.map((v) => ctx.db.delete('pollVotes', v._id)));
+			await Promise.all(existingVotes.map((v) => ctx.db.delete('meetingPollVotes', v._id)));
 			await getVotesCounter(ctx.meeting._id, args.pollId).subtract(ctx, existingVotes.length);
 		}
 
 		await Promise.all(
 			uniqueOptionIndexes.map((optionIndex) =>
-				ctx.db.insert('pollVotes', {
+				ctx.db.insert('meetingPollVotes', {
 					meetingId: ctx.meeting._id,
 					pollId: args.pollId,
 					userId: ctx.me._id,
@@ -247,18 +247,18 @@ export const vote = withMe
 export const retractVote = withMe
 	.mutation()
 	.input({
-		pollId: zid('polls'),
+		pollId: zid('meetingPolls'),
 	})
 	.public(async ({ ctx, args }) => {
-		const poll = await getPollOrThrow(ctx.db, args.pollId);
+		const poll = await getMeetingPollOrThrow(ctx.db, args.pollId);
 
-		assertPollInMeeting(poll, ctx.meeting._id);
+		assertMeetingPollInMeeting(poll, ctx.meeting._id);
 
 		AppError.assert(ctx.me.absentSince <= 0, appErrors.illegal_while_absent('vote'));
-		AppError.assert(poll.isOpen, appErrors.illegal_poll_action('vote_while_closed'));
+		AppError.assert(poll.isOpen, appErrors.illegal_meeting_poll_action('vote_while_closed'));
 
 		const existingVotes = await ctx.db
-			.query('pollVotes')
+			.query('meetingPollVotes')
 			.withIndex('by_poll_user', (q) => q.eq('pollId', args.pollId).eq('userId', ctx.me._id))
 			.collect();
 
@@ -266,7 +266,7 @@ export const retractVote = withMe
 			return true;
 		}
 
-		await Promise.all(existingVotes.map((v) => ctx.db.delete('pollVotes', v._id)));
+		await Promise.all(existingVotes.map((v) => ctx.db.delete('meetingPollVotes', v._id)));
 		await getVotesCounter(ctx.meeting._id, args.pollId).subtract(ctx, existingVotes.length);
 		await getVotersCounter(ctx.meeting._id, args.pollId).dec(ctx);
 

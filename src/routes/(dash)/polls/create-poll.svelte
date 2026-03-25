@@ -6,7 +6,7 @@
 	import { toast } from 'svelte-sonner';
 
 	const convex = useConvexClient();
-	const standaloneAdminApi = api.polls.admin.standalone_poll;
+	const standaloneAdminApi = api.userPoll.admin;
 
 	async function handleSubmit(payload: {
 		draft: PollDraft;

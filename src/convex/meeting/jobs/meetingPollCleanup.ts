@@ -7,16 +7,16 @@ export const cleanupPollVotes = c
 	.mutation()
 	.input({
 		meetingId: zid('meetings'),
-		pollIds: z.array(zid('polls')),
+		pollIds: z.array(zid('meetingPolls')),
 	})
 	.internal(async ({ ctx, args }) => {
 		let deleted = 0;
 		for (const pollId of args.pollIds) {
 			const votes = await ctx.db
-				.query('pollVotes')
+				.query('meetingPollVotes')
 				.withIndex('by_poll', (q) => q.eq('pollId', pollId))
 				.collect();
-			await Promise.all(votes.map((vote) => ctx.db.delete('pollVotes', vote._id)));
+			await Promise.all(votes.map((vote) => ctx.db.delete('meetingPollVotes', vote._id)));
 
 			await Promise.all([
 				getVotesCounter(args.meetingId, pollId).reset(ctx),
@@ -31,14 +31,14 @@ export const cleanupPollVotes = c
 export const cleanupPollAgendaItemIds = c
 	.mutation()
 	.input({
-		pollIds: z.array(zid('polls')),
+		pollIds: z.array(zid('meetingPolls')),
 	})
 	.internal(async ({ ctx, args }) => {
 		let deleted = 0;
 		for (const pollId of args.pollIds) {
-			const poll = await ctx.db.get('polls', pollId);
+			const poll = await ctx.db.get('meetingPolls', pollId);
 			if (poll) {
-				await ctx.db.patch('polls', pollId, { agendaItemId: null });
+				await ctx.db.patch('meetingPolls', pollId, { agendaItemId: null });
 				deleted += 1;
 			}
 		}

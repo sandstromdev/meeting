@@ -219,16 +219,16 @@ export const toggleMeeting = admin.mutation().public(async ({ ctx }) => {
 	if (meeting.isOpen) {
 		const now = Date.now();
 		if (meeting.currentPollId) {
-			const currentPoll = await db.get('polls', meeting.currentPollId);
+			const currentPoll = await db.get('meetingPolls', meeting.currentPollId);
 			if (currentPoll && currentPoll.meetingId === meeting._id && currentPoll.isOpen) {
-				await db.patch('polls', currentPoll._id, {
+				await db.patch('meetingPolls', currentPoll._id, {
 					isOpen: false,
 					closedAt: now,
 					updatedAt: now,
 				});
 				await ctx.scheduler.runAfter(
 					0,
-					internal.meeting.jobs.poll_close.createPollResultSnapshotAction,
+					internal.meeting.jobs.meetingPollClose.createPollResultSnapshotAction,
 					{
 						pollId: currentPoll._id,
 					},

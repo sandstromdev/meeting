@@ -18,12 +18,12 @@ import {
 import { admin } from '$convex/helpers/auth';
 import { AppError, appErrors } from '$convex/helpers/error';
 import {
-	assertPollEditable,
-	assertPollInMeeting,
-	createPollHelper,
-	getPollOrThrow,
+	assertMeetingPollEditable,
+	assertMeetingPollInMeeting,
+	createMeetingPollHelper,
+	getMeetingPollOrThrow,
 	optionsWithAbstainLast,
-} from '$convex/helpers/poll';
+} from '$convex/helpers/meetingPoll';
 import { FullPollSchema, PollDraftSchema, RefinePollDraftSchema } from '$lib/validation';
 import { zid } from 'convex-helpers/server/zod4';
 import { z } from 'zod';
@@ -49,7 +49,7 @@ export const createAgendaItem = admin
 
 		const pollIds = await Promise.all(
 			args.polls.map(async (poll) => {
-				return await createPollHelper(ctx, {
+				return await createMeetingPollHelper(ctx, {
 					draft: poll,
 					agendaItemId,
 					updateAgenda: false,
@@ -90,7 +90,7 @@ export const updateAgendaItem = admin
 	.input({
 		agendaItemId: z.string().min(1),
 		title: z.string().trim().min(1).optional(),
-		polls: z.array(PollDraftSchema.extend({ id: zid('polls').optional() })),
+		polls: z.array(PollDraftSchema.extend({ id: zid('meetingPolls').optional() })),
 	})
 	.public(async ({ ctx, args }) => {
 		const agendaNow = ctx.meeting.agenda;
@@ -103,8 +103,8 @@ export const updateAgendaItem = admin
 		}
 
 		const oldPollIds = item.pollIds;
-		const newPollIds = new Set<Id<'polls'>>();
-		const seenExisting = new Set<Id<'polls'>>();
+		const newPollIds = new Set<Id<'meetingPolls'>>();
+		const seenExisting = new Set<Id<'meetingPolls'>>();
 
 		for (const poll of args.polls) {
 			if (poll.id) {
@@ -120,10 +120,10 @@ export const updateAgendaItem = admin
 					appErrors.bad_request({ reason: 'poll_not_on_agenda_item', pollId: poll.id }),
 				);
 
-				const existing = await getPollOrThrow(ctx.db, poll.id);
+				const existing = await getMeetingPollOrThrow(ctx.db, poll.id);
 
-				assertPollInMeeting(existing, ctx.meeting._id);
-				assertPollEditable(existing);
+				assertMeetingPollInMeeting(existing, ctx.meeting._id);
+				assertMeetingPollEditable(existing);
 
 				const nextAllowsAbstain = poll.allowsAbstain;
 				const options = optionsWithAbstainLast(poll.options, nextAllowsAbstain);
@@ -164,10 +164,10 @@ export const updateAgendaItem = admin
 				const validated = FullPollSchema.safeParse(merged);
 				AppError.assertZodSuccess(validated, appErrors.invalid_poll_draft);
 
-				await ctx.db.replace('polls', poll.id, validated.data);
+				await ctx.db.replace('meetingPolls', poll.id, validated.data);
 				newPollIds.add(poll.id);
 			} else {
-				const pollId = await createPollHelper(ctx, {
+				const pollId = await createMeetingPollHelper(ctx, {
 					draft: poll,
 					agendaItemId: args.agendaItemId,
 					updateAgenda: false,
@@ -181,9 +181,13 @@ export const updateAgendaItem = admin
 			!!ctx.meeting.currentPollId && removedPollIds.includes(ctx.meeting.currentPollId);
 
 		if (removedPollIds.length > 0) {
-			await ctx.scheduler.runAfter(0, internal.meeting.jobs.poll_cleanup.cleanupPollAgendaItemIds, {
-				pollIds: removedPollIds,
-			});
+			await ctx.scheduler.runAfter(
+				0,
+				internal.meeting.jobs.meetingPollCleanup.cleanupPollAgendaItemIds,
+				{
+					pollIds: removedPollIds,
+				},
+			);
 		}
 
 		const agenda = updateAgendaItemById(agendaNow, args.agendaItemId, (agendaItem) => ({
@@ -206,7 +210,7 @@ export const setAgendaItemPollIds = admin
 	.mutation()
 	.input({
 		agendaItemId: z.string().min(1),
-		pollIds: z.array(zid('polls')),
+		pollIds: z.array(zid('meetingPolls')),
 	})
 	.public(async ({ ctx, args }) => {
 		const agendaNow = ctx.meeting.agenda;
@@ -249,9 +253,13 @@ export const removeAgendaItem = admin
 			!!ctx.meeting.currentPollId && affectedPolls.includes(ctx.meeting.currentPollId);
 
 		if (affectedPolls.length > 0) {
-			await ctx.scheduler.runAfter(0, internal.meeting.jobs.poll_cleanup.cleanupPollAgendaItemIds, {
-				pollIds: affectedPolls,
-			});
+			await ctx.scheduler.runAfter(
+				0,
+				internal.meeting.jobs.meetingPollCleanup.cleanupPollAgendaItemIds,
+				{
+					pollIds: affectedPolls,
+				},
+			);
 		}
 
 		const currentId = ctx.meeting.currentAgendaItemId;

@@ -28,12 +28,11 @@ export const ErrorMessages = {
 		'Du kan inte markera dig som frånvarande medan du är aktuell talare.',
 	illegal_while_absent: () => 'Du kan inte göra detta när du är markerad som frånvarande.',
 
-	// Polls
-	poll_not_found: ({ pollId }) => `Pollen med id '${pollId}' hittades inte.`,
-	standalone_poll_not_found: ({ pollId }) =>
-		`Den fristående omröstningen med id '${pollId}' hittades inte.`,
-	standalone_poll_code_not_found: ({ pollCode }) =>
-		`Den fristående omröstningen med kod '${pollCode}' hittades inte.`,
+	// Meeting polls
+	meeting_poll_not_found: ({ pollId }) => `Mötespollen med id '${pollId}' hittades inte.`,
+	// User-owned polls
+	user_poll_not_found: ({ pollId }) => `Omröstningen med id '${pollId}' hittades inte.`,
+	user_poll_code_not_found: ({ pollCode }) => `Omröstningen med kod '${pollCode}' hittades inte.`,
 	invalid_poll_option: ({ option }) => `'${option}' är inte ett möjligt alternativ i pollen.`,
 	invalid_poll_vote_limit: ({ maxVotesPerVoter, optionsCount }) =>
 		`Maxröster per deltagare (${maxVotesPerVoter}) måste vara mellan 1 och antal alternativ (${optionsCount}).`,
@@ -44,7 +43,7 @@ export const ErrorMessages = {
 		return 'Enkel-vinnare omröstning kräver att en majoritetsregel väljs.';
 	},
 	invalid_poll_draft: (_args) => 'Poll-utkastet innehåller ogiltiga värden.',
-	illegal_poll_action: ({ action }) => {
+	illegal_meeting_poll_action: ({ action }) => {
 		switch (action) {
 			case 'edit_while_open':
 				return 'Du kan inte ändra i en poll medan den är öppen.';
@@ -62,7 +61,7 @@ export const ErrorMessages = {
 				return 'Du kan inte ändra i pollen just nu.';
 		}
 	},
-	illegal_standalone_poll_action: ({ action }) => {
+	illegal_user_poll_action: ({ action }) => {
 		switch (action) {
 			case 'edit_while_open':
 				return 'Du kan inte ändra i en omröstning medan den är öppen.';

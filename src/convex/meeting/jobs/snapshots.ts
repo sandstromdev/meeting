@@ -2,8 +2,8 @@ import { v } from 'convex/values';
 import { internal } from '../../_generated/api';
 import { internalAction, internalMutation, internalQuery } from '../../_generated/server';
 import { appErrors } from '../../helpers/error';
-import { buildMeetingSnapshotPayload } from '../../helpers/meeting_backup';
-import { checksumPayload } from '../../helpers/snapshot_checksum';
+import { buildMeetingSnapshotPayload } from '../../helpers/meetingBackup';
+import { checksumPayload } from '../../helpers/snapshotChecksum';
 
 // --- Internal queries ---
 

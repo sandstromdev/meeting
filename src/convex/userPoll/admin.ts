@@ -3,18 +3,18 @@ import type { MutationCtx } from '$convex/_generated/server';
 import { authed } from '$convex/helpers/auth';
 import { AppError, appErrors } from '$convex/helpers/error';
 import {
-	assertStandalonePollEditable,
-	assertStandalonePollOwner,
-	getStandalonePollOrThrow,
-} from '$convex/helpers/standalone_poll';
+	assertUserPollEditable,
+	assertUserPollOwner,
+	getUserPollOrThrow,
+} from '$convex/helpers/userPoll';
 import { ABSTAIN_OPTION_LABEL } from '$lib/polls';
 import {
-	FullStandalonePollSchema,
+	FullUserPollSchema,
 	PollDraftSchema,
 	PollTypeSchema,
 	refinePollRowTypeConfig,
-	StandalonePollBaseSchema,
-	StandaloneVisibilitySchema,
+	UserPollBaseSchema,
+	UserPollVisibilitySchema,
 } from '$lib/validation';
 import { zid } from 'convex-helpers/server/zod4';
 
@@ -36,7 +36,7 @@ async function createUniqueCode(ctx: MutationCtx) {
 	for (let i = 0; i < 8; i += 1) {
 		const code = createCode();
 		const existing = await ctx.db
-			.query('standalonePolls')
+			.query('userPolls')
 			.withIndex('by_code', (q) => q.eq('code', code))
 			.unique();
 		if (!existing) {
@@ -46,37 +46,37 @@ async function createUniqueCode(ctx: MutationCtx) {
 	throw appErrors.internal_error();
 }
 
-const standalone_admin = authed.use(({ ctx, next }) => {
+const userPollAdmin = authed.use(({ ctx, next }) => {
 	AppError.assert(ctx.user.role === 'admin', appErrors.forbidden());
 	return next(ctx);
 });
 
 // --- Public queries ---
 
-export const listMyPolls = standalone_admin.query().public(async ({ ctx }) => {
+export const listMyPolls = userPollAdmin.query().public(async ({ ctx }) => {
 	return await ctx.db
-		.query('standalonePolls')
+		.query('userPolls')
 		.withIndex('by_ownerUserId_and_updatedAt', (q) => q.eq('ownerUserId', ctx.user.subject))
 		.order('desc')
 		.collect();
 });
 
-export const getPoll = standalone_admin
+export const getPoll = userPollAdmin
 	.query()
-	.input({ pollId: zid('standalonePolls') })
+	.input({ pollId: zid('userPolls') })
 	.public(async ({ ctx, args }) => {
-		const poll = await getStandalonePollOrThrow(ctx.db, args.pollId);
-		assertStandalonePollOwner(poll, ctx.user.subject);
+		const poll = await getUserPollOrThrow(ctx.db, args.pollId);
+		assertUserPollOwner(poll, ctx.user.subject);
 		return poll;
 	});
 
 // --- Public mutations ---
 
-export const createPoll = standalone_admin
+export const createPoll = userPollAdmin
 	.mutation()
 	.input({
 		draft: PollDraftSchema,
-		visibilityMode: StandaloneVisibilitySchema,
+		visibilityMode: UserPollVisibilitySchema,
 	})
 	.public(async ({ ctx, args }) => {
 		const draft = {
@@ -91,27 +91,27 @@ export const createPoll = standalone_admin
 			options: optionsWithAbstainLast(args.draft.options, args.draft.allowsAbstain),
 		};
 
-		const validated = StandalonePollBaseSchema.omit({ _id: true, _creationTime: true })
+		const validated = UserPollBaseSchema.omit({ _id: true, _creationTime: true })
 			.and(PollTypeSchema)
 			.superRefine((data, ctx) => refinePollRowTypeConfig(data, ctx))
 			.safeParse(draft);
 		AppError.assertZodSuccess(validated, appErrors.invalid_poll_draft);
 
-		return await ctx.db.insert('standalonePolls', validated.data);
+		return await ctx.db.insert('userPolls', validated.data);
 	});
 
-export const editPoll = standalone_admin
+export const editPoll = userPollAdmin
 	.mutation()
 	.input({
-		pollId: zid('standalonePolls'),
+		pollId: zid('userPolls'),
 		edits: PollDraftSchema.partial().extend({
-			visibilityMode: StandaloneVisibilitySchema.optional(),
+			visibilityMode: UserPollVisibilitySchema.optional(),
 		}),
 	})
 	.public(async ({ ctx, args }) => {
-		const poll = await getStandalonePollOrThrow(ctx.db, args.pollId);
-		assertStandalonePollOwner(poll, ctx.user.subject);
-		assertStandalonePollEditable(poll);
+		const poll = await getUserPollOrThrow(ctx.db, args.pollId);
+		assertUserPollOwner(poll, ctx.user.subject);
+		assertUserPollEditable(poll);
 
 		const nextAllowsAbstain = args.edits.allowsAbstain ?? poll.allowsAbstain;
 		const rawOptions = args.edits.options ?? poll.options;
@@ -123,24 +123,24 @@ export const editPoll = standalone_admin
 			updatedAt: Date.now(),
 		};
 
-		const validated = FullStandalonePollSchema.safeParse(Object.assign({}, poll, updatedFields));
+		const validated = FullUserPollSchema.safeParse(Object.assign({}, poll, updatedFields));
 		AppError.assertZodSuccess(validated, appErrors.invalid_poll_draft);
 
-		await ctx.db.replace('standalonePolls', args.pollId, validated.data);
+		await ctx.db.replace('userPolls', args.pollId, validated.data);
 		return true;
 	});
 
-export const openPoll = standalone_admin
+export const openPoll = userPollAdmin
 	.mutation()
-	.input({ pollId: zid('standalonePolls') })
+	.input({ pollId: zid('userPolls') })
 	.public(async ({ ctx, args }) => {
-		const poll = await getStandalonePollOrThrow(ctx.db, args.pollId);
-		assertStandalonePollOwner(poll, ctx.user.subject);
+		const poll = await getUserPollOrThrow(ctx.db, args.pollId);
+		assertUserPollOwner(poll, ctx.user.subject);
 		if (poll.isOpen) {
 			return false;
 		}
 
-		await ctx.db.patch('standalonePolls', args.pollId, {
+		await ctx.db.patch('userPolls', args.pollId, {
 			isOpen: true,
 			openedAt: Date.now(),
 			closedAt: null,
@@ -149,25 +149,25 @@ export const openPoll = standalone_admin
 		return true;
 	});
 
-export const closePoll = standalone_admin
+export const closePoll = userPollAdmin
 	.mutation()
-	.input({ pollId: zid('standalonePolls') })
+	.input({ pollId: zid('userPolls') })
 	.public(async ({ ctx, args }) => {
-		const poll = await getStandalonePollOrThrow(ctx.db, args.pollId);
-		assertStandalonePollOwner(poll, ctx.user.subject);
+		const poll = await getUserPollOrThrow(ctx.db, args.pollId);
+		assertUserPollOwner(poll, ctx.user.subject);
 		if (!poll.isOpen) {
 			return false;
 		}
 
 		const now = Date.now();
-		await ctx.db.patch('standalonePolls', args.pollId, {
+		await ctx.db.patch('userPolls', args.pollId, {
 			isOpen: false,
 			closedAt: now,
 			updatedAt: now,
 		});
 		await ctx.scheduler.runAfter(
 			0,
-			internal.polls.jobs.standalone_polls.createPollResultSnapshotAction,
+			internal.userPoll.jobs.snapshot.createPollResultSnapshotAction,
 			{
 				pollId: args.pollId,
 			},
@@ -175,36 +175,36 @@ export const closePoll = standalone_admin
 		return true;
 	});
 
-export const cancelPoll = standalone_admin
+export const cancelPoll = userPollAdmin
 	.mutation()
-	.input({ pollId: zid('standalonePolls') })
+	.input({ pollId: zid('userPolls') })
 	.public(async ({ ctx, args }) => {
-		const poll = await getStandalonePollOrThrow(ctx.db, args.pollId);
-		assertStandalonePollOwner(poll, ctx.user.subject);
+		const poll = await getUserPollOrThrow(ctx.db, args.pollId);
+		assertUserPollOwner(poll, ctx.user.subject);
 		if (!poll.isOpen) {
 			return false;
 		}
 
-		await ctx.db.patch('standalonePolls', args.pollId, {
+		await ctx.db.patch('userPolls', args.pollId, {
 			isOpen: false,
 			closedAt: null,
 			updatedAt: Date.now(),
 		});
-		await ctx.scheduler.runAfter(0, internal.polls.jobs.standalone_polls.cleanupPollVotes, {
+		await ctx.scheduler.runAfter(0, internal.userPoll.jobs.cleanup.cleanupPollVotes, {
 			pollIds: [args.pollId],
 		});
 		return true;
 	});
 
-export const removePoll = standalone_admin
+export const removePoll = userPollAdmin
 	.mutation()
-	.input({ pollId: zid('standalonePolls') })
+	.input({ pollId: zid('userPolls') })
 	.public(async ({ ctx, args }) => {
-		const poll = await getStandalonePollOrThrow(ctx.db, args.pollId);
-		assertStandalonePollOwner(poll, ctx.user.subject);
-		assertStandalonePollEditable(poll);
-		await ctx.db.delete('standalonePolls', args.pollId);
-		await ctx.scheduler.runAfter(0, internal.polls.jobs.standalone_polls.cleanupPollVotes, {
+		const poll = await getUserPollOrThrow(ctx.db, args.pollId);
+		assertUserPollOwner(poll, ctx.user.subject);
+		assertUserPollEditable(poll);
+		await ctx.db.delete('userPolls', args.pollId);
+		await ctx.scheduler.runAfter(0, internal.userPoll.jobs.cleanup.cleanupPollVotes, {
 			pollIds: [args.pollId],
 		});
 		return true;

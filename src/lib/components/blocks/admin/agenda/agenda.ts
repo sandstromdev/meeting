@@ -4,7 +4,7 @@ import type { MeetingState } from '$lib/context.svelte';
 import { ABSTAIN_OPTION_LABEL } from '$lib/polls';
 import { RefinePollDraftSchema, type PollDraft } from '$lib/validation';
 
-export type EditablePollDraft = PollDraft & { id?: Id<'polls'> };
+export type EditablePollDraft = PollDraft & { id?: Id<'meetingPolls'> };
 
 export function newPollDraft(): PollDraft {
 	return {
@@ -44,7 +44,7 @@ export const POLL_PRESETS = [
 	},
 ];
 
-export function hydratePollRowToDraft(p: Doc<'polls'>) {
+export function hydratePollRowToDraft(p: Doc<'meetingPolls'>) {
 	const opts = [...p.options];
 	const options =
 		p.allowsAbstain && opts[opts.length - 1] === ABSTAIN_OPTION_LABEL ? opts.slice(0, -1) : opts;

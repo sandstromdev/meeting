@@ -12,7 +12,7 @@ export async function logSpeakerSlot(
 	startTime: number,
 	endTime: number,
 ) {
-	await ctx.scheduler.runAfter(0, internal.meeting.jobs.speaker_log.logSpeaker, {
+	await ctx.scheduler.runAfter(0, internal.meeting.jobs.speakerLog.logSpeaker, {
 		meetingId: ctx.meeting._id,
 		type,
 		by,

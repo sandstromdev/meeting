@@ -8,7 +8,7 @@
 	import { getVoteShare } from '$lib/polls';
 	import type { FunctionReturnType } from 'convex/server';
 
-	type Poll = NonNullable<FunctionReturnType<typeof api.meeting.users.poll.getCurrentPoll>>;
+	type Poll = NonNullable<FunctionReturnType<typeof api.meeting.users.meetingPoll.getCurrentPoll>>;
 
 	type PollCounters = {
 		votersCount: number;
@@ -21,7 +21,7 @@
 	const meeting = getMeetingContext();
 	const ps = usePageState();
 
-	const pollResults = meeting.query(api.meeting.users.poll.getPollResultsById, () =>
+	const pollResults = meeting.query(api.meeting.users.meetingPoll.getPollResultsById, () =>
 		!poll.isOpen ? { pollId: poll.id } : 'skip',
 	);
 

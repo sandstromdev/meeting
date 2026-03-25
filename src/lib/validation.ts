@@ -49,8 +49,12 @@ export const PollDraftSchema = z.object({
 	allowsAbstain: z.boolean().default(true),
 	maxVotesPerVoter: z.number().min(1),
 });
-export const StandaloneVisibilitySchema = z.enum(['public', 'account_required']);
-export type StandaloneVisibility = z.infer<typeof StandaloneVisibilitySchema>;
+export const UserPollVisibilitySchema = z.enum(['public', 'account_required']);
+export type UserPollVisibility = z.infer<typeof UserPollVisibilitySchema>;
+/** @deprecated Use `UserPollVisibilitySchema` */
+export const StandaloneVisibilitySchema = UserPollVisibilitySchema;
+/** @deprecated Use `UserPollVisibility` */
+export type StandaloneVisibility = UserPollVisibility;
 
 export const RefinePollDraftSchema = PollDraftSchema.superRefine((data, ctx) => {
 	const { options, allowsAbstain } = data;
@@ -173,7 +177,7 @@ export function refinePollRowTypeConfig(
 export const PollTypeSchema = pollTypeConfigZod;
 
 export const PollBaseSchema = z.object({
-	_id: zid('polls'),
+	_id: zid('meetingPolls'),
 	_creationTime: z.number(),
 	title: z.string().trim().min(1),
 	options: z.array(z.string().trim().min(1)).min(1),
@@ -197,12 +201,12 @@ export const PollEmbeddedSnapshotSchema = PollBaseSchema.omit({ _id: true, _crea
 	.and(pollTypeConfigZod)
 	.superRefine((data, ctx) => refinePollRowTypeConfig(data, ctx));
 
-export const StandalonePollBaseSchema = z.object({
-	_id: zid('standalonePolls'),
+export const UserPollBaseSchema = z.object({
+	_id: zid('userPolls'),
 	_creationTime: z.number(),
 	code: z.string().trim().min(4).max(12),
 	ownerUserId: z.string().trim().min(1),
-	visibilityMode: StandaloneVisibilitySchema,
+	visibilityMode: UserPollVisibilitySchema,
 	title: z.string().trim().min(1),
 	options: z.array(z.string().trim().min(1)).min(1),
 	isResultPublic: z.boolean(),
@@ -214,17 +218,24 @@ export const StandalonePollBaseSchema = z.object({
 	updatedAt: z.number(),
 });
 
-export const FullStandalonePollSchema = StandalonePollBaseSchema.and(pollTypeConfigZod).superRefine(
+export const FullUserPollSchema = UserPollBaseSchema.and(pollTypeConfigZod).superRefine(
 	(data, ctx) => refinePollRowTypeConfig(data, ctx),
 );
 
-/** Standalone poll payload as stored inside `standalonePollResults.poll`. */
-export const StandalonePollEmbeddedSnapshotSchema = StandalonePollBaseSchema.omit({
+/** User poll payload as stored inside `userPollResults.poll`. */
+export const UserPollEmbeddedSnapshotSchema = UserPollBaseSchema.omit({
 	_id: true,
 	_creationTime: true,
 })
 	.and(pollTypeConfigZod)
 	.superRefine((data, ctx) => refinePollRowTypeConfig(data, ctx));
+
+/** @deprecated Use `UserPollBaseSchema` */
+export const StandalonePollBaseSchema = UserPollBaseSchema;
+/** @deprecated Use `FullUserPollSchema` */
+export const FullStandalonePollSchema = FullUserPollSchema;
+/** @deprecated Use `UserPollEmbeddedSnapshotSchema` */
+export const StandalonePollEmbeddedSnapshotSchema = UserPollEmbeddedSnapshotSchema;
 
 export const RoleSchema = z.enum(ROLES);
 
