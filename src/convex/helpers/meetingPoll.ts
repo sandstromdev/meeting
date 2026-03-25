@@ -1,6 +1,6 @@
 import type { Doc, Id } from '$convex/_generated/dataModel';
 import type { MutationCtx } from '$convex/_generated/server';
-import { ABSTAIN_OPTION_LABEL } from '$lib/polls';
+import { ABSTAIN_OPTION_LABEL, type MajorityRule } from '$lib/polls';
 import type { StripSystemFields } from '$lib/types';
 import type { PollDraft } from '$lib/validation';
 import { stripSystemFields } from '.';
@@ -13,15 +13,15 @@ import type { EditablePollDraft } from '$lib/components/blocks/admin/agenda/agen
 
 export type OptionTotal = { optionIndex: number; option: string; votes: number };
 
-type PollResultSnapshotData = StripSystemFields<Doc<'pollResults'>>;
-type PollResultSnapshotArgs = {
-	poll: Doc<'polls'>;
+type MeetingPollResultSnapshotData = StripSystemFields<Doc<'meetingPollResults'>>;
+type MeetingPollResultSnapshotArgs = {
+	poll: Doc<'meetingPolls'>;
 	complete: boolean;
 	results: {
 		optionTotals: OptionTotal[];
 		winners: OptionTotal[];
 		isTie: boolean;
-		majorityRule: Doc<'pollResults'>['results']['majorityRule'] | null;
+		majorityRule: MajorityRule | null;
 		counts: {
 			totalVotes: number;
 			eligibleVoters: number;
@@ -31,7 +31,9 @@ type PollResultSnapshotArgs = {
 	};
 };
 
-export function buildPollResultSnapshot(args: PollResultSnapshotArgs): PollResultSnapshotData {
+export function buildMeetingPollResultSnapshot(
+	args: MeetingPollResultSnapshotArgs,
+): MeetingPollResultSnapshotData {
 	const { poll, complete, results } = args;
 
 	return {
@@ -41,36 +43,36 @@ export function buildPollResultSnapshot(args: PollResultSnapshotArgs): PollResul
 		poll: stripSystemFields(poll),
 		complete,
 		results,
-	} satisfies PollResultSnapshotData;
+	} satisfies MeetingPollResultSnapshotData;
 }
 
-export async function getPollOrThrow(db: Db, pollId?: Id<'polls'>) {
+export async function getMeetingPollOrThrow(db: Db, pollId?: Id<'meetingPolls'>) {
 	AppError.assertNotNull(pollId, appErrors.bad_request({ pollId }));
 
-	const poll = await db.get('polls', pollId);
+	const poll = await db.get('meetingPolls', pollId);
 
-	AppError.assertNotNull(poll, appErrors.poll_not_found(pollId));
+	AppError.assertNotNull(poll, appErrors.meeting_poll_not_found(pollId));
 
 	return poll;
 }
 
-export async function getLatestPollResultSnapshot(db: Db, pollId: Id<'polls'>) {
+export async function getLatestMeetingPollResultSnapshot(db: Db, pollId: Id<'meetingPolls'>) {
 	return db
-		.query('pollResults')
+		.query('meetingPollResults')
 		.withIndex('by_poll_and_closedAt', (q) => q.eq('pollId', pollId))
 		.order('desc')
 		.first();
 }
 
-export function assertPollInMeeting(
-	poll: Pick<Doc<'polls'>, '_id' | 'meetingId'>,
+export function assertMeetingPollInMeeting(
+	poll: Pick<Doc<'meetingPolls'>, '_id' | 'meetingId'>,
 	meetingId: Id<'meetings'>,
 ) {
-	AppError.assert(poll.meetingId === meetingId, appErrors.poll_not_found(poll._id));
+	AppError.assert(poll.meetingId === meetingId, appErrors.meeting_poll_not_found(poll._id));
 }
 
-export function assertPollEditable(poll: Pick<Doc<'polls'>, 'isOpen'>) {
-	AppError.assert(!poll.isOpen, appErrors.illegal_poll_action('edit_while_open'));
+export function assertMeetingPollEditable(poll: Pick<Doc<'meetingPolls'>, 'isOpen'>) {
+	AppError.assert(!poll.isOpen, appErrors.illegal_meeting_poll_action('edit_while_open'));
 }
 export function stripAbstain(optionTotals: OptionTotal[], allowsAbstain: boolean) {
 	return allowsAbstain
@@ -82,7 +84,7 @@ export function optionsWithAbstainLast(options: string[], allowsAbstain: boolean
 	return allowsAbstain ? [...withoutAbstain, ABSTAIN_OPTION_LABEL] : withoutAbstain;
 }
 
-export async function createPollHelper(
+export async function createMeetingPollHelper(
 	ctx: MutationCtx & { meeting: Doc<'meetings'> },
 	args: {
 		draft: PollDraft;
@@ -120,7 +122,7 @@ export async function createPollHelper(
 		return appErrors.invalid_poll_draft(e);
 	});
 
-	const pollId = await ctx.db.insert('polls', validated.data);
+	const pollId = await ctx.db.insert('meetingPolls', validated.data);
 
 	if (found) {
 		const nextAgenda = setPollIdsForItem(agenda, found.item.id, [...found.item.pollIds, pollId]);
@@ -132,9 +134,9 @@ export async function createPollHelper(
 
 	return pollId;
 }
-export function pollDraftChanged(
+export function meetingPollDraftChanged(
 	draft: EditablePollDraft,
-	originalPolls: ReadonlyMap<Id<'polls'>, EditablePollDraft>,
+	originalPolls: ReadonlyMap<Id<'meetingPolls'>, EditablePollDraft>,
 ): boolean {
 	if (!draft.id) {
 		return false;

@@ -6,7 +6,7 @@ import { SvelteMap } from 'svelte/reactivity';
 
 type AgendaItem = MeetingData['meeting']['agenda'][number];
 export type AgendaPoll = {
-	id: Id<'polls'>;
+	id: Id<'meetingPolls'>;
 	hasVoted: boolean;
 	maxVotesPerVoter: number;
 };
@@ -89,7 +89,7 @@ export class AgendaState {
 		if (optionIndexes.length === 0) {
 			return;
 		}
-		await this.#meeting.mutate(api.meeting.users.poll.vote, {
+		await this.#meeting.mutate(api.meeting.users.meetingPoll.vote, {
 			pollId: poll.id,
 			optionIndexes,
 		});

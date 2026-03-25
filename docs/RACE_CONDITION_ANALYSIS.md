@@ -24,7 +24,7 @@ The main shared-write hotspot is still the `meetings` document: agenda operation
 Two active correctness risks remain where OCC does not reliably serialize behavior:
 
 1. concurrent participant creation can create duplicate `meetingParticipants` rows for the same logical user+meeting,
-2. concurrent vote submissions from the same voter can leave multiple `pollVotes`/`standalonePollVotes` rows because vote replacement is implemented as read-delete-insert without uniqueness enforcement.
+2. concurrent vote submissions from the same voter can leave multiple `meetingPollVotes`/`userPollVotes` rows because vote replacement is implemented as read-delete-insert without uniqueness enforcement.
 
 ## Scope
 
@@ -34,16 +34,16 @@ Two active correctness risks remain where OCC does not reliably serialize behavi
 - `src/convex/helpers/auth.ts`
 - `src/convex/helpers/meeting.ts`
 - `src/convex/helpers/users.ts`
-- `src/convex/helpers/poll.ts`
-- `src/convex/helpers/standalone_poll.ts`
+- `src/convex/helpers/meetingPoll.ts`
+- `src/convex/helpers/userPoll.ts`
 - `src/convex/helpers/counters.ts`
 - `src/convex/meeting/users/auth.ts`
 - `src/convex/meeting/users/queue.ts`
 - `src/convex/meeting/users/attendance.ts`
-- `src/convex/meeting/users/poll.ts`
+- `src/convex/meeting/users/meetingPoll.ts`
 - `src/convex/meeting/admin/meeting.ts`
 - `src/convex/meeting/admin/agenda.ts`
-- `src/convex/meeting/admin/poll.ts`
+- `src/convex/meeting/admin/meetingPoll.ts`
 - `src/convex/meeting/admin/users.ts`
 - `src/convex/meeting/moderator/meeting.ts`
 - `src/convex/meeting/jobs/snapshots.ts`
@@ -104,7 +104,7 @@ Each sensitive flow was mapped to:
 **Reasoning**:
 
 - Current pattern is `read existing votes -> delete existing -> insert new votes`.
-- There is no uniqueness constraint on (`pollId`, voter identity) in `pollVotes`/`standalonePollVotes`.
+- There is no uniqueness constraint on (`pollId`, voter identity) in `meetingPollVotes`/`userPollVotes`.
 - Two concurrent submissions from the same voter can both pass the initial read and both insert.
 - Counter updates are executed through sharded counter component mutations and do not guarantee serialization of voter-level uniqueness.
 
@@ -117,7 +117,7 @@ Each sensitive flow was mapped to:
 
 **Classification**: Contention / retry risk
 
-**Where**: Many mutations in `meeting/admin/meeting`, `meeting/admin/agenda`, `meeting/admin/poll`, `meeting/moderator/meeting`, `meeting/users/queue`, and `meeting/admin/users` patch `meetings`.
+**Where**: Many mutations in `meeting/admin/meeting`, `meeting/admin/agenda`, `meeting/admin/meetingPoll`, `meeting/moderator/meeting`, `meeting/users/queue`, and `meeting/admin/users` patch `meetings`.
 
 **Why it matters**:
 
@@ -129,7 +129,7 @@ Each sensitive flow was mapped to:
 
 **Classification**: Contention / retry risk
 
-**Where**: Agenda operations in `src/convex/meeting/admin/agenda.ts` and poll operations that rewrite `meeting.agenda` associations in `src/convex/meeting/admin/poll.ts`
+**Where**: Agenda operations in `src/convex/meeting/admin/agenda.ts` and poll operations that rewrite `meeting.agenda` associations in `src/convex/meeting/admin/meetingPoll.ts`
 
 **Why it matters**:
 
@@ -160,7 +160,7 @@ Each sensitive flow was mapped to:
 
 **Classification**: Contention / retry risk
 
-**Where**: `meeting/admin/poll.openPoll`, `closePollByAdmin`, `closePollAndShowResults`, and `meeting/admin/meeting.toggleMeeting`
+**Where**: `meeting/admin/meetingPoll.openPoll`, `closePollByAdmin`, `closePollAndShowResults`, and `meeting/admin/meeting.toggleMeeting`
 
 **Current behavior**:
 
@@ -189,7 +189,7 @@ Each sensitive flow was mapped to:
 
 **Classification**: Low-risk pattern currently mitigated
 
-**Where**: `logSpeakerSlot` scheduling `internal.meeting.jobs.speaker_log.logSpeaker`, poll snapshot action (`internal.meeting.jobs.poll_close.createPollResultSnapshotAction`), vote cleanup (`internal.meeting.jobs.poll_cleanup.*`), meeting snapshot cron (`internal.meeting.jobs.snapshots.runOpenMeetingSnapshots`)
+**Where**: `logSpeakerSlot` scheduling `internal.meeting.jobs.speakerLog.logSpeaker`, poll snapshot action (`internal.meeting.jobs.meetingPollClose.createPollResultSnapshotAction`), vote cleanup (`internal.meeting.jobs.meetingPollCleanup.*`), meeting snapshot cron (`internal.meeting.jobs.snapshots.runOpenMeetingSnapshots`)
 
 **Reasoning**:
 
@@ -215,16 +215,16 @@ The highest-priority risks are the logical uniqueness gaps in participant creati
 
 ### Risk Summary
 
-| Area                                                  | Current status                             | Likely production symptom                                 |
-| ----------------------------------------------------- | ------------------------------------------ | --------------------------------------------------------- |
-| Participant join/add (`meetingParticipants`)          | Active correctness risk                    | Duplicate membership rows, inconsistent follow-up updates |
-| Vote replacement (`pollVotes`, `standalonePollVotes`) | Active correctness risk                    | One voter represented by multiple vote rows               |
-| Shared `meetings` state                               | Contention / retry risk                    | Intermittent failed controls under burst overlap          |
-| Agenda rewrites                                       | Contention / retry risk                    | Higher collision frequency with other meeting controls    |
-| Speaker transitions                                   | Contention / retry risk (low correctness)  | Retry/no-op feel during simultaneous actions              |
-| Poll open/close/show                                  | Contention / retry risk                    | Admin action races and occasional retry failures          |
-| Heartbeats                                            | Low-to-medium contention/data-quality risk | Duplicate heartbeat rows for same token                   |
-| Scheduled follow-ups                                  | Low-risk mitigated pattern                 | Eventual ordering variance, generally acceptable          |
+| Area                                                   | Current status                             | Likely production symptom                                 |
+| ------------------------------------------------------ | ------------------------------------------ | --------------------------------------------------------- |
+| Participant join/add (`meetingParticipants`)           | Active correctness risk                    | Duplicate membership rows, inconsistent follow-up updates |
+| Vote replacement (`meetingPollVotes`, `userPollVotes`) | Active correctness risk                    | One voter represented by multiple vote rows               |
+| Shared `meetings` state                                | Contention / retry risk                    | Intermittent failed controls under burst overlap          |
+| Agenda rewrites                                        | Contention / retry risk                    | Higher collision frequency with other meeting controls    |
+| Speaker transitions                                    | Contention / retry risk (low correctness)  | Retry/no-op feel during simultaneous actions              |
+| Poll open/close/show                                   | Contention / retry risk                    | Admin action races and occasional retry failures          |
+| Heartbeats                                             | Low-to-medium contention/data-quality risk | Duplicate heartbeat rows for same token                   |
+| Scheduled follow-ups                                   | Low-risk mitigated pattern                 | Eventual ordering variance, generally acceptable          |
 
 ### Recommended next actions
 

@@ -1,8 +1,8 @@
 import type { Doc, Id } from '$convex/_generated/dataModel';
 import type { QueryCtx } from '$convex/_generated/server';
 
-type PollDoc = Doc<'polls'>;
-type PollResultDoc = Doc<'pollResults'>;
+type PollDoc = Doc<'meetingPolls'>;
+type PollResultDoc = Doc<'meetingPollResults'>;
 
 function stripPollForSnapshot(poll: PollDoc) {
 	// oxlint-disable-next-line no-unused-vars
@@ -62,11 +62,11 @@ export async function buildMeetingSnapshotPayload(
 			.withIndex('by_meeting', (q) => q.eq('meetingId', meetingId))
 			.take(500),
 		ctx.db
-			.query('polls')
+			.query('meetingPolls')
 			.withIndex('by_meeting', (q) => q.eq('meetingId', meetingId))
 			.collect(),
 		ctx.db
-			.query('pollResults')
+			.query('meetingPollResults')
 			.withIndex('by_meeting_and_poll_and_closedAt', (q) => q.eq('meetingId', meetingId))
 			.collect(),
 		ctx.db

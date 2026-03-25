@@ -1,12 +1,12 @@
 import { c } from '$convex/helpers';
 import { authed } from '$convex/helpers/auth';
-import { getStandaloneVotesCounter, getStandaloneVotersCounter } from '$convex/helpers/counters';
+import { getUserPollVotesCounter, getUserPollVotersCounter } from '$convex/helpers/counters';
 import { AppError, appErrors } from '$convex/helpers/error';
 import {
-	getLatestStandalonePollResultSnapshot,
-	getStandalonePollOrThrow,
+	getLatestUserPollResultSnapshot,
+	getUserPollOrThrow,
 	getVoterKey,
-} from '$convex/helpers/standalone_poll';
+} from '$convex/helpers/userPoll';
 import { zid } from 'convex-helpers/server/zod4';
 import { z } from 'zod';
 
@@ -20,11 +20,11 @@ export const getByCode = c
 	})
 	.public(async ({ ctx, args }) => {
 		const poll = await ctx.db
-			.query('standalonePolls')
+			.query('userPolls')
 			.withIndex('by_code', (q) => q.eq('code', args.code.toUpperCase()))
 			.unique();
 
-		AppError.assertNotNull(poll, appErrors.standalone_poll_code_not_found(args.code));
+		AppError.assertNotNull(poll, appErrors.user_poll_code_not_found(args.code));
 
 		const identity = await ctx.auth.getUserIdentity();
 
@@ -34,7 +34,7 @@ export const getByCode = c
 
 		const myVotes = voterKey
 			? await ctx.db
-					.query('standalonePollVotes')
+					.query('userPollVotes')
 					.withIndex('by_poll_and_voterKey', (q) =>
 						q.eq('pollId', poll._id).eq('voterKey', voterKey),
 					)
@@ -43,7 +43,7 @@ export const getByCode = c
 
 		const latestResult =
 			!poll.isOpen && poll.closedAt != null
-				? await getLatestStandalonePollResultSnapshot(ctx.db, poll._id)
+				? await getLatestUserPollResultSnapshot(ctx.db, poll._id)
 				: null;
 
 		const canSeeOptionTotals =
@@ -80,18 +80,18 @@ export const getByCode = c
 
 export const getVoteCounts = c
 	.query()
-	.input({ pollId: zid('standalonePolls') })
+	.input({ pollId: zid('userPolls') })
 	.public(async ({ ctx, args }) => {
-		const poll = await getStandalonePollOrThrow(ctx.db, args.pollId);
+		const poll = await getUserPollOrThrow(ctx.db, args.pollId);
 
 		if (poll.visibilityMode === 'account_required') {
 			const identity = await ctx.auth.getUserIdentity();
-			AppError.assertNotNull(identity, appErrors.illegal_standalone_poll_action('auth_required'));
+			AppError.assertNotNull(identity, appErrors.illegal_user_poll_action('auth_required'));
 		}
 
 		const [votesCount, votersCount] = await Promise.all([
-			getStandaloneVotesCounter(args.pollId).count(ctx),
-			getStandaloneVotersCounter(args.pollId).count(ctx),
+			getUserPollVotesCounter(args.pollId).count(ctx),
+			getUserPollVotersCounter(args.pollId).count(ctx),
 		]);
 
 		return { votesCount, votersCount };
@@ -99,14 +99,14 @@ export const getVoteCounts = c
 
 export const getResultsByPollId = c
 	.query()
-	.input({ pollId: zid('standalonePolls') })
+	.input({ pollId: zid('userPolls') })
 	.public(async ({ ctx, args }) => {
-		const poll = await getStandalonePollOrThrow(ctx.db, args.pollId);
+		const poll = await getUserPollOrThrow(ctx.db, args.pollId);
 		if (poll.isOpen || poll.closedAt == null) {
 			return null;
 		}
 
-		const result = await getLatestStandalonePollResultSnapshot(ctx.db, poll._id);
+		const result = await getLatestUserPollResultSnapshot(ctx.db, poll._id);
 		if (!result || !poll.isResultPublic) {
 			return null;
 		}
@@ -120,7 +120,7 @@ export const getResultsByPollId = c
 
 export const getMyOwnedPolls = authed.query().public(async ({ ctx }) => {
 	return await ctx.db
-		.query('standalonePolls')
+		.query('userPolls')
 		.withIndex('by_ownerUserId_and_updatedAt', (q) => q.eq('ownerUserId', ctx.user.subject))
 		.order('desc')
 		.collect();
@@ -131,18 +131,18 @@ export const getMyOwnedPolls = authed.query().public(async ({ ctx }) => {
 export const vote = c
 	.mutation()
 	.input({
-		pollId: zid('standalonePolls'),
+		pollId: zid('userPolls'),
 		optionIndexes: z.array(z.number().int().nonnegative()).min(1),
 		voterSessionToken: z.string().nullable().optional(),
 	})
 	.public(async ({ ctx, args }) => {
-		const poll = await getStandalonePollOrThrow(ctx.db, args.pollId);
-		AppError.assert(poll.isOpen, appErrors.illegal_standalone_poll_action('vote_while_closed'));
+		const poll = await getUserPollOrThrow(ctx.db, args.pollId);
+		AppError.assert(poll.isOpen, appErrors.illegal_user_poll_action('vote_while_closed'));
 
 		const uniqueOptionIndexes = [...new Set(args.optionIndexes)];
 		AppError.assert(
 			uniqueOptionIndexes.length === args.optionIndexes.length,
-			appErrors.illegal_standalone_poll_action('duplicate_vote_option'),
+			appErrors.illegal_user_poll_action('duplicate_vote_option'),
 		);
 
 		const maxVotesPerVoter =
@@ -151,7 +151,7 @@ export const vote = c
 				: poll.maxVotesPerVoter;
 		AppError.assert(
 			uniqueOptionIndexes.length <= maxVotesPerVoter,
-			appErrors.illegal_standalone_poll_action('too_many_votes'),
+			appErrors.illegal_user_poll_action('too_many_votes'),
 		);
 		for (const optionIndex of uniqueOptionIndexes) {
 			AppError.assert(
@@ -162,22 +162,20 @@ export const vote = c
 
 		const voterKey = await getVoterKey(ctx, poll.visibilityMode, args.voterSessionToken ?? null);
 		const existingVotes = await ctx.db
-			.query('standalonePollVotes')
+			.query('userPollVotes')
 			.withIndex('by_poll_and_voterKey', (q) =>
 				q.eq('pollId', args.pollId).eq('voterKey', voterKey),
 			)
 			.collect();
 
 		if (existingVotes.length > 0) {
-			await Promise.all(
-				existingVotes.map((vote) => ctx.db.delete('standalonePollVotes', vote._id)),
-			);
-			await getStandaloneVotesCounter(args.pollId).subtract(ctx, existingVotes.length);
+			await Promise.all(existingVotes.map((vote) => ctx.db.delete('userPollVotes', vote._id)));
+			await getUserPollVotesCounter(args.pollId).subtract(ctx, existingVotes.length);
 		}
 
 		await Promise.all(
 			uniqueOptionIndexes.map((optionIndex) =>
-				ctx.db.insert('standalonePollVotes', {
+				ctx.db.insert('userPollVotes', {
 					pollId: args.pollId,
 					voterKey,
 					optionIndex,
@@ -186,10 +184,10 @@ export const vote = c
 		);
 
 		const counterUpdates: Promise<unknown>[] = [
-			getStandaloneVotesCounter(args.pollId).add(ctx, uniqueOptionIndexes.length),
+			getUserPollVotesCounter(args.pollId).add(ctx, uniqueOptionIndexes.length),
 		];
 		if (existingVotes.length === 0) {
-			counterUpdates.push(getStandaloneVotersCounter(args.pollId).inc(ctx));
+			counterUpdates.push(getUserPollVotersCounter(args.pollId).inc(ctx));
 		}
 		await Promise.all(counterUpdates);
 
@@ -199,16 +197,16 @@ export const vote = c
 export const retractVote = c
 	.mutation()
 	.input({
-		pollId: zid('standalonePolls'),
+		pollId: zid('userPolls'),
 		voterSessionToken: z.string().nullable().optional(),
 	})
 	.public(async ({ ctx, args }) => {
-		const poll = await getStandalonePollOrThrow(ctx.db, args.pollId);
-		AppError.assert(poll.isOpen, appErrors.illegal_standalone_poll_action('vote_while_closed'));
+		const poll = await getUserPollOrThrow(ctx.db, args.pollId);
+		AppError.assert(poll.isOpen, appErrors.illegal_user_poll_action('vote_while_closed'));
 		const voterKey = await getVoterKey(ctx, poll.visibilityMode, args.voterSessionToken ?? null);
 
 		const existingVotes = await ctx.db
-			.query('standalonePollVotes')
+			.query('userPollVotes')
 			.withIndex('by_poll_and_voterKey', (q) =>
 				q.eq('pollId', args.pollId).eq('voterKey', voterKey),
 			)
@@ -217,8 +215,8 @@ export const retractVote = c
 			return true;
 		}
 
-		await Promise.all(existingVotes.map((vote) => ctx.db.delete('standalonePollVotes', vote._id)));
-		await getStandaloneVotesCounter(args.pollId).subtract(ctx, existingVotes.length);
-		await getStandaloneVotersCounter(args.pollId).dec(ctx);
+		await Promise.all(existingVotes.map((vote) => ctx.db.delete('userPollVotes', vote._id)));
+		await getUserPollVotesCounter(args.pollId).subtract(ctx, existingVotes.length);
+		await getUserPollVotersCounter(args.pollId).dec(ctx);
 		return true;
 	});

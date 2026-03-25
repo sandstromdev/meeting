@@ -10,7 +10,7 @@ export const load = (async ({ params, cookies }) => {
 
 	const voterSessionToken = getVoterSessionToken(cookies);
 
-	const poll = await convexLoad(api.polls.public.standalone_poll.getByCode, {
+	const poll = await convexLoad(api.userPoll.public.getByCode, {
 		code: params.code,
 		voterSessionToken,
 	});
@@ -23,7 +23,7 @@ export const load = (async ({ params, cookies }) => {
 		throw redirect(302, `/sign-in?redirect=${encodeURIComponent(`/p/${params.code}`)}`);
 	}
 
-	const voteCounts = await convexLoad(api.polls.public.standalone_poll.getVoteCounts, {
+	const voteCounts = await convexLoad(api.userPoll.public.getVoteCounts, {
 		pollId: poll.data.id,
 	});
 

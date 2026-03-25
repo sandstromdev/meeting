@@ -39,15 +39,15 @@
 	const isEditMode = $derived(!!agendaItemId);
 
 	const currentPollsResult = meeting.adminQuery(
-		api.meeting.admin.poll.getPollsByAgendaItemId,
+		api.meeting.admin.meetingPoll.getPollsByAgendaItemId,
 		() => (isEditMode && agendaItemId ? { agendaItemId } : 'skip'),
 	);
 
 	let newTitle = $state('');
 	let polls = $state<EditablePollDraft[]>([]);
 	let lastSyncedId = $state<string | null>(null);
-	let initialPollIds = $state<Id<'polls'>[]>([]);
-	let originalPolls = new SvelteMap<Id<'polls'>, EditablePollDraft>();
+	let initialPollIds = $state<Id<'meetingPolls'>[]>([]);
+	let originalPolls = new SvelteMap<Id<'meetingPolls'>, EditablePollDraft>();
 
 	const drafts = new PollDrafts(() => polls);
 

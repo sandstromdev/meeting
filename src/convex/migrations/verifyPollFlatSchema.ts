@@ -2,9 +2,9 @@ import type { Doc } from '$convex/_generated/dataModel';
 import { c } from '$convex/helpers';
 import {
 	FullPollSchema,
-	FullStandalonePollSchema,
+	FullUserPollSchema,
 	PollEmbeddedSnapshotSchema,
-	StandalonePollEmbeddedSnapshotSchema,
+	UserPollEmbeddedSnapshotSchema,
 } from '$lib/validation';
 import { z } from 'zod';
 
@@ -19,7 +19,7 @@ function formatZodErr(err: z.ZodError): string {
 export const verifyPollFlatSchemaPage = c
 	.mutation()
 	.input({
-		table: z.enum(['polls', 'standalonePolls', 'pollResults', 'standalonePollResults']),
+		table: z.enum(['meetingPolls', 'userPolls', 'meetingPollResults', 'userPollResults']),
 		batchSize: z.number().int().min(1).max(250).default(100),
 		cursor: z.union([z.string(), z.null()]).optional(),
 	})
@@ -37,19 +37,17 @@ export const verifyPollFlatSchemaPage = c
 		for (const doc of page.page) {
 			let parsed: z.ZodSafeParseResult<unknown>;
 			switch (args.table) {
-				case 'polls':
+				case 'meetingPolls':
 					parsed = FullPollSchema.safeParse(doc);
 					break;
-				case 'standalonePolls':
-					parsed = FullStandalonePollSchema.safeParse(doc);
+				case 'userPolls':
+					parsed = FullUserPollSchema.safeParse(doc);
 					break;
-				case 'pollResults':
-					parsed = PollEmbeddedSnapshotSchema.safeParse((doc as Doc<'pollResults'>).poll);
+				case 'meetingPollResults':
+					parsed = PollEmbeddedSnapshotSchema.safeParse((doc as Doc<'meetingPollResults'>).poll);
 					break;
-				case 'standalonePollResults':
-					parsed = StandalonePollEmbeddedSnapshotSchema.safeParse(
-						(doc as Doc<'standalonePollResults'>).poll,
-					);
+				case 'userPollResults':
+					parsed = UserPollEmbeddedSnapshotSchema.safeParse((doc as Doc<'userPollResults'>).poll);
 					break;
 			}
 

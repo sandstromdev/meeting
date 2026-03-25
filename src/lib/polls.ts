@@ -1,4 +1,4 @@
-import type { OptionTotal } from '$convex/helpers/poll';
+import type { OptionTotal } from '$convex/helpers/meetingPoll';
 
 export const POLL_TYPES = ['multi_winner', 'single_winner'] as const;
 export type PollType = (typeof POLL_TYPES)[number];

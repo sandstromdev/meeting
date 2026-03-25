@@ -8,8 +8,8 @@
 	let { data } = $props();
 
 	const convex = useConvexClient();
-	const standaloneApi = api.polls.public.standalone_poll;
-	const standaloneAdminApi = api.polls.admin.standalone_poll;
+	const standaloneApi = api.userPoll.public;
+	const standaloneAdminApi = api.userPoll.admin;
 	const ownedPolls = useQuery(standaloneApi.getMyOwnedPolls);
 
 	let actionLoadingPollId = $state<string | null>(null);

@@ -16,8 +16,8 @@
 
 	const meeting = getMeetingContext();
 	const ps = usePageState();
-	const currentPoll = meeting.query(api.meeting.users.poll.getCurrentPoll);
-	const currentPollCounters = meeting.query(api.meeting.users.poll.getCurrentPollCounters);
+	const currentPoll = meeting.query(api.meeting.users.meetingPoll.getCurrentPoll);
+	const currentPollCounters = meeting.query(api.meeting.users.meetingPoll.getCurrentPollCounters);
 
 	const counters = $derived(
 		currentPollCounters.data ?? { votersCount: 0, eligibleVoters: 0, votesCount: 0 },
@@ -33,7 +33,7 @@
 
 	const poll = $derived(currentPoll.data ?? null);
 
-	const pollResults = meeting.query(api.meeting.users.poll.getPollResultsById, () =>
+	const pollResults = meeting.query(api.meeting.users.meetingPoll.getPollResultsById, () =>
 		poll && !poll.isOpen ? { pollId: poll.id } : 'skip',
 	);
 
@@ -122,7 +122,7 @@
 		}
 		isRetracting = true;
 		try {
-			await meeting.mutate(api.meeting.users.poll.retractVote, { pollId: poll.id });
+			await meeting.mutate(api.meeting.users.meetingPoll.retractVote, { pollId: poll.id });
 			isChangingVote = true;
 		} finally {
 			isRetracting = false;
@@ -136,7 +136,7 @@
 
 		isSubmitting = true;
 		try {
-			await meeting.mutate(api.meeting.users.poll.vote, {
+			await meeting.mutate(api.meeting.users.meetingPoll.vote, {
 				pollId: poll.id,
 				optionIndexes: effectiveSelection,
 			});
@@ -154,7 +154,7 @@
 		}
 		isSubmitting = true;
 		try {
-			await meeting.mutate(api.meeting.users.poll.vote, {
+			await meeting.mutate(api.meeting.users.meetingPoll.vote, {
 				pollId: poll.id,
 				optionIndexes: previousVoteOptionIndexes,
 			});
@@ -305,7 +305,7 @@
 												counters.eligibleVoters +
 												' har röstat. Är du säker på att du vill stänga omröstningen och visa resultatet?',
 											onConfirm: () =>
-												meeting.adminMutate(api.meeting.admin.poll.closePollAndShowResults, {
+												meeting.adminMutate(api.meeting.admin.meetingPoll.closePollAndShowResults, {
 													pollId: poll.id,
 												}),
 										})}>Stäng och visa resultat</Button
@@ -313,19 +313,22 @@
 								<Button
 									variant="destructive"
 									onclick={() =>
-										meeting.adminMutate(api.meeting.admin.poll.cancelPoll, { pollId: poll.id })}
-									>Avbryt</Button
+										meeting.adminMutate(api.meeting.admin.meetingPoll.cancelPoll, {
+											pollId: poll.id,
+										})}>Avbryt</Button
 								>
 							{:else if meeting.meeting.currentPollId === poll.id}
 								<Button
-									onclick={() => meeting.adminMutate(api.meeting.admin.poll.clearCurrentPollId)}
+									onclick={() =>
+										meeting.adminMutate(api.meeting.admin.meetingPoll.clearCurrentPollId)}
 									>Stäng</Button
 								>
 							{:else}
 								<Button
 									onclick={() =>
-										meeting.adminMutate(api.meeting.admin.poll.openPoll, { pollId: poll.id })}
-									>Öppna</Button
+										meeting.adminMutate(api.meeting.admin.meetingPoll.openPoll, {
+											pollId: poll.id,
+										})}>Öppna</Button
 								>
 							{/if}
 						</div>
