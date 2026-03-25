@@ -1,4 +1,5 @@
 import type { Doc } from '../_generated/dataModel';
+import { appErrors } from './error';
 
 /** Default used when backfilling and when reading meetings before `timezone` exists. */
 export const DEFAULT_MEETING_TIMEZONE = 'Europe/Stockholm';
@@ -36,4 +37,16 @@ export function effectiveMeetingTimezone(
 ): string {
 	const t = meeting.timezone?.trim();
 	return t ? t : DEFAULT_MEETING_TIMEZONE;
+}
+
+/** Blocks participant flows (connect, meeting room, cookie session) for archived meetings. */
+export function assertMeetingNotArchived(
+	meeting: Doc<'meetings'>,
+	args?: { meetingCode?: string },
+): void {
+	if (deriveMeetingStatus(meeting) !== 'archived') {
+		return;
+	}
+	const meetingCode = args?.meetingCode ?? meeting.code;
+	throw appErrors.meeting_archived({ meetingId: meeting._id, meetingCode });
 }

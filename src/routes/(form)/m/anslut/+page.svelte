@@ -121,6 +121,16 @@
 					</p></AlertDescription
 				>
 			</Alert>
+		{:else if data.error === 'meeting_archived'}
+			<Alert variant="warning">
+				<AlertTriangle class="size-4" />
+				<AlertTitle>Mötet är arkiverat</AlertTitle>
+				<AlertDescription
+					><p>
+						Detta möte kan inte längre öppnas. Organisatören kan återställa det från möteslistan.
+					</p></AlertDescription
+				>
+			</Alert>
 		{:else}
 			<Alert variant="destructive">
 				<AlertTriangle class="size-4" />

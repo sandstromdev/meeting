@@ -21,6 +21,9 @@ export const connectForm = form(ConnectFormSchema, async (data, issue) => {
 			if (err.is('participant_banned')) {
 				redirect(303, '/m/anslut?error=participant_banned');
 			}
+			if (err.is('meeting_archived')) {
+				redirect(303, `/m/anslut?error=meeting_archived&m=${encodeURIComponent(data.meetingCode)}`);
+			}
 			if (err.is('meeting_not_found')) {
 				invalid(issue.meetingCode(err.message));
 			}

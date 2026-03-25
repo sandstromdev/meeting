@@ -98,6 +98,9 @@ export const appErrors = {
 	// Meeting
 	meeting_not_found: (args: { meetingId?: Id<'meetings'>; meetingCode?: string }) =>
 		new AppError('meeting_not_found', 404, args),
+	/** Meeting exists but is not joinable (participant / meeting-room flows). */
+	meeting_archived: (args: { meetingId: Id<'meetings'>; meetingCode: string }) =>
+		new AppError('meeting_archived', 410, args),
 	meeting_participant_not_found: (meetingId: Id<'meetings'>) =>
 		new AppError('meeting_participant_not_found', 404, { meetingId }),
 	invalid_meeting_code: () => new AppError('invalid_meeting_code', 400),

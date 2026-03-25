@@ -2,6 +2,8 @@ import { zid } from 'convex-helpers/server/zod4';
 import type { QueryCtx } from '$convex/_generated/server';
 import type { Id } from '$convex/_generated/dataModel';
 import { authed } from '$convex/helpers/auth';
+import { AppError, appErrors } from '$convex/helpers/error';
+import { assertMeetingNotArchived } from '$convex/helpers/meetingLifecycle';
 import { pickParticipantData } from '$convex/helpers/users';
 import { hasRole } from '$lib/roles';
 import type { UserIdentity } from 'convex/server';
@@ -30,6 +32,9 @@ export const getMeetingParticipant = authed
 	.query()
 	.input({ meetingId: zid('meetings') })
 	.public(async ({ ctx, args }) => {
+		const meeting = await ctx.db.get('meetings', args.meetingId);
+		AppError.assertNotNull(meeting, appErrors.meeting_not_found(args));
+		assertMeetingNotArchived(meeting);
 		return getMeetingParticipantInner(ctx, args.meetingId);
 	});
 
@@ -41,6 +46,10 @@ export const hasAtLeastRole = authed
 		role: z.enum(['admin', 'moderator', 'participant', 'adjuster']),
 	})
 	.public(async ({ ctx, args }) => {
+		const meeting = await ctx.db.get('meetings', args.meetingId);
+		AppError.assertNotNull(meeting, appErrors.meeting_not_found(args));
+		assertMeetingNotArchived(meeting);
+
 		const me = await getMeetingParticipantInner(ctx, args.meetingId);
 
 		if (!me) {

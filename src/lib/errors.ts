@@ -15,6 +15,7 @@ export const ErrorMessages = {
 	// Meeting
 	meeting_not_found: ({ meetingCode, meetingId }) =>
 		`Mötet med ${meetingCode ? 'möteskoden' : 'id'} '${meetingCode ?? meetingId}' hittades inte.`,
+	meeting_archived: (_args) => 'Mötet är arkiverat och kan inte öppnas.',
 	meeting_participant_not_found: ({ meetingId: _ }) => `Du är inte deltagare i mötet.`,
 	invalid_meeting_code: () => 'Ogiltig möteskod.',
 	meeting_code_already_exists: ({ meetingCode }) =>

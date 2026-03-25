@@ -31,7 +31,7 @@
 		variant = 'ghost',
 		size = 'xs',
 		...restProps
-	}: Omit<ComponentProps<typeof Button>, 'href' | 'size'> & {
+	}: Omit<ButtonElementProps, 'href' | 'size'> & {
 		size?: InputGroupButtonSize;
 	} = $props();
 </script>
