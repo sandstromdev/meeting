@@ -11,6 +11,7 @@ import {
 	getParticipantCounter,
 } from '$convex/helpers/counters';
 import { AppError, appErrors } from '$convex/helpers/error';
+import { deriveMeetingStatus } from '$convex/helpers/meetingLifecycle';
 
 // --- Public queries ---
 
@@ -216,6 +217,10 @@ export const clearReply = admin.mutation().public(async ({ ctx }) => {
 
 export const toggleMeeting = admin.mutation().public(async ({ ctx }) => {
 	const { db, meeting } = ctx;
+	AppError.assert(
+		deriveMeetingStatus(meeting) !== 'archived',
+		appErrors.bad_request({ reason: 'cannot_toggle_archived_meeting' }),
+	);
 	if (meeting.isOpen) {
 		const now = Date.now();
 		if (meeting.currentPollId) {
@@ -239,6 +244,7 @@ export const toggleMeeting = admin.mutation().public(async ({ ctx }) => {
 		await db.patch('meetings', meeting._id, {
 			isOpen: false,
 			currentPollId: null,
+			status: 'closed',
 		});
 		return true;
 	}
@@ -246,6 +252,7 @@ export const toggleMeeting = admin.mutation().public(async ({ ctx }) => {
 	await db.patch('meetings', meeting._id, {
 		isOpen: true,
 		startedAt: now,
+		status: 'active',
 	});
 	return true;
 });
