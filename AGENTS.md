@@ -16,4 +16,6 @@ Environment variables are documented in [`.env.schema`](.env.schema) (do not inv
 
 This project uses [Bun](https://bun.sh) as its package manager and script runner. Install dependencies with `bun install`. Run `package.json` scripts with `bun run <script>` (for example `bun run dev:all` for Vite and Convex together, or `bun run check` for typechecking). For one-off package binaries, use `bunx` instead of `npx` when you want Bun to execute them (for example `bunx convex ai-files install`).
 
+Prefer the existing shared UI primitives in [`src/lib/components/ui`](src/lib/components/ui) whenever possible instead of introducing new raw HTML patterns or duplicate components.
+
 All of the user facing text in this project is in **swedish**. Agentic communication and development, as well as all docs should be mainly written in english. Everything should be UTF-8 encoded.

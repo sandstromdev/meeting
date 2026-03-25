@@ -1,4 +1,4 @@
-import type { OptionTotal } from '$convex/helpers/meetingPoll';
+import type { PollOptionTotal } from '$convex/helpers/poll';
 
 export const POLL_TYPES = ['multi_winner', 'single_winner'] as const;
 export type PollType = (typeof POLL_TYPES)[number];
@@ -40,7 +40,7 @@ export const MAJORITY_LABELS = {
 	unanimous: 'Enighet (100 %)',
 } satisfies Record<MajorityRule, string>;
 
-export function getEligibleVotes(optionTotals: OptionTotal[], allowsAbstain: boolean) {
+export function getEligibleVotes(optionTotals: PollOptionTotal[], allowsAbstain: boolean) {
 	return allowsAbstain
 		? optionTotals.filter((o) => o.option !== ABSTAIN_OPTION_LABEL)
 		: optionTotals;

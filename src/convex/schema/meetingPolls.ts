@@ -1,21 +1,17 @@
 import { defineTable } from 'convex/server';
 import { v } from 'convex/values';
 
-import { majorityRule, pollTypeConfigFields } from '../helpers/schema';
+import {
+	majorityRule,
+	pollResultOptionVotesRowV,
+	pollRowSharedFields,
+	pollTypeConfigFields,
+} from '../helpers/schema';
 
 const meetingPollBaseFields = {
 	meetingId: v.id('meetings'),
 	agendaItemId: v.nullable(v.string()),
-	title: v.string(),
-	options: v.array(v.string()),
-	allowsAbstain: v.boolean(),
-	isOpen: v.boolean(),
-	maxVotesPerVoter: v.number(),
-	/** If true, everyone can see results when poll is closed; if false, only admins can. */
-	isResultPublic: v.boolean(),
-	openedAt: v.nullable(v.number()),
-	closedAt: v.nullable(v.number()),
-	updatedAt: v.number(),
+	...pollRowSharedFields,
 };
 
 export const MeetingPoll = v.object({
@@ -31,11 +27,7 @@ export const MeetingPollVote = v.object({
 	optionIndex: v.number(),
 });
 
-export const MeetingPollResultOptionTotal = v.object({
-	optionIndex: v.number(),
-	option: v.string(),
-	votes: v.number(),
-});
+export const MeetingPollResultOptionTotal = pollResultOptionVotesRowV;
 
 export const MeetingPollResult = {
 	meetingId: v.id('meetings'),
@@ -44,14 +36,8 @@ export const MeetingPollResult = {
 	poll: MeetingPoll,
 	complete: v.boolean(),
 	results: v.object({
-		optionTotals: v.array(MeetingPollResultOptionTotal),
-		winners: v.array(
-			v.object({
-				optionIndex: v.number(),
-				option: v.string(),
-				votes: v.number(),
-			}),
-		),
+		optionTotals: v.array(pollResultOptionVotesRowV),
+		winners: v.array(pollResultOptionVotesRowV),
 		isTie: v.boolean(),
 		majorityRule: v.nullable(majorityRule),
 		counts: v.object({

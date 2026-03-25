@@ -1,7 +1,6 @@
 import { api } from '$convex/_generated/api';
 import type { AgendaItem, Agenda } from '$convex/helpers/agenda';
 import { notifyMutation } from '$lib/admin-toast';
-// @ts-expect-error: svelte types are meh in tsgo
 import { confirm } from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
 import type { MeetingState } from '$lib/context.svelte';
 
@@ -39,7 +38,7 @@ export function removeAgendaItemWithChoice(meeting: MeetingState, itemId: string
 		description: 'Vill du behålla dessa underpunkter och bara ta bort den valda raden?',
 		cancel: {
 			text: 'Avbryt',
-			variant: 'accent',
+			variant: 'outline',
 		},
 		actions: [
 			{

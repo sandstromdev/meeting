@@ -4,8 +4,9 @@ import { stripSystemFields } from '.';
 import { AppError, appErrors } from './error';
 import type { Db } from './types';
 import type { MajorityRule } from './schema';
+import type { PollOptionTotal } from './poll';
 
-export type UserPollOptionTotal = { optionIndex: number; option: string; votes: number };
+export type UserPollOptionTotal = PollOptionTotal;
 
 type UserPollResultSnapshotData = Omit<Doc<'userPollResults'>, '_id' | '_creationTime'>;
 type UserPollResultSnapshotArgs = {

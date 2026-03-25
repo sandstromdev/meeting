@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { OptionTotal } from '$convex/helpers/meetingPoll';
+	import type { PollOptionTotal } from '$convex/helpers/poll';
 	import Progress from '$lib/components/ui/progress/progress.svelte';
 	import Separator from '$lib/components/ui/separator/separator.svelte';
 	import { ABSTAIN_OPTION_LABEL, getVoteShare } from '$lib/polls';
@@ -10,7 +10,7 @@
 		complete?: boolean;
 		results: {
 			winners: Array<{ optionIndex: number; option: string; votes?: number }>;
-			optionTotals?: OptionTotal[] | undefined;
+			optionTotals?: PollOptionTotal[] | undefined;
 			counts: { totalVotes: number; usableVotes: number; abstain: number };
 		};
 	};

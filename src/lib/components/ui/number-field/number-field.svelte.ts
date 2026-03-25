@@ -55,7 +55,7 @@ export class NumberFieldInputContext {
 	}));
 }
 
-type NumberFieldButtonProps = {
+type NumberFieldButtonHookProps = {
 	direction: 'up' | 'down';
 } & ReadableBoxedValues<{
 	onpointerdown: ButtonElementProps['onpointerdown'];
@@ -70,7 +70,7 @@ export class NumberFieldButton {
 	rampState: ReturnType<typeof useRamp>;
 	constructor(
 		readonly rootState: NumberFieldRootContext,
-		readonly opts: NumberFieldButtonProps,
+		readonly opts: NumberFieldButtonHookProps,
 	) {
 		this.increment = this.increment.bind(this);
 		this.rampState = useRamp({
@@ -170,6 +170,6 @@ export function useNumberFieldInput() {
 	return new NumberFieldInputContext(ctx.get());
 }
 
-export function useNumberFieldButton(props: NumberFieldButtonProps) {
+export function useNumberFieldButton(props: NumberFieldButtonHookProps) {
 	return new NumberFieldButton(ctx.get(), props);
 }

@@ -6,6 +6,7 @@ import {
 	getVotesCounter,
 } from '$convex/helpers/counters';
 import { AppError, appErrors } from '$convex/helpers/error';
+import { assertValidPollVoteOptionIndexes } from '$convex/helpers/poll';
 import {
 	assertMeetingPollInMeeting,
 	getLatestMeetingPollResultSnapshot,
@@ -188,29 +189,11 @@ export const vote = withMe
 		AppError.assert(ctx.me.absentSince <= 0, appErrors.illegal_while_absent('vote'));
 		AppError.assert(poll.isOpen, appErrors.illegal_meeting_poll_action('vote_while_closed'));
 
-		const uniqueOptionIndexes = [...new Set(args.optionIndexes)];
-
-		AppError.assert(
-			uniqueOptionIndexes.length === args.optionIndexes.length,
-			appErrors.illegal_meeting_poll_action('duplicate_vote_option'),
+		const uniqueOptionIndexes = assertValidPollVoteOptionIndexes(
+			poll,
+			args.optionIndexes,
+			'meeting',
 		);
-
-		const maxVotesPerVoter =
-			poll.type === 'multi_winner'
-				? (poll.winningCount ?? poll.maxVotesPerVoter)
-				: poll.maxVotesPerVoter;
-
-		AppError.assert(
-			uniqueOptionIndexes.length <= maxVotesPerVoter,
-			appErrors.illegal_meeting_poll_action('too_many_votes'),
-		);
-
-		for (const optionIndex of uniqueOptionIndexes) {
-			AppError.assert(
-				optionIndex >= 0 && optionIndex < poll.options.length,
-				appErrors.invalid_poll_option(optionIndex),
-			);
-		}
 
 		const existingVotes = await ctx.db
 			.query('meetingPollVotes')

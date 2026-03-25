@@ -1,21 +1,19 @@
 import { defineTable } from 'convex/server';
 import { v } from 'convex/values';
 
-import { majorityRule, pollTypeConfigFields, userPollVisibilityMode } from '../helpers/schema';
+import {
+	majorityRule,
+	pollResultOptionVotesRowV,
+	pollRowSharedFields,
+	pollTypeConfigFields,
+	userPollVisibilityMode,
+} from '../helpers/schema';
 
 const userPollBaseFields = {
 	code: v.string(),
 	ownerUserId: v.string(),
 	visibilityMode: userPollVisibilityMode,
-	title: v.string(),
-	options: v.array(v.string()),
-	allowsAbstain: v.boolean(),
-	isOpen: v.boolean(),
-	maxVotesPerVoter: v.number(),
-	isResultPublic: v.boolean(),
-	openedAt: v.nullable(v.number()),
-	closedAt: v.nullable(v.number()),
-	updatedAt: v.number(),
+	...pollRowSharedFields,
 };
 
 export const UserPoll = v.object({
@@ -29,11 +27,7 @@ export const UserPollVote = v.object({
 	optionIndex: v.number(),
 });
 
-export const UserPollResultOptionTotal = v.object({
-	optionIndex: v.number(),
-	option: v.string(),
-	votes: v.number(),
-});
+export const UserPollResultOptionTotal = pollResultOptionVotesRowV;
 
 export const UserPollResult = {
 	pollId: v.id('userPolls'),
@@ -41,14 +35,8 @@ export const UserPollResult = {
 	poll: UserPoll,
 	complete: v.boolean(),
 	results: v.object({
-		optionTotals: v.array(UserPollResultOptionTotal),
-		winners: v.array(
-			v.object({
-				optionIndex: v.number(),
-				option: v.string(),
-				votes: v.number(),
-			}),
-		),
+		optionTotals: v.array(pollResultOptionVotesRowV),
+		winners: v.array(pollResultOptionVotesRowV),
 		isTie: v.boolean(),
 		majorityRule: v.nullable(majorityRule),
 		counts: v.object({
