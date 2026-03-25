@@ -59,6 +59,8 @@
 </script>
 
 <script lang="ts">
+	import Loader2Icon from '@lucide/svelte/icons/loader-2';
+
 	let {
 		ref = $bindable(null),
 		variant = 'default',
@@ -110,6 +112,10 @@
 			}
 		}}
 	>
+		{#if loading}
+			<Loader2Icon class="size-4 animate-spin" />
+			<span class="sr-only">Laddar...</span>
+		{/if}
 		{@render children?.()}
 	</button>
 {/if}
