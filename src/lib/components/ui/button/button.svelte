@@ -45,17 +45,32 @@
 	export type ButtonVariant = VariantProps<typeof buttonVariants>['variant'];
 	export type ButtonSize = VariantProps<typeof buttonVariants>['size'];
 
-	export type ButtonProps = WithElementRef<HTMLButtonAttributes> &
-		WithElementRef<HTMLAnchorAttributes> & {
-			variant?: ButtonVariant;
-			size?: ButtonSize;
-			loading?: boolean;
-			onClickPromise?: (
-				e: MouseEvent & {
-					currentTarget: EventTarget & HTMLButtonElement;
-				},
-			) => Promise<unknown>;
-		};
+	type ButtonStyleProps = {
+		variant?: ButtonVariant;
+		size?: ButtonSize;
+		loading?: boolean;
+		disabled?: boolean;
+	};
+
+	/** Union by `href` so event handlers are not `HTMLButtonElement` ∩ `HTMLAnchorElement`. */
+	export type ButtonProps =
+		| (WithElementRef<HTMLButtonAttributes> &
+				ButtonStyleProps & {
+					href?: undefined;
+					onClickPromise?: (
+						e: MouseEvent & {
+							currentTarget: EventTarget & HTMLButtonElement;
+						},
+					) => Promise<unknown>;
+				})
+		| (WithElementRef<HTMLAnchorAttributes> &
+				ButtonStyleProps & {
+					href: string;
+					onClickPromise?: never;
+				});
+
+	/** Same as the `<button>` branch of {@link ButtonProps}. */
+	export type ButtonElementProps = Extract<ButtonProps, { href?: undefined }>;
 </script>
 
 <script lang="ts">
@@ -86,7 +101,7 @@
 		aria-disabled={disabled}
 		role={disabled ? 'link' : undefined}
 		tabindex={disabled ? -1 : undefined}
-		{...rest}
+		{...rest as HTMLAnchorAttributes}
 	>
 		{@render children?.()}
 	</a>
@@ -95,9 +110,9 @@
 		bind:this={ref}
 		data-slot="button"
 		class={cn(buttonVariants({ variant, size }), className)}
-		{type}
+		type={type as HTMLButtonAttributes['type']}
 		{disabled}
-		{...rest}
+		{...rest as HTMLButtonAttributes}
 		onclick={async (e: any) => {
 			onclick?.(e);
 
