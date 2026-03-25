@@ -36,15 +36,9 @@ export const MeetingStatus = v.union(
 export const Meeting = v.object({
 	code: v.string(),
 	title: v.string(),
-	/**
-	 * Widen phase: optional until `migrations/backfillMeetingLifecycle` has run everywhere.
-	 * Narrow to `v.string()` again after production backfill completes.
-	 */
-	createdByUserId: v.optional(v.string()),
-	/** Widen phase: optional until backfill. Derive with `deriveMeetingStatus` when reading. */
-	status: v.optional(MeetingStatus),
-	/** Widen phase: optional until backfill. Use `effectiveMeetingTimezone` when reading. */
-	timezone: v.optional(v.string()),
+	createdByUserId: v.string(),
+	status: MeetingStatus,
+	timezone: v.string(),
 	location: v.optional(v.string()),
 	description: v.optional(v.string()),
 

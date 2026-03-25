@@ -1,6 +1,5 @@
 import { authed } from '$convex/helpers/auth';
 import { AppError, appErrors } from '$convex/helpers/error';
-import { deriveMeetingStatus, effectiveMeetingTimezone } from '$convex/helpers/meetingLifecycle';
 import { applyNewParticipantSideEffects, insertMeetingParticipant } from '$convex/helpers/users';
 import type { QueryCtx } from '$convex/_generated/server';
 import { zid } from 'convex-helpers/server/zod4';
@@ -38,7 +37,7 @@ async function nextMeetingCode(db: QueryCtx['db']): Promise<string> {
 	throw appErrors.internal_error();
 }
 
-function assertMeetingOwner(createdByUserId: string | undefined, currentUserId: string) {
+function assertMeetingOwner(createdByUserId: string, currentUserId: string) {
 	AppError.assert(createdByUserId === currentUserId, appErrors.forbidden());
 }
 
@@ -51,12 +50,7 @@ export const listForCurrentUser = platformAdmin.query().public(async ({ ctx }) =
 		.order('desc')
 		.take(100);
 
-	return rows.map((row) =>
-		Object.assign(row, {
-			status: deriveMeetingStatus(row),
-			timezone: effectiveMeetingTimezone(row),
-		}),
-	);
+	return rows;
 });
 
 // --- Public mutations ---
@@ -127,7 +121,7 @@ export const archive = platformAdmin
 			appErrors.bad_request({ reason: 'meeting_must_be_closed_before_archive' }),
 		);
 
-		if (deriveMeetingStatus(meeting) === 'archived') {
+		if (meeting.status === 'archived') {
 			return true;
 		}
 
@@ -143,7 +137,7 @@ export const reopen = platformAdmin
 		AppError.assertNotNull(meeting, appErrors.meeting_not_found({ meetingId: args.meetingId }));
 		assertMeetingOwner(meeting.createdByUserId, ctx.user.subject);
 
-		if (deriveMeetingStatus(meeting) !== 'archived') {
+		if (meeting.status !== 'archived') {
 			return false;
 		}
 

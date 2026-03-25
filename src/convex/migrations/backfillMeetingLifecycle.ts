@@ -1,9 +1,19 @@
 import { c } from '$convex/helpers';
 import type { Doc } from '$convex/_generated/dataModel';
-import { DEFAULT_MEETING_TIMEZONE, deriveMeetingStatus } from '$convex/helpers/meetingLifecycle';
 import { z } from 'zod';
 
+const DEFAULT_MEETING_TIMEZONE = 'Europe/Stockholm';
+
 type LegacyMeetingDoc = Partial<Doc<'meetings'>>;
+
+/** Local to migration: tolerate pre-narrow docs if this ever runs again on partial rows. */
+function statusForBackfill(m: LegacyMeetingDoc): NonNullable<LegacyMeetingDoc['status']> {
+	const s = m.status;
+	if (s === 'draft' || s === 'scheduled' || s === 'active' || s === 'closed' || s === 'archived') {
+		return s;
+	}
+	return m.isOpen ? 'active' : 'closed';
+}
 
 export const backfillMeetingLifecyclePage = c
 	.mutation()
@@ -36,7 +46,7 @@ export const backfillMeetingLifecyclePage = c
 					args.fallbackCreatedByUserId;
 			}
 
-			const nextStatus = deriveMeetingStatus(legacy);
+			const nextStatus = statusForBackfill(legacy);
 			const nextTimezone = legacy.timezone?.trim() ? legacy.timezone : args.defaultTimezone;
 			const nextLocation = legacy.location?.trim() ? legacy.location : undefined;
 			const nextDescription = legacy.description?.trim() ? legacy.description : undefined;
