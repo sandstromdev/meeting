@@ -5,7 +5,7 @@ import { v } from 'convex/values';
 export const AgendaItem = v.object({
 	id: v.string(),
 	title: v.string(),
-	pollIds: v.array(v.id('meetingPolls')),
+	pollIds: v.array(v.string() /* v.union(v.id('meetingPolls'), v.id('polls')) */),
 	/** Depth in the flat agenda list (0 = top-level, 1 = child, ...). */
 	depth: v.number(),
 });

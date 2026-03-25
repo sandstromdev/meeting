@@ -43,6 +43,7 @@ import type * as meeting_users_meeting from "../meeting/users/meeting.js";
 import type * as meeting_users_meetingPoll from "../meeting/users/meetingPoll.js";
 import type * as meeting_users_participant from "../meeting/users/participant.js";
 import type * as meeting_users_queue from "../meeting/users/queue.js";
+import type * as migrations_movePollsToMeetingPolls from "../migrations/movePollsToMeetingPolls.js";
 import type * as migrations_verifyPollFlatSchema from "../migrations/verifyPollFlatSchema.js";
 import type * as schema_meetingPolls from "../schema/meetingPolls.js";
 import type * as schema_meetings from "../schema/meetings.js";
@@ -95,6 +96,7 @@ declare const fullApi: ApiFromModules<{
   "meeting/users/meetingPoll": typeof meeting_users_meetingPoll;
   "meeting/users/participant": typeof meeting_users_participant;
   "meeting/users/queue": typeof meeting_users_queue;
+  "migrations/movePollsToMeetingPolls": typeof migrations_movePollsToMeetingPolls;
   "migrations/verifyPollFlatSchema": typeof migrations_verifyPollFlatSchema;
   "schema/meetingPolls": typeof schema_meetingPolls;
   "schema/meetings": typeof schema_meetings;
