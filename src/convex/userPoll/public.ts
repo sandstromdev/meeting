@@ -2,6 +2,7 @@ import { c } from '$convex/helpers';
 import { authed } from '$convex/helpers/auth';
 import { getUserPollVotesCounter, getUserPollVotersCounter } from '$convex/helpers/counters';
 import { AppError, appErrors } from '$convex/helpers/error';
+import { assertValidPollVoteOptionIndexes } from '$convex/helpers/poll';
 import {
 	getLatestUserPollResultSnapshot,
 	getUserPollOrThrow,
@@ -139,26 +140,7 @@ export const vote = c
 		const poll = await getUserPollOrThrow(ctx.db, args.pollId);
 		AppError.assert(poll.isOpen, appErrors.illegal_user_poll_action('vote_while_closed'));
 
-		const uniqueOptionIndexes = [...new Set(args.optionIndexes)];
-		AppError.assert(
-			uniqueOptionIndexes.length === args.optionIndexes.length,
-			appErrors.illegal_user_poll_action('duplicate_vote_option'),
-		);
-
-		const maxVotesPerVoter =
-			poll.type === 'multi_winner'
-				? (poll.winningCount ?? poll.maxVotesPerVoter)
-				: poll.maxVotesPerVoter;
-		AppError.assert(
-			uniqueOptionIndexes.length <= maxVotesPerVoter,
-			appErrors.illegal_user_poll_action('too_many_votes'),
-		);
-		for (const optionIndex of uniqueOptionIndexes) {
-			AppError.assert(
-				optionIndex >= 0 && optionIndex < poll.options.length,
-				appErrors.invalid_poll_option(optionIndex),
-			);
-		}
+		const uniqueOptionIndexes = assertValidPollVoteOptionIndexes(poll, args.optionIndexes, 'user');
 
 		const voterKey = await getVoterKey(ctx, poll.visibilityMode, args.voterSessionToken ?? null);
 		const existingVotes = await ctx.db

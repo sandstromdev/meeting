@@ -56,72 +56,6 @@ export const StandaloneVisibilitySchema = UserPollVisibilitySchema;
 /** @deprecated Use `UserPollVisibility` */
 export type StandaloneVisibility = UserPollVisibility;
 
-export const RefinePollDraftSchema = PollDraftSchema.superRefine((data, ctx) => {
-	const { options, allowsAbstain } = data;
-	const votableSlots = options.length + (allowsAbstain ? 1 : 0);
-
-	if (data.type === 'single_winner') {
-		if (data.winningCount !== 1) {
-			ctx.addIssue({
-				code: 'custom',
-				path: ['winningCount'],
-				message: 'Antal vinnare måste vara 1 för omröstningar med endast en vinnare',
-			});
-		}
-
-		if (!data.majorityRule) {
-			ctx.addIssue({
-				code: 'custom',
-				path: ['majorityRule'],
-				message: 'Majoritetsregel är obligatorisk för omröstningar med endast en vinnare',
-			});
-		}
-	}
-	if (data.type === 'multi_winner') {
-		if (!data.winningCount) {
-			ctx.addIssue({
-				code: 'custom',
-				path: ['winningCount'],
-				message: 'Antal vinnare är obligatoriskt för omröstningar med flera vinnare',
-			});
-		} else if (data.winningCount < 1 || data.winningCount > options.length) {
-			ctx.addIssue({
-				code: 'custom',
-				path: ['winningCount'],
-				message: 'Antal vinnare måste vara mellan 1 och antal alternativ',
-			});
-		}
-	}
-
-	if (data.maxVotesPerVoter > votableSlots) {
-		ctx.addIssue({
-			code: 'custom',
-			path: ['maxVotesPerVoter'],
-			message: 'Max röster per deltagare måste vara mellan 1 och antal alternativ',
-		});
-	}
-
-	if (options.length < 2 && !allowsAbstain) {
-		ctx.addIssue({
-			code: 'custom',
-			path: ['options'],
-			message: 'Minst 2 alternativ är obligatoriskt när avstår-alternativet inte inkluderas',
-		});
-	}
-
-	const set = new Set(options.map((o) => o.trim().toLocaleLowerCase()));
-
-	if (set.size !== options.length) {
-		ctx.addIssue({
-			code: 'custom',
-			path: ['options'],
-			message: 'Alternativ måste vara unika',
-		});
-	}
-});
-
-export type PollDraft = z.infer<typeof PollDraftSchema>;
-
 /** Flat poll type fields; use with `refinePollRowTypeConfig` when `options` is present (stored rows / inserts). */
 export const pollTypeConfigZod = z.object({
 	type: z.enum(POLL_TYPES),
@@ -131,15 +65,24 @@ export const pollTypeConfigZod = z.object({
 
 export type PollTypeConfig = z.infer<typeof pollTypeConfigZod>;
 
-/** Enforces branch invariants given `options` (same rules as draft refine; allows legacy single_winner without winningCount). */
-export function refinePollRowTypeConfig(
+/** Shared `single_winner` / `multi_winner` checks for drafts vs stored rows (winningCount strictness differs). */
+function refinePollTypeConfigCore(
 	data: PollTypeConfig & { options: readonly string[] },
 	ctx: z.RefinementCtx,
+	mode: 'draftStrict' | 'rowLegacy',
 ) {
 	const { options } = data;
 
 	if (data.type === 'single_winner') {
-		if (data.winningCount !== undefined && data.winningCount !== 1) {
+		if (mode === 'draftStrict') {
+			if (data.winningCount !== 1) {
+				ctx.addIssue({
+					code: 'custom',
+					path: ['winningCount'],
+					message: 'Antal vinnare måste vara 1 för omröstningar med endast en vinnare',
+				});
+			}
+		} else if (data.winningCount !== undefined && data.winningCount !== 1) {
 			ctx.addIssue({
 				code: 'custom',
 				path: ['winningCount'],
@@ -173,62 +116,135 @@ export function refinePollRowTypeConfig(
 	}
 }
 
+export const RefinePollDraftSchema = PollDraftSchema.superRefine((data, ctx) => {
+	const { options, allowsAbstain } = data;
+	const votableSlots = options.length + (allowsAbstain ? 1 : 0);
+
+	refinePollTypeConfigCore(data, ctx, 'draftStrict');
+
+	if (data.maxVotesPerVoter > votableSlots) {
+		ctx.addIssue({
+			code: 'custom',
+			path: ['maxVotesPerVoter'],
+			message: 'Max röster per deltagare måste vara mellan 1 och antal alternativ',
+		});
+	}
+
+	if (options.length < 2 && !allowsAbstain) {
+		ctx.addIssue({
+			code: 'custom',
+			path: ['options'],
+			message: 'Minst 2 alternativ är obligatoriskt när avstår-alternativet inte inkluderas',
+		});
+	}
+
+	const set = new Set(options.map((o) => o.trim().toLocaleLowerCase()));
+
+	if (set.size !== options.length) {
+		ctx.addIssue({
+			code: 'custom',
+			path: ['options'],
+			message: 'Alternativ måste vara unika',
+		});
+	}
+});
+
+export type PollDraft = z.infer<typeof PollDraftSchema>;
+
+/** Enforces branch invariants given `options` (same rules as draft refine; allows legacy single_winner without winningCount). */
+export function refinePollRowTypeConfig(
+	data: PollTypeConfig & { options: readonly string[] },
+	ctx: z.RefinementCtx,
+) {
+	refinePollTypeConfigCore(data, ctx, 'rowLegacy');
+}
+
 /** Alias for `pollTypeConfigZod` (use with `refinePollRowTypeConfig` when building insert/row parsers). */
 export const PollTypeSchema = pollTypeConfigZod;
 
-export const PollBaseSchema = z.object({
-	_id: zid('meetingPolls'),
-	_creationTime: z.number(),
+/** Shared tail of meeting vs user poll rows (matches `pollRowSharedFields` in Convex). */
+export const pollRowSharedZod = z.object({
 	title: z.string().trim().min(1),
 	options: z.array(z.string().trim().min(1)).min(1),
 	isResultPublic: z.boolean(),
 	allowsAbstain: z.boolean(),
 	maxVotesPerVoter: z.number().min(1),
-	meetingId: zid('meetings'),
-	agendaItemId: z.string().nullable(),
 	isOpen: z.boolean(),
 	openedAt: z.number().nullable(),
 	closedAt: z.number().nullable(),
 	updatedAt: z.number(),
 });
 
-export const FullPollSchema = PollBaseSchema.and(pollTypeConfigZod).superRefine((data, ctx) =>
-	refinePollRowTypeConfig(data, ctx),
-);
+function andPollTypeConfigWithRowRefine<O extends z.ZodRawShape>(base: z.ZodObject<O>) {
+	return base
+		.and(pollTypeConfigZod)
+		.superRefine((data, ctx) =>
+			refinePollRowTypeConfig(data as PollTypeConfig & { options: readonly string[] }, ctx),
+		);
+}
+
+export const PollBaseSchema = z
+	.object({
+		_id: zid('meetingPolls'),
+		_creationTime: z.number(),
+		meetingId: zid('meetings'),
+		agendaItemId: z.string().nullable(),
+	})
+	.merge(pollRowSharedZod);
+
+export const FullPollSchema = andPollTypeConfigWithRowRefine(PollBaseSchema);
 
 /** Poll payload as stored inside `pollResults.poll` (no Convex system fields). */
-export const PollEmbeddedSnapshotSchema = PollBaseSchema.omit({ _id: true, _creationTime: true })
-	.and(pollTypeConfigZod)
-	.superRefine((data, ctx) => refinePollRowTypeConfig(data, ctx));
-
-export const UserPollBaseSchema = z.object({
-	_id: zid('userPolls'),
-	_creationTime: z.number(),
-	code: z.string().trim().min(4).max(12),
-	ownerUserId: z.string().trim().min(1),
-	visibilityMode: UserPollVisibilitySchema,
-	title: z.string().trim().min(1),
-	options: z.array(z.string().trim().min(1)).min(1),
-	isResultPublic: z.boolean(),
-	allowsAbstain: z.boolean(),
-	maxVotesPerVoter: z.number().min(1),
-	isOpen: z.boolean(),
-	openedAt: z.number().nullable(),
-	closedAt: z.number().nullable(),
-	updatedAt: z.number(),
-});
-
-export const FullUserPollSchema = UserPollBaseSchema.and(pollTypeConfigZod).superRefine(
-	(data, ctx) => refinePollRowTypeConfig(data, ctx),
+export const PollEmbeddedSnapshotSchema = andPollTypeConfigWithRowRefine(
+	PollBaseSchema.omit({ _id: true, _creationTime: true }),
 );
 
+export const UserPollBaseSchema = z
+	.object({
+		_id: zid('userPolls'),
+		_creationTime: z.number(),
+		code: z.string().trim().min(4).max(12),
+		ownerUserId: z.string().trim().min(1),
+		visibilityMode: UserPollVisibilitySchema,
+	})
+	.extend(pollRowSharedZod.shape);
+
+export const FullUserPollSchema = andPollTypeConfigWithRowRefine(UserPollBaseSchema);
+
 /** User poll payload as stored inside `userPollResults.poll`. */
-export const UserPollEmbeddedSnapshotSchema = UserPollBaseSchema.omit({
-	_id: true,
-	_creationTime: true,
-})
-	.and(pollTypeConfigZod)
-	.superRefine((data, ctx) => refinePollRowTypeConfig(data, ctx));
+export const UserPollEmbeddedSnapshotSchema = andPollTypeConfigWithRowRefine(
+	UserPollBaseSchema.omit({
+		_id: true,
+		_creationTime: true,
+	}),
+);
+
+/** Shared nested `results` shape for `insertPollResultSnapshot` (user vs meeting differ only in `counts`). */
+export const pollSnapshotOptionVotesRowZod = z.object({
+	optionIndex: z.number(),
+	option: z.string(),
+	votes: z.number(),
+});
+
+export const pollSnapshotResultsCoreZod = z.object({
+	optionTotals: z.array(pollSnapshotOptionVotesRowZod),
+	winners: z.array(pollSnapshotOptionVotesRowZod),
+	isTie: z.boolean(),
+	majorityRule: z.enum(MAJORITY_RULES).nullable(),
+});
+
+export const pollSnapshotCountsUserZod = z.object({
+	totalVotes: z.number(),
+	usableVotes: z.number(),
+	abstain: z.number(),
+});
+
+export const pollSnapshotCountsMeetingZod = z.object({
+	totalVotes: z.number(),
+	eligibleVoters: z.number(),
+	usableVotes: z.number(),
+	abstain: z.number(),
+});
 
 /** @deprecated Use `UserPollBaseSchema` */
 export const StandalonePollBaseSchema = UserPollBaseSchema;

@@ -24,3 +24,24 @@ export const pollTypeConfigFields = {
 	winningCount: v.optional(v.number()),
 	majorityRule: v.optional(majorityRule),
 };
+
+/** Shared columns for `userPolls` and `meetingPolls` (excluding table-specific id/context fields). */
+export const pollRowSharedFields = {
+	title: v.string(),
+	options: v.array(v.string()),
+	allowsAbstain: v.boolean(),
+	isOpen: v.boolean(),
+	maxVotesPerVoter: v.number(),
+	/** If true, everyone can see results when poll is closed; if false, only admins can. */
+	isResultPublic: v.boolean(),
+	openedAt: v.nullable(v.number()),
+	closedAt: v.nullable(v.number()),
+	updatedAt: v.number(),
+};
+
+/** One row in `results.optionTotals` or `results.winners` (same shape in stored snapshots). */
+export const pollResultOptionVotesRowV = v.object({
+	optionIndex: v.number(),
+	option: v.string(),
+	votes: v.number(),
+});

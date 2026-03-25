@@ -4,7 +4,12 @@ import {
 	buildUserPollResultSnapshot,
 	getLatestUserPollResultSnapshot,
 } from '$convex/helpers/userPoll';
-import { FullUserPollSchema } from '$lib/validation';
+import { shouldSkipPollSnapshotAction } from '$convex/helpers/poll';
+import {
+	FullUserPollSchema,
+	pollSnapshotCountsUserZod,
+	pollSnapshotResultsCoreZod,
+} from '$lib/validation';
 import { zid } from 'convex-helpers/server/zod4';
 import { z } from 'zod';
 
@@ -13,28 +18,8 @@ export const insertPollResultSnapshot = c
 	.input({
 		poll: FullUserPollSchema,
 		complete: z.boolean(),
-		results: z.object({
-			optionTotals: z.array(
-				z.object({
-					optionIndex: z.number(),
-					option: z.string(),
-					votes: z.number(),
-				}),
-			),
-			winners: z.array(
-				z.object({
-					optionIndex: z.number(),
-					option: z.string(),
-					votes: z.number(),
-				}),
-			),
-			isTie: z.boolean(),
-			majorityRule: z.enum(['simple', 'two_thirds', 'three_quarters', 'unanimous']).nullable(),
-			counts: z.object({
-				totalVotes: z.number(),
-				usableVotes: z.number(),
-				abstain: z.number(),
-			}),
+		results: pollSnapshotResultsCoreZod.extend({
+			counts: pollSnapshotCountsUserZod,
 		}),
 	})
 	.internal(async ({ ctx, args }) => {
@@ -58,7 +43,7 @@ export const createPollResultSnapshotAction = c
 		const results = await ctx.runQuery(internal.userPoll.jobs.results.getPollResults, {
 			pollId: args.pollId,
 		});
-		if (results.poll.isOpen || results.poll.closedAt == null) {
+		if (shouldSkipPollSnapshotAction(results.poll)) {
 			return false;
 		}
 		return await ctx.runMutation(internal.userPoll.jobs.snapshot.insertPollResultSnapshot, results);

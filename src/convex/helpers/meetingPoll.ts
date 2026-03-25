@@ -1,6 +1,6 @@
 import type { Doc, Id } from '$convex/_generated/dataModel';
 import type { MutationCtx } from '$convex/_generated/server';
-import { ABSTAIN_OPTION_LABEL, type MajorityRule } from '$lib/polls';
+import { getEligibleVotes, ABSTAIN_OPTION_LABEL, type MajorityRule } from '$lib/polls';
 import type { StripSystemFields } from '$lib/types';
 import type { PollDraft } from '$lib/validation';
 import { stripSystemFields } from '.';
@@ -10,8 +10,9 @@ import { findAgendaItemById, setPollIdsForItem } from './agenda';
 import type { Db } from './types';
 import { z } from 'zod';
 import type { EditablePollDraft } from '$lib/components/blocks/admin/agenda/agenda';
+import type { PollOptionTotal } from './poll';
 
-export type OptionTotal = { optionIndex: number; option: string; votes: number };
+export type OptionTotal = PollOptionTotal;
 
 type MeetingPollResultSnapshotData = StripSystemFields<Doc<'meetingPollResults'>>;
 type MeetingPollResultSnapshotArgs = {
@@ -75,9 +76,7 @@ export function assertMeetingPollEditable(poll: Pick<Doc<'meetingPolls'>, 'isOpe
 	AppError.assert(!poll.isOpen, appErrors.illegal_meeting_poll_action('edit_while_open'));
 }
 export function stripAbstain(optionTotals: OptionTotal[], allowsAbstain: boolean) {
-	return allowsAbstain
-		? optionTotals.filter((o) => o.option !== ABSTAIN_OPTION_LABEL)
-		: optionTotals;
+	return getEligibleVotes(optionTotals, allowsAbstain);
 }
 export function optionsWithAbstainLast(options: string[], allowsAbstain: boolean): string[] {
 	const withoutAbstain = options.filter((o) => o !== ABSTAIN_OPTION_LABEL);
