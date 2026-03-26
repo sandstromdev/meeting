@@ -17,8 +17,7 @@
 	let draftSelectedOptionIndexes = $state<number[] | null>(null);
 	let submitting = $state(false);
 
-	const poll = $derived(data.poll.data);
-	const voteCounts = $derived(data.voteCounts?.data ?? null);
+	const poll = $derived(data.poll);
 	const currentUser = $derived(data.currentUser);
 
 	const selectedOptionIndexes = $derived(
@@ -142,8 +141,6 @@
 			</Card.Header>
 			<Card.Content class="space-y-4 pt-0">
 				<div class="grid gap-1 text-sm text-muted-foreground sm:grid-cols-2">
-					<p>Röster: {voteCounts?.votesCount ?? 0}</p>
-					<p>Röstande: {voteCounts?.votersCount ?? 0}</p>
 					<p>Status: {poll.isOpen ? 'Öppen' : 'Stängd'}</p>
 					<p>Synlighet: {poll.visibilityMode === 'account_required' ? 'Konto krävs' : 'Publik'}</p>
 				</div>
