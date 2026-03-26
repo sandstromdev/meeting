@@ -17,6 +17,7 @@ import {
 } from '$convex/helpers/agenda';
 import { admin } from '$convex/helpers/auth';
 import { AppError, appErrors } from '$convex/helpers/error';
+import { bumpMeetingRuntimeVersions } from '$convex/helpers/meetingRuntime';
 import {
 	assertMeetingPollEditable,
 	assertMeetingPollInMeeting,
@@ -81,6 +82,7 @@ export const createAgendaItem = admin
 			agenda: nextAgenda,
 			currentAgendaItemId: ctx.meeting.currentAgendaItemId ?? newItem.id,
 		});
+		await bumpMeetingRuntimeVersions(ctx, ctx.meeting._id, { cold: true });
 
 		return newItem;
 	});
@@ -200,6 +202,10 @@ export const updateAgendaItem = admin
 			agenda,
 			...(clearsCurrentPoll ? { currentPollId: null } : {}),
 		});
+		await bumpMeetingRuntimeVersions(ctx, ctx.meeting._id, {
+			cold: true,
+			hot: clearsCurrentPoll,
+		});
 
 		const foundAfter = findAgendaItemById(agenda, args.agendaItemId);
 
@@ -282,6 +288,10 @@ export const removeAgendaItem = admin
 			currentAgendaItemId: newCurrentId,
 			currentPollId: clearsCurrentPoll ? null : ctx.meeting.currentPollId,
 		});
+		await bumpMeetingRuntimeVersions(ctx, ctx.meeting._id, {
+			cold: true,
+			hot: clearsCurrentPoll,
+		});
 
 		return true;
 	});
@@ -303,6 +313,7 @@ export const moveAgendaItem = admin
 		const nextAgenda = moveSubtree(agenda, args.agendaItemId, args.direction);
 
 		await ctx.db.patch('meetings', ctx.meeting._id, { agenda: nextAgenda });
+		await bumpMeetingRuntimeVersions(ctx, ctx.meeting._id, { cold: true });
 
 		return true;
 	});

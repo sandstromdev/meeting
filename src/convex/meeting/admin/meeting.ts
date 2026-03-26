@@ -1,6 +1,7 @@
 import { admin } from '$convex/helpers/auth';
 import { internal } from '$convex/_generated/api';
 import { completeReturnToMeeting, logSpeakerSlot } from '$convex/helpers/meeting';
+import { bumpMeetingRuntimeVersions } from '$convex/helpers/meetingRuntime';
 import { pickParticipantData } from '$convex/helpers/users';
 import { zid } from 'convex-helpers/server/zod4';
 import { z } from 'zod';
@@ -98,6 +99,7 @@ export const approveReturnRequest = admin
 		}
 
 		await completeReturnToMeeting(ctx, meeting, args.userId);
+		await bumpMeetingRuntimeVersions(ctx, meeting._id, { hot: true });
 		return true;
 	});
 
@@ -129,11 +131,13 @@ export const clearPointOfOrder = admin.mutation().public(async ({ ctx }) => {
 	await ctx.db.patch('meetings', ctx.meeting._id, {
 		pointOfOrder: null,
 	});
+	await bumpMeetingRuntimeVersions(ctx, ctx.meeting._id, { hot: true });
 
 	return true;
 });
 
-export const acceptPointOfOrder = admin.mutation().public(async ({ ctx: { db, meeting } }) => {
+export const acceptPointOfOrder = admin.mutation().public(async ({ ctx }) => {
+	const { db, meeting } = ctx;
 	if (!meeting.pointOfOrder || meeting.pointOfOrder.type !== 'requested') {
 		return false;
 	}
@@ -145,11 +149,13 @@ export const acceptPointOfOrder = admin.mutation().public(async ({ ctx: { db, me
 			startTime: Date.now(),
 		},
 	});
+	await bumpMeetingRuntimeVersions(ctx, meeting._id, { hot: true });
 
 	return true;
 });
 
-export const clearBreak = admin.mutation().public(async ({ ctx: { db, meeting } }) => {
+export const clearBreak = admin.mutation().public(async ({ ctx }) => {
+	const { db, meeting } = ctx;
 	if (!meeting.break) {
 		return false;
 	}
@@ -157,11 +163,13 @@ export const clearBreak = admin.mutation().public(async ({ ctx: { db, meeting } 
 	await db.patch('meetings', meeting._id, {
 		break: null,
 	});
+	await bumpMeetingRuntimeVersions(ctx, meeting._id, { hot: true });
 
 	return true;
 });
 
-export const acceptBreak = admin.mutation().public(async ({ ctx: { db, meeting } }) => {
+export const acceptBreak = admin.mutation().public(async ({ ctx }) => {
+	const { db, meeting } = ctx;
 	if (!meeting.break) {
 		return false;
 	}
@@ -173,11 +181,13 @@ export const acceptBreak = admin.mutation().public(async ({ ctx: { db, meeting }
 			startTime: meeting.break.startTime ?? Date.now(),
 		},
 	});
+	await bumpMeetingRuntimeVersions(ctx, meeting._id, { hot: true });
 
 	return true;
 });
 
-export const acceptReply = admin.mutation().public(async ({ ctx: { db, meeting } }) => {
+export const acceptReply = admin.mutation().public(async ({ ctx }) => {
+	const { db, meeting } = ctx;
 	if (!meeting.reply || meeting.reply.type !== 'requested') {
 		return false;
 	}
@@ -189,6 +199,7 @@ export const acceptReply = admin.mutation().public(async ({ ctx: { db, meeting }
 			startTime: Date.now(),
 		},
 	});
+	await bumpMeetingRuntimeVersions(ctx, meeting._id, { hot: true });
 
 	return true;
 });
@@ -210,6 +221,7 @@ export const clearReply = admin.mutation().public(async ({ ctx }) => {
 	await db.patch('meetings', meeting._id, {
 		reply: null,
 	});
+	await bumpMeetingRuntimeVersions(ctx, meeting._id, { hot: true });
 
 	return true;
 });
@@ -245,6 +257,7 @@ export const toggleMeeting = admin.mutation().public(async ({ ctx }) => {
 			currentPollId: null,
 			status: 'closed',
 		});
+		await bumpMeetingRuntimeVersions(ctx, meeting._id, { cold: true, hot: true });
 		return true;
 	}
 	const now = Date.now();
@@ -253,6 +266,7 @@ export const toggleMeeting = admin.mutation().public(async ({ ctx }) => {
 		startedAt: now,
 		status: 'active',
 	});
+	await bumpMeetingRuntimeVersions(ctx, meeting._id, { cold: true, hot: true });
 	return true;
 });
 
@@ -328,6 +342,7 @@ export const resetMeeting = admin.mutation().public(async ({ ctx }) => {
 		currentAgendaItemId: firstItemId ?? null,
 		currentPollId: null,
 	});
+	await bumpMeetingRuntimeVersions(ctx, meeting._id, { hot: true });
 
 	return true;
 });
@@ -366,6 +381,7 @@ export const updateMeetingData = admin
 		}
 
 		await db.patch('meetings', meeting._id, updates);
+		await bumpMeetingRuntimeVersions(ctx, meeting._id, { cold: true });
 		return true;
 	});
 

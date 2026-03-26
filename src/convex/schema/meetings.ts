@@ -138,6 +138,12 @@ export const MeetingSnapshot = v.object({
 	capturedAt: v.number(),
 });
 
+export const MeetingRuntimeState = v.object({
+	meetingId: v.id('meetings'),
+	simplifiedColdVersion: v.number(),
+	simplifiedHotVersion: v.number(),
+});
+
 export const meetingTables = {
 	meetingParticipants: defineTable(MeetingParticipant)
 		.index('by_user', ['userId'])
@@ -150,6 +156,8 @@ export const meetingTables = {
 		.index('by_isOpen', ['isOpen'])
 		.index('by_createdByUserId', ['createdByUserId'])
 		.index('by_status_and_date', ['status', 'date']),
+
+	meetingRuntimeStates: defineTable(MeetingRuntimeState).index('by_meeting', ['meetingId']),
 
 	meetingSnapshots: defineTable(MeetingSnapshot).index('by_meeting', ['meetingId']),
 

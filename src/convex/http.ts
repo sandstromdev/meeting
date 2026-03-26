@@ -10,6 +10,16 @@ const http = httpRouter();
 authComponent.registerRoutes(http, createAuth);
 
 http.route({
+	path: '/api/convex/time',
+	method: 'GET',
+	handler: httpAction(async () => {
+		return Response.json({
+			nowMs: Date.now(),
+		});
+	}),
+});
+
+http.route({
 	path: '/api/meeting/snapshot',
 	method: 'GET',
 	handler: httpAction(async (ctx, req) => {

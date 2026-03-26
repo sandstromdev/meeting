@@ -16,13 +16,18 @@
 </script>
 
 {#if data.meeting.data}
-	<MeetingContext data={data.meeting.data}>
-		<AbsentDialog />
-		<PollDialog />
+	{#if data.meetingUiMode === 'polling'}
 		<ConfirmDialog />
 		{@render children()}
-		<UserControls />
-	</MeetingContext>
+	{:else}
+		<MeetingContext data={data.meeting.data}>
+			<AbsentDialog />
+			<PollDialog />
+			<ConfirmDialog />
+			{@render children()}
+			<UserControls />
+		</MeetingContext>
+	{/if}
 {:else}
 	<MessageLayout>
 		{#if data.meeting.isLoading}

@@ -1,5 +1,6 @@
 import { withMe } from '$convex/helpers/auth';
 import { AppError, appErrors } from '$convex/helpers/error';
+import { bumpMeetingRuntimeVersions } from '$convex/helpers/meetingRuntime';
 import { getAbsentCounter } from '$convex/helpers/counters';
 import { completeReturnToMeeting } from '$convex/helpers/meeting';
 
@@ -52,6 +53,7 @@ export const leaveMeeting = withMe.mutation().public(async ({ ctx }) => {
 	});
 
 	await getAbsentCounter(meeting._id).inc(ctx);
+	await bumpMeetingRuntimeVersions(ctx, meeting._id, { hot: true });
 });
 
 export const requestReturnToMeeting = withMe.mutation().public(async ({ ctx }) => {

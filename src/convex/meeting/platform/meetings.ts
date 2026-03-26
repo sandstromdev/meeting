@@ -1,5 +1,9 @@
 import { authed } from '$convex/helpers/auth';
 import { AppError, appErrors } from '$convex/helpers/error';
+import {
+	bumpMeetingRuntimeVersions,
+	createMeetingRuntimeState,
+} from '$convex/helpers/meetingRuntime';
 import { applyNewParticipantSideEffects, insertMeetingParticipant } from '$convex/helpers/users';
 import type { QueryCtx } from '$convex/_generated/server';
 import { zid } from 'convex-helpers/server/zod4';
@@ -91,6 +95,8 @@ export const create = platformAdmin
 			reply: null,
 		});
 
+		await createMeetingRuntimeState(ctx, meetingId);
+
 		const creatorParticipantId = await insertMeetingParticipant(ctx, {
 			meetingId,
 			userId: ctx.user.subject,
@@ -126,6 +132,7 @@ export const archive = platformAdmin
 		}
 
 		await ctx.db.patch('meetings', meeting._id, { status: MeetingStatusSchema.enum.archived });
+		await bumpMeetingRuntimeVersions(ctx, meeting._id, { cold: true, hot: true });
 		return true;
 	});
 
@@ -146,5 +153,6 @@ export const reopen = platformAdmin
 			isOpen: false,
 			currentPollId: null,
 		});
+		await bumpMeetingRuntimeVersions(ctx, meeting._id, { cold: true, hot: true });
 		return true;
 	});

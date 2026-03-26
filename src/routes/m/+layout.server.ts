@@ -63,8 +63,21 @@ export const load = (async ({ locals, cookies, url }) => {
 		}
 	}
 
+	if (url.pathname === '/m/simplified' && meeting.data) {
+		const role = meeting.data.me.role;
+
+		if (role === 'admin') {
+			redirect(307, '/m/admin');
+		}
+
+		if (role === 'moderator') {
+			redirect(307, '/m/moderator');
+		}
+	}
+
 	return {
 		meeting,
 		meetingId: locals.meetingId,
+		meetingUiMode: url.pathname === '/m/simplified' ? 'polling' : 'realtime',
 	};
 }) satisfies LayoutServerLoad;
