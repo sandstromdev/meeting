@@ -1,4 +1,7 @@
 import { createBuilder } from '$convex/helpers/builder';
+import { Triggers } from 'convex-helpers/server/triggers';
 import type { DataModel } from './_generated/dataModel';
 
-export const c = createBuilder<DataModel>();
+const triggers = new Triggers<DataModel>();
+
+export const c = createBuilder<DataModel>(triggers);

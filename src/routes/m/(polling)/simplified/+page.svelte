@@ -1,5 +1,4 @@
 <script lang="ts">
-	import PollResultsDisplay from '$lib/components/poll-results-display.svelte';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
 	import { Button } from '$lib/components/ui/button';
 	import Checkbox from '$lib/components/ui/checkbox/checkbox.svelte';
@@ -371,8 +370,6 @@
 						{:else}
 							Omröstningen är stängd.
 						{/if}
-						Röstande: {poll.counters.votersCount}/{poll.counters.eligibleVoters}. Röster:{' '}
-						{poll.counters.votesCount}.
 					</p>
 
 					{#if poll.isOpen && !p.me?.absentSince}
@@ -462,8 +459,11 @@
 						{/if}
 					{/if}
 
-					{#if !poll.isOpen && poll.isResultPublic && poll.results}
-						<PollResultsDisplay data={poll.results} showDetailedResults={true} />
+					{#if !poll.isOpen && poll.isResultPublic}
+						<p class="text-sm text-muted-foreground">
+							Detaljerade valresultat visas inte i förenklat läge. Använd ordinarie mötesvy om det
+							går.
+						</p>
 					{/if}
 				</div>
 			{/if}

@@ -1,11 +1,4 @@
 import { withMe } from '$convex/helpers/auth';
-import {
-	getAbsentCounter,
-	getParticipantCounter,
-	getVotersCounter,
-	getVotesCounter,
-} from '$convex/helpers/counters';
-import { getLatestMeetingPollResultSnapshot } from '$convex/helpers/meetingPoll';
 import { getMeetingRuntimeVersions } from '$convex/helpers/meetingRuntime';
 import type { Id } from '$convex/_generated/dataModel';
 
@@ -41,11 +34,6 @@ type SimplifiedRequest = {
 	startTime: number | null;
 } | null;
 
-type SimplifiedPollResults = {
-	complete: boolean;
-	results: NonNullable<Awaited<ReturnType<typeof getLatestMeetingPollResultSnapshot>>>['results'];
-};
-
 export type SimplifiedHotSnapshot = {
 	simplifiedHotVersion: number;
 	requests: {
@@ -62,14 +50,6 @@ export type SimplifiedHotSnapshot = {
 		isResultPublic: boolean;
 		maxVotesPerVoter: number;
 		allowsAbstain: boolean;
-		counters: {
-			participants: number;
-			absentees: number;
-			eligibleVoters: number;
-			votersCount: number;
-			votesCount: number;
-		};
-		results: SimplifiedPollResults | null;
 	} | null;
 };
 
@@ -130,16 +110,6 @@ export const getHotSnapshot = withMe
 				return null;
 			}
 
-			const [participants, absentees, votersCount, votesCount, result] = await Promise.all([
-				getParticipantCounter(ctx.meeting._id).count(ctx),
-				getAbsentCounter(ctx.meeting._id).count(ctx),
-				getVotersCounter(ctx.meeting._id, poll._id).count(ctx),
-				getVotesCounter(ctx.meeting._id, poll._id).count(ctx),
-				!poll.isOpen && poll.closedAt != null && poll.isResultPublic
-					? getLatestMeetingPollResultSnapshot(ctx.db, poll._id)
-					: Promise.resolve(null),
-			]);
-
 			return {
 				id: poll._id,
 				title: poll.title,
@@ -149,20 +119,6 @@ export const getHotSnapshot = withMe
 				isResultPublic: poll.isResultPublic,
 				maxVotesPerVoter: poll.maxVotesPerVoter,
 				allowsAbstain: poll.allowsAbstain,
-				counters: {
-					participants,
-					absentees,
-					eligibleVoters: Math.max(0, participants - absentees),
-					votersCount,
-					votesCount,
-				},
-				results:
-					result == null
-						? null
-						: {
-								complete: result.complete,
-								results: result.results,
-							},
 			};
 		})();
 
@@ -183,15 +139,15 @@ export const getMeSnapshot = withMe
 	.query()
 	.public(async ({ ctx }): Promise<SimplifiedMeSnapshot> => {
 		const currentPollVoteOptionIndexes = await (async () => {
-			if (!ctx.meeting.currentPollId) {
+			const currentPollId = ctx.meeting.currentPollId;
+
+			if (!currentPollId) {
 				return [];
 			}
 
 			const votes = await ctx.db
 				.query('meetingPollVotes')
-				.withIndex('by_poll_user', (q) =>
-					q.eq('pollId', ctx.meeting.currentPollId!).eq('userId', ctx.me._id),
-				)
+				.withIndex('by_poll_user', (q) => q.eq('pollId', currentPollId).eq('userId', ctx.me._id))
 				.collect();
 
 			return votes.map((vote) => vote.optionIndex);

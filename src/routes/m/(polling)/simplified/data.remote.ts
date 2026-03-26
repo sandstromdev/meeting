@@ -1,17 +1,10 @@
 import { PUBLIC_CONVEX_URL } from '$env/static/public';
 import { api } from '$convex/_generated/api';
 import type { Id } from '$convex/_generated/dataModel';
-import type {
-	SimplifiedColdSnapshot,
-	SimplifiedHotSnapshot,
-	SimplifiedMeSnapshot,
-	SimplifiedVersions,
-} from '$convex/meeting/users/simplified';
 import { getAppError } from '$convex/helpers/error';
 import { getConvexClient } from '$lib/server/convex';
 import { command, getRequestEvent, query } from '$app/server';
 import { error } from '@sveltejs/kit';
-import { makeFunctionReference } from 'convex/server';
 import { z } from 'zod';
 
 const knownVersionSchema = z.object({
@@ -25,26 +18,7 @@ const meetingPollIdSchema = z.custom<Id<'meetingPolls'>>(
 	'Ogiltigt omröstnings-id.',
 );
 
-const simplifiedApi = {
-	getVersions: makeFunctionReference<'query', { meetingId: Id<'meetings'> }, SimplifiedVersions>(
-		'meeting/users/simplified:getVersions',
-	),
-	getColdSnapshot: makeFunctionReference<
-		'query',
-		{ meetingId: Id<'meetings'> },
-		SimplifiedColdSnapshot
-	>('meeting/users/simplified:getColdSnapshot'),
-	getHotSnapshot: makeFunctionReference<
-		'query',
-		{ meetingId: Id<'meetings'> },
-		SimplifiedHotSnapshot
-	>('meeting/users/simplified:getHotSnapshot'),
-	getMeSnapshot: makeFunctionReference<
-		'query',
-		{ meetingId: Id<'meetings'> },
-		SimplifiedMeSnapshot
-	>('meeting/users/simplified:getMeSnapshot'),
-};
+const simplifiedApi = api.meeting.users.simplified;
 
 function requireMeetingId() {
 	const event = getRequestEvent();
