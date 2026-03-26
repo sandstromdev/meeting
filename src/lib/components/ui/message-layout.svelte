@@ -5,7 +5,7 @@
 		$props();
 </script>
 
-<div class="flex h-dvh w-dvw flex-col items-center gap-4 bg-muted pt-[20vh]">
+<div class="flex h-dvh w-dvw flex-col items-center gap-4 pt-[20vh]">
 	{#if title}
 		<h1 class="text-2xl font-bold">{title}</h1>
 	{/if}

@@ -25,6 +25,7 @@ import type * as helpers_meetingLifecycle from "../helpers/meetingLifecycle.js";
 import type * as helpers_meetingPoll from "../helpers/meetingPoll.js";
 import type * as helpers_poll from "../helpers/poll.js";
 import type * as helpers_snapshotChecksum from "../helpers/snapshotChecksum.js";
+import type * as helpers_triggers from "../helpers/triggers.js";
 import type * as helpers_types from "../helpers/types.js";
 import type * as helpers_userPoll from "../helpers/userPoll.js";
 import type * as helpers_users from "../helpers/users.js";
@@ -82,6 +83,7 @@ declare const fullApi: ApiFromModules<{
   "helpers/meetingPoll": typeof helpers_meetingPoll;
   "helpers/poll": typeof helpers_poll;
   "helpers/snapshotChecksum": typeof helpers_snapshotChecksum;
+  "helpers/triggers": typeof helpers_triggers;
   "helpers/types": typeof helpers_types;
   "helpers/userPoll": typeof helpers_userPoll;
   "helpers/users": typeof helpers_users;

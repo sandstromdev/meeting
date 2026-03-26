@@ -19,7 +19,7 @@
 	<link rel="icon" href={favicon} />
 </svelte:head>
 
-<ModeWatcher />
+<!-- <ModeWatcher /> -->
 
 {#if !ps.isProjector}
 	<Toaster />

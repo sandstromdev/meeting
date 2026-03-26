@@ -9,16 +9,46 @@
 	import * as Field from '$lib/components/ui/field';
 	import PollResultsDisplay from '$lib/components/poll-results-display.svelte';
 	import * as RadioGroup from '$lib/components/ui/radio-group';
-	import { retractVote as retractVoteRemote, vote as voteRemote } from './data.remote';
+	import {
+		getPollByCode as getPollByCodeRemote,
+		retractVote as retractVoteRemote,
+		vote as voteRemote,
+	} from './data.remote';
 	import { toast } from 'svelte-sonner';
+	import Delayed from '$lib/components/ui/delayed.svelte';
+	import { useInterval } from 'runed';
 
 	let { data } = $props();
 
 	let draftSelectedOptionIndexes = $state<number[] | null>(null);
 	let submitting = $state(false);
 
-	const poll = $derived(data.poll);
+	let poll = $derived(data.poll);
 	const currentUser = $derived(data.currentUser);
+
+	let lastUpdatedAt = $state(0);
+
+	useInterval(10_000, {
+		callback: async () => {
+			if (!data.poll) {
+				return;
+			}
+
+			const result = await getPollByCodeRemote({
+				code: data.poll.code,
+				voterSessionToken: data.voterSessionToken,
+			});
+
+			if (result.ok) {
+				if (JSON.stringify(result.poll) !== JSON.stringify(poll)) {
+					poll = result.poll;
+					lastUpdatedAt = Date.now();
+				}
+			} else {
+				console.error(result);
+			}
+		},
+	});
 
 	const selectedOptionIndexes = $derived(
 		draftSelectedOptionIndexes ?? poll?.myVoteOptionIndexes ?? [],
@@ -65,7 +95,7 @@
 				await invalidateAll();
 			} else {
 				console.error(result);
-				toast.error('Kunde inte spara din röst.');
+				toast.error(result.error.message);
 			}
 		} catch (error) {
 			console.error(error);
@@ -91,7 +121,7 @@
 				await invalidateAll();
 			} else {
 				console.error(result);
-				toast.error('Kunde inte ta bort din röst.');
+				toast.error(result.error.message);
 			}
 		} catch (error) {
 			console.error(error);
@@ -215,11 +245,19 @@
 					<Card.Description>Den här omröstningen tar inte längre emot röster.</Card.Description>
 				</Card.Header>
 				<Card.Content class="space-y-4 pt-0">
-					{#if poll.results && (poll.isResultPublic || currentUser?._id === poll.ownerUserId)}
+					{#if poll.results && poll.isResultPublic}
 						<PollResultsDisplay data={{ results: poll.results }} showDetailedResults />
 					{/if}
 				</Card.Content>
 			</Card.Root>
 		{/if}
 	{/if}
+
+	{#key lastUpdatedAt}
+		<Delayed delay={10_000}>
+			<Button variant="link" class="mx-auto" onclick={() => location.reload()}
+				>Ladda om sidan</Button
+			>
+		</Delayed>
+	{/key}
 </main>

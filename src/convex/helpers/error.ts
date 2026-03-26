@@ -16,8 +16,34 @@ type AppErrorStored<C extends string, P extends {}> = {
 };
 
 export type AppResult<TOk = unknown, TErr extends AppError = AppError> =
-	| { ok: true; data: TOk; error?: undefined }
-	| { ok: false; error: TErr; data?: undefined };
+	| AppResultOk<TOk>
+	| AppResultErr<TErr>;
+
+export type AppResultOk<TOk = unknown> = { ok: true; data: TOk; error?: undefined };
+export type AppResultErr<TErr extends AppError = AppError> = {
+	ok: false;
+	error: TErr;
+	data?: undefined;
+};
+
+export function ok<TOk = unknown>(data: TOk) {
+	return { ok: true, data: data } as AppResult<TOk>;
+}
+
+export function err<TErr extends AppError>(error: TErr) {
+	return error.toResult();
+}
+
+/** Matches `AppError.toJSON()` (`error` merges stored `data` with `message`). */
+const appErrorSchema = z.object({
+	error: z
+		.object({
+			code: z.string(),
+			status: z.number(),
+			message: z.string(),
+		})
+		.loose(),
+});
 
 export class AppError<
 	C extends string = string,
@@ -58,13 +84,24 @@ export class AppError<
 		return Response.json(this.toJSON(), { status: this.status });
 	}
 
-	toResult<TOk = unknown>() {
-		return { ok: false, error: this } as AppResult<TOk, this>;
+	toResult() {
+		return { ok: false, error: this } as AppResultErr<this>;
 	}
 
 	static fromConvex<P extends {}>(err: ConvexError<AppErrorStored<string, P>>) {
 		const { code, status, data } = err.data;
 		return new AppError(code, status, data ?? {});
+	}
+
+	static fromJSON(json: unknown) {
+		const result = appErrorSchema.safeParse(json);
+
+		if (!result.success) {
+			throw new Error('Invalid app error JSON');
+		}
+
+		const { code, status, message: _serializedMessage, ...data } = result.data.error;
+		return new AppError(code, status, data);
 	}
 
 	static assert(pred: boolean, error: AppError): asserts pred is true {
