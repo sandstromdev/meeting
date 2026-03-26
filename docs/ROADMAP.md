@@ -140,7 +140,31 @@ Use this when scoping tickets so work is additive rather than duplicated.
 
 ---
 
-### 4) Profile completion
+### 4) Extract hot meeting runtime state into a runtime table
+
+**Problem:** The `meetings` document currently mixes relatively stable configuration (e.g. agenda) with “hot” live-state fields that change frequently during a meeting. This increases write contention and makes it harder to fetch lightweight “what’s happening now” state without also pulling larger, mostly-static data.
+
+**Deliverables**
+
+- Introduce a dedicated runtime table (e.g. `meetingRuntimeStates`) keyed by `meetingId`.
+- Move hot, frequently-changing fields out of `meetings` and into the runtime table over time, starting with:
+  - `currentSpeaker`
+  - `reply`
+  - `break`
+  - `pointOfOrder`
+  - (optionally) other frequently-updated pointers like `currentPollId`
+- Add helper functions/queries that join `{ meeting, runtime }` to avoid duplicated fetch logic and to keep a single source of truth per field.
+- Keep `meetings.isOpen` for now (do not remove yet); re-evaluate once `status` is fully adopted and all call sites are migrated.
+
+**Why this is high priority**
+
+- Reduces OCC contention on the `meetings` document during active sessions.
+- Enables smaller payloads for polling/fallback or projector-style views (agenda can be fetched less often than live state).
+- Sets up a clean place for simplified-mode version/hash signals.
+
+---
+
+### 5) Profile completion
 
 **Problem:** Profile page exists but is currently minimal/placeholder.
 
@@ -305,11 +329,12 @@ Use this when scoping tickets so work is additive rather than duplicated.
 1. P1.1 Meeting creation and lifecycle
 2. P1.2 Meeting access control (open vs closed)
 3. P1.3 Invitations and RSVP
-4. P1.4 Profile completion
-5. P2.5 Shared notes and minutes
-6. P2.6 Action items and follow-ups
-7. P2.7 In-meeting chat
-8. P3.8 Notifications and reminders
-9. P3.9 Calendar support (ICS)
-10. P3.10 Analytics dashboard
-11. P3.11 Integrations and webhooks
+4. P1.4 Extract hot meeting runtime state into a runtime table
+5. P1.5 Profile completion
+6. P2.5 Shared notes and minutes
+7. P2.6 Action items and follow-ups
+8. P2.7 In-meeting chat
+9. P3.8 Notifications and reminders
+10. P3.9 Calendar support (ICS)
+11. P3.10 Analytics dashboard
+12. P3.11 Integrations and webhooks
