@@ -1,4 +1,4 @@
-# Meeting
+# Meeting Tools
 
 A meeting platform primarily for **non-profit organizations**, focused on the full meeting lifecycle: create meetings, invite participants, run sessions, and follow up on decisions and tasks.
 
@@ -6,9 +6,36 @@ A meeting platform primarily for **non-profit organizations**, focused on the fu
 
 ## Purpose (why this exists)
 
-This repo is a **full-stack meeting app** intended to make it easy to run a structured meeting with live collaboration (agenda, speaking queue, polls/voting) while building toward the full product loop (provisioning → invites/RSVP → run → follow-up).
+This platform contains a **collection of useful tools for meetings** (and related things). It’s a **full-stack meeting app** intended to make it easy to run a structured meeting with live collaboration (agenda, speaking queue, polls/voting) while building toward the full product loop (provisioning → invites/RSVP → run → follow-up).
 
 The **meeting experience is primarily designed for scenarios where participants are physically in the same room**. It can also be used alongside a video-conferencing tool, but it is not built around remote-first meeting dynamics.
+
+## Main functionality
+
+### Meetings
+
+Meetings are the “run a session” surface: a structured in-meeting experience where participants join the same meeting and collaborate live.
+
+- **How it works**: the primary UI uses **Convex realtime** (WebSocket) so participant state updates reactively.
+- **Coupled polls**: a meeting can contain **in-meeting (coupled) polls** that are only accessible to participants in that meeting (as opposed to a standalone poll link).
+- **Fallback mode**: there is a **simplified HTTP-only view** (polling) for networks or clients where WSS is blocked. This is intentionally participant-focused and avoids fast-changing moderator/admin surfaces.
+- **Where it lives**:
+  - **Primary**: `src/routes/(form)/...`
+  - **Simplified HTTP fallback**: `src/routes/(no-convex)/m/simplified/`
+
+### Polls
+
+Polls are the “vote on a question” surface: a lightweight, shareable poll experience that can work broadly across the web.
+
+- **How it works**: the poll page is designed to support **plain HTTPS** interactions via **SvelteKit server endpoints** that call Convex server-side (Convex stays source-of-truth).
+- **Standalone entrypoint**: `/p/[code]` (see `src/routes/p/[code]/+page.svelte`).
+- **Why it’s different from meetings**: it’s intentionally decoupled from the realtime meeting UI so voting can work in restricted environments and be consumed by other web surfaces without embedding Convex client logic.
+
+### How they differ (at a glance)
+
+- **Scope**: **Meetings** are a multi-feature session; **polls** are a focused voting flow.
+- **Client transport**: meetings primarily rely on **realtime subscriptions**; polls can be served via **plain HTTP endpoints**.
+- **Networking goals**: meetings optimize for live collaboration; polls optimize for “open link and vote anywhere”.
 
 **Non-goals (at least for now)**
 
@@ -43,7 +70,7 @@ bun install
 
 ### 2) Environment
 
-Use `.env.local` for local development (gitignored). Variable names and semantics are defined in [`.env.schema`](.env.schema) ([Varlock](https://varlock.dev) / [@env-spec](https://varlock.dev/env-spec)); that file is for docs and Varlock tooling only—SvelteKit still loads values from `.env*` through Vite.
+Use `.env.local` for local development (gitignored). Variable names and semantics are defined in `[.env.schema](.env.schema)` ([Varlock](https://varlock.dev) / [@env-spec](https://varlock.dev/env-spec)); that file is for docs and Varlock tooling only—SvelteKit still loads values from `.env*` through Vite.
 
 Check required variables against the schema: `bun run env:validate` (also runs inside `bun run build` and the Vercel `build:vercel` step before `vite build`).
 
