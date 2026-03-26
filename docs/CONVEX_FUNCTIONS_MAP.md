@@ -8,7 +8,7 @@ This document lists **registered Convex functions** in this app: queries, mutati
 | -------------------------------- | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Public query / mutation / action | `api.domain.role.module.fn`    | Each segment maps from the path under `src/convex/` (e.g. `meeting/admin/meetingPoll.ts` → `api.meeting.admin.meetingPoll.createPoll`, `userPoll/public.ts` → `api.userPoll.public.getByCode`).                                           |
 | Internal                         | `internal.<path>.fn`           | Path mirrors `src/convex/**` (e.g. `meeting/jobs/meetingPollClose.ts` → `internal.meeting.jobs.meetingPollClose.*`). Job-style internals live under `*/jobs/*`. Callable only from other Convex functions, crons, or trusted server code. |
-| HTTP                             | `convex/http.ts`               | Routes on the Convex HTTP router (Better Auth, meeting snapshot export). Not `api.*` functions.                                                                                                                                           |
+| HTTP                             | `convex/http.ts`               | Routes on the Convex HTTP router (Better Auth, meeting snapshot export, Convex time). Not `api.*` functions.                                                                                                                              |
 | Component: sharded counters      | `components.counters.public.*` | `src/convex/counter/public.ts`; isolated component tables.                                                                                                                                                                                |
 | Component: Better Auth           | `components.betterAuth.*`      | Adapter and auth **internal** functions; see `src/convex/_generated/api.d.ts`. App wires `internal.auth` via `src/convex/auth.ts`.                                                                                                        |
 
@@ -95,6 +95,10 @@ Query: `getUserData`. Mutation: `connect`.
 #### `meeting/users/meeting` → `api.meeting.users.meeting`
 
 Queries: `getMeeting`, `getMe`, `getData`.
+
+#### `meeting/users/simplified` → typed reference / polling-only
+
+Queries: `getVersions`, `getColdSnapshot`, `getHotSnapshot`, `getMeSnapshot`.
 
 #### `meeting/users/participant` → `api.meeting.users.participant`
 
@@ -233,6 +237,7 @@ Queries: `getByCode`, `getVoteCounts`, `getResultsByPollId`, `getMyOwnedPolls`. 
 | Meeting document    | `meeting/public/meetings:getMeetingById`, `meeting/users/meeting:getMeeting`     | Arbitrary id + authed vs `withMeeting` context. |
 | Current participant | `meeting/users/participant:getMeetingParticipant`, `meeting/users/meeting:getMe` | Same row, different modules.                    |
 | Bundles             | `meeting/users/meeting:getData`, `meeting/users/auth:getUserData`                | Large bundle vs participant field slice.        |
+| Polling slices      | `meeting/users/simplified:getColdSnapshot`, `getHotSnapshot`, `getMeSnapshot`    | Participant-focused HTTP polling surface.       |
 
 ### 4. Poll results naming (cross-surface)
 
