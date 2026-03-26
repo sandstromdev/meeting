@@ -15,6 +15,10 @@ type AppErrorStored<C extends string, P extends {}> = {
 	data: P;
 };
 
+export type AppResult<TOk = unknown, TErr extends AppError = AppError> =
+	| { ok: true; data: TOk; error?: undefined }
+	| { ok: false; error: TErr; data?: undefined };
+
 export class AppError<
 	C extends string = string,
 	P extends {} = {},
@@ -52,6 +56,10 @@ export class AppError<
 
 	toJsonResponse() {
 		return Response.json(this.toJSON(), { status: this.status });
+	}
+
+	toResult<TOk = unknown>() {
+		return { ok: false, error: this } as AppResult<TOk, this>;
 	}
 
 	static fromConvex<P extends {}>(err: ConvexError<AppErrorStored<string, P>>) {
