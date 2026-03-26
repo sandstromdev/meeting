@@ -1,7 +1,7 @@
 <script lang="ts">
+	import { invalidateAll } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import { api } from '$convex/_generated/api';
 	import * as Alert from '$lib/components/ui/alert';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
@@ -9,13 +9,10 @@
 	import * as Field from '$lib/components/ui/field';
 	import PollResultsDisplay from '$lib/components/poll-results-display.svelte';
 	import * as RadioGroup from '$lib/components/ui/radio-group';
-	import { useConvexClient } from '@mmailaender/convex-svelte';
+	import { retractVote as retractVoteRemote, vote as voteRemote } from './data.remote';
 	import { toast } from 'svelte-sonner';
 
 	let { data } = $props();
-
-	const convex = useConvexClient();
-	const userPollApi = api.userPoll.public;
 
 	let draftSelectedOptionIndexes = $state<number[] | null>(null);
 	let submitting = $state(false);
@@ -58,13 +55,19 @@
 		}
 		try {
 			submitting = true;
-			await convex.mutation(userPollApi.vote, {
+			const result = await voteRemote({
 				pollId: poll.id,
 				optionIndexes: selectedOptionIndexes,
 				voterSessionToken: data.voterSessionToken,
 			});
-			draftSelectedOptionIndexes = [...selectedOptionIndexes];
-			toast.success('Din röst har sparats.');
+			if (result.ok) {
+				draftSelectedOptionIndexes = [...selectedOptionIndexes];
+				toast.success('Din röst har sparats.');
+				await invalidateAll();
+			} else {
+				console.error(result);
+				toast.error('Kunde inte spara din röst.');
+			}
 		} catch (error) {
 			console.error(error);
 			toast.error('Kunde inte spara din röst.');
@@ -79,12 +82,18 @@
 		}
 		try {
 			submitting = true;
-			await convex.mutation(userPollApi.retractVote, {
+			const result = await retractVoteRemote({
 				pollId: poll.id,
 				voterSessionToken: data.voterSessionToken,
 			});
-			draftSelectedOptionIndexes = [];
-			toast.success('Din röst har tagits bort.');
+			if (result.ok) {
+				draftSelectedOptionIndexes = [];
+				toast.success('Din röst har tagits bort.');
+				await invalidateAll();
+			} else {
+				console.error(result);
+				toast.error('Kunde inte ta bort din röst.');
+			}
 		} catch (error) {
 			console.error(error);
 			toast.error('Kunde inte ta bort din röst.');
