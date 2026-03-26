@@ -1,5 +1,7 @@
 import { authed, withMe, withMeeting } from '$convex/helpers/auth';
+import { AppError, appErrors } from '$convex/helpers/error';
 import { getMeetingParticipant } from '$convex/helpers/meeting';
+import { assertMeetingNotArchived } from '$convex/helpers/meetingLifecycle';
 import { zid } from 'convex-helpers/server/zod4';
 
 // --- Public queries ---
@@ -13,6 +15,9 @@ export const getMe = authed
 	.input({ meetingId: zid('meetings') })
 	.query()
 	.public(async ({ ctx, args }) => {
+		const meeting = await ctx.db.get('meetings', args.meetingId);
+		AppError.assertNotNull(meeting, appErrors.meeting_not_found(args));
+		assertMeetingNotArchived(meeting);
 		return getMeetingParticipant(ctx, args.meetingId);
 	});
 

@@ -25,9 +25,22 @@ export const Request = v.object({
 	startTime: v.nullable(v.number()),
 });
 
+export const MeetingStatus = v.union(
+	v.literal('draft'),
+	v.literal('scheduled'),
+	v.literal('active'),
+	v.literal('closed'),
+	v.literal('archived'),
+);
+
 export const Meeting = v.object({
 	code: v.string(),
 	title: v.string(),
+	createdByUserId: v.string(),
+	status: MeetingStatus,
+	timezone: v.string(),
+	location: v.optional(v.string()),
+	description: v.optional(v.string()),
 
 	/** Meeting date as timestamp (start of day). */
 	date: v.number(),
@@ -132,7 +145,11 @@ export const meetingTables = {
 		.index('by_meeting', ['meetingId'])
 		.index('by_meeting_absent', ['meetingId', 'absentSince']),
 
-	meetings: defineTable(Meeting).index('by_code', ['code']).index('by_isOpen', ['isOpen']),
+	meetings: defineTable(Meeting)
+		.index('by_code', ['code'])
+		.index('by_isOpen', ['isOpen'])
+		.index('by_createdByUserId', ['createdByUserId'])
+		.index('by_status_and_date', ['status', 'date']),
 
 	meetingSnapshots: defineTable(MeetingSnapshot).index('by_meeting', ['meetingId']),
 

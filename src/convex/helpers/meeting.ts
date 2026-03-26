@@ -2,6 +2,7 @@ import type { MutationCtx, QueryCtx } from '$convex/_generated/server';
 import type { UserIdentity, Scheduler } from 'convex/server';
 import { AppError, appErrors } from './error';
 import type { Doc, Id } from '$convex/_generated/dataModel';
+import { assertMeetingNotArchived } from './meetingLifecycle';
 import { internal } from '$convex/_generated/api';
 import { getAbsentCounter } from './counters';
 
@@ -109,5 +110,8 @@ export async function getMeetingByCode(ctx: QueryCtx, meetingCode: string) {
 		.withIndex('by_code', (q) => q.eq('code', meetingCode))
 		.first();
 
+	if (m) {
+		assertMeetingNotArchived(m, { meetingCode });
+	}
 	return m;
 }

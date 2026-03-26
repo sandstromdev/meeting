@@ -4,6 +4,7 @@ import type { QueryCtx } from '$convex/_generated/server';
 import { AppError, appErrors } from './error';
 import { c } from './index';
 import { getMeetingParticipant } from './meeting';
+import { assertMeetingNotArchived } from './meetingLifecycle';
 
 export type Identity = UserIdentity & { name: string; role: 'admin' | 'user' };
 
@@ -28,6 +29,7 @@ export const withMeeting = authed
 		const meeting = await ctx.db.get('meetings', args.meetingId);
 
 		AppError.assertNotNull(meeting, appErrors.meeting_not_found(args));
+		assertMeetingNotArchived(meeting);
 
 		return next({ ...ctx, meeting });
 	});

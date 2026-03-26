@@ -74,6 +74,8 @@
 </script>
 
 <script lang="ts">
+	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
+
 	let {
 		ref = $bindable(null),
 		variant = 'default',
@@ -125,6 +127,12 @@
 			}
 		}}
 	>
+		{#if loading}
+			<div class="flex animate-spin place-items-center justify-center">
+				<LoaderCircleIcon data-loading class="size-4" />
+			</div>
+			<span class="sr-only">Loading</span>
+		{/if}
 		{@render children?.()}
 	</button>
 {/if}

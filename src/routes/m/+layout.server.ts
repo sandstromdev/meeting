@@ -31,13 +31,18 @@ export const load = (async ({ locals, cookies, url }) => {
 		if (
 			err?.is('meeting_not_found') ||
 			err?.is('meeting_participant_not_found') ||
-			err?.is('participant_banned')
+			err?.is('participant_banned') ||
+			err?.is('meeting_archived')
 		) {
 			deleteMeetingCookie(cookies);
 
 			redirect(
 				307,
-				err?.is('participant_banned') ? '/m/anslut?error=participant_banned' : '/m/anslut',
+				err?.is('participant_banned')
+					? '/m/anslut?error=participant_banned'
+					: (err?.is('meeting_archived')
+						? '/m/anslut?error=meeting_archived'
+						: '/m/anslut'),
 			);
 		}
 

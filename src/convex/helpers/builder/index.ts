@@ -1,5 +1,6 @@
 // oxlint-disable typescript/no-explicit-any
 import { AppError, appErrors } from '$convex/helpers/error';
+import type { Triggers } from 'convex-helpers/server/triggers';
 import { zodToConvex } from 'convex-helpers/server/zod4';
 import {
 	actionGeneric,
@@ -30,10 +31,15 @@ import type {
 	ValidatorInput,
 } from './types';
 
-type Def<TValidator extends ValidatorInput, TFuncType extends FunctionType | undefined> = {
+type Def<
+	TDataModel extends GenericDataModel,
+	TValidator extends ValidatorInput,
+	TFuncType extends FunctionType | undefined,
+> = {
 	mws: AnyMiddleware[];
 	functionType: TFuncType;
 	validator: TValidator;
+	triggers: Triggers<TDataModel>;
 };
 
 class Builder<
@@ -42,9 +48,9 @@ class Builder<
 	TValidator extends ValidatorInput,
 	TContext extends Context,
 > {
-	#def: Def<TValidator, undefined>;
+	#def: Def<TDataModel, TValidator, undefined>;
 
-	constructor(def: Def<TValidator, undefined>) {
+	constructor(def: Def<TDataModel, TValidator, undefined>) {
 		this.#def = def;
 	}
 
@@ -129,9 +135,9 @@ class BuilderWithFuncType<
 	TValidator extends ValidatorInput,
 	TContext extends Context,
 > {
-	#def: Def<TValidator, TFunctionType>;
+	#def: Def<TDataModel, TValidator, TFunctionType>;
 
-	constructor(def: Def<TValidator, TFunctionType>) {
+	constructor(def: Def<TDataModel, TValidator, TFunctionType>) {
 		this.#def = def;
 	}
 
@@ -183,7 +189,7 @@ class BuilderWithFuncType<
 	}
 
 	#register<TReturn>(visibility: FunctionVisibility, handler: Handler<TContext, TArgs, TReturn>) {
-		const { functionType, validator, mws } = this.#def;
+		const { functionType, validator, mws, triggers } = this.#def;
 
 		if (!functionType) {
 			throw new Error('Function type not set. Call .query(), .mutation(), or .action() first.');
@@ -198,11 +204,14 @@ class BuilderWithFuncType<
 				| GenericActionCtx<TDataModel>,
 			args: unknown,
 		) => {
+			const wrappedCtx =
+				functionType === 'mutation' ? triggers.wrapDB(ctx as GenericMutationCtx<TDataModel>) : ctx;
+
 			const parsed = zodValidator.safeParse(args);
 
 			AppError.assertZodSuccess(parsed, (e) => appErrors.zod_error(z.treeifyError(e)));
 
-			return this.#execute(handler, mws, ctx, parsed.data);
+			return this.#execute(handler, mws, wrappedCtx, parsed.data);
 		};
 
 		const config = {
@@ -211,6 +220,7 @@ class BuilderWithFuncType<
 		};
 
 		const isPublic = visibility === 'public';
+
 		const registrationFn = {
 			query: isPublic ? queryGeneric : internalQueryGeneric,
 			mutation: isPublic ? mutationGeneric : internalMutationGeneric,
@@ -245,10 +255,11 @@ class BuilderWithFuncType<
 	}
 }
 
-export function createBuilder<TDataModel extends GenericDataModel>() {
+export function createBuilder<TDataModel extends GenericDataModel>(triggers: Triggers<TDataModel>) {
 	return new Builder<TDataModel, {}, {}, GenericQueryCtx<TDataModel>>({
 		mws: [],
 		validator: {},
 		functionType: undefined,
+		triggers,
 	});
 }
