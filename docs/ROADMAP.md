@@ -8,24 +8,37 @@ Use this when scoping tickets so work is additive rather than duplicated.
 
 **Meetings**
 
-- Documents have `code`, `title`, `date`, `agenda`, `isOpen`, `startedAt`, speaker queue / current speaker state, and related request slots (break, point of order, reply). Index `by_code` exists; there is **no** app mutation that inserts a new meeting row—meetings are expected to be provisioned outside the app today.
-- Admins can update `title`, `code`, and `date` in-meeting via `meeting/admin/meeting:updateMeetingData` (code uniqueness enforced). Open/close session is `toggleMeeting` (boolean `isOpen`), not a full lifecycle `status` enum yet.
+- Meetings have both “stable config” and “hot runtime state” stored on the `meetings` document today: `code`, `title`, `date`, `timezone`, optional `location`/`description`, `agenda`, plus live-state like `currentSpeaker`, request slots (`break`, `pointOfOrder`, `reply`), `currentPollId`, etc.
+- Provisioning exists **in-app** for platform admins via `meeting/platform/meetings`:
+  - `create` (generates unique 6-digit code, inserts meeting row, inserts creator as `meetingParticipants` admin)
+  - `listForCurrentUser` (by `createdByUserId`)
+  - `archive` / `reopen`
+- Lifecycle is now expressed with both `status` (`draft|scheduled|active|closed|archived`) and `isOpen`. In-meeting `toggleMeeting` sets `status` to `active/closed` and keeps `isOpen` in sync.
+- Admins can update `title`, `code`, and `date` in-meeting via `meeting/admin/meeting:updateMeetingData` (code uniqueness enforced).
 
 **Join and participants**
 
-- Join-by-code flow (`findByCode`, connect routes). Participants stored in `meetingParticipants` with roles, absence/return-request behavior documented in [Absence system](ABSENCE.md). No RSVP table, invite tokens, or access-mode enforcement beyond banning.
+- Join-by-code flow exists (`meeting/public/meetings.findByCode`, connect/join routes). Participants stored in `meetingParticipants` with roles; absence/return-request behavior documented in [Absence system](absence.md).
+- Access control is still minimal: “know the code” + “not banned” (+ archived meetings are blocked). There is no allowlist / invite token / RSVP model yet.
 
 **Live meeting features**
 
 - Agenda editing, polls, voting, projector/admin/moderator surfaces, snapshots/backup helpers.
 
+**Standalone polls**
+
+- Standalone poll admin UI exists under `/polls` and participant flow under `/p/[code]`.
+
 **Auth and admin shell**
 
-- Better Auth; SvelteKit `/admin` area is oriented around **platform user** management (list/create users), not meeting provisioning.
+- Better Auth; SvelteKit `/admin` area is oriented around **platform user** management (list/create users).
+- Meeting provisioning currently lives under `/meetings` and is restricted to platform admins.
 
 **Gaps vs this document**
 
-- No `meetings.create` / `listForCurrentUser`, no `status` (`draft` → `archived`), no `accessMode` / allowlist tables, no `meetingInvites` / RSVP, no profile or notification settings APIs as described below.
+- No `accessMode` / allowlist tables, no `meetingInvites` / RSVP.
+- Profile page exists but is currently placeholder/minimal.
+- “Hot runtime state” is still stored on `meetings` (no dedicated runtime table yet).
 
 ---
 
@@ -40,18 +53,22 @@ Use this when scoping tickets so work is additive rather than duplicated.
 
 ## P1 - Core product loop (highest priority)
 
-### 1) Meeting creation and lifecycle
+### 1) Meeting creation and lifecycle (mostly implemented; polish remaining)
 
-**Problem:** Meetings can be managed inside an existing meeting, but in-app **provisioning** (create row, list “my meetings”) is missing. Lifecycle is only partially expressed via `isOpen` and `startedAt`.
+**Problem:** Provisioning and lifecycle exist, but there is still some duplication/confusion between `status` vs `isOpen`, and “platform admin provisioning” isn’t yet the same as a dedicated organizer surface with full lifecycle tooling.
 
 **Deliverables**
 
-- Create meeting flow in admin UI (or dedicated organizer surface).
-- Unique meeting code generation (reuse patterns from `updateMeetingData` uniqueness checks).
-- Meeting list for current admin/user context.
-- Status model for lifecycle: `draft`, `scheduled`, `active`, `closed`, `archived` (align with or replace raw `isOpen` over time; avoid two conflicting sources of truth).
+- Keep a single source of truth for lifecycle (either fully adopt `status` or formally define `isOpen` as a derived/runtime flag).
+- Add explicit lifecycle transitions beyond `toggleMeeting`:
+  - `draft` → `scheduled`
+  - `scheduled` → `active`
+  - `active` → `closed`
+  - `closed` → `archived` (already gated)
+- Ensure all participant entrypoints enforce lifecycle consistently (e.g. block archived everywhere; decide expected behavior for `draft/scheduled`).
+- Expand meeting provisioning UI as needed (editing `timezone/location/description`, basic filters, archive/reopen affordances).
 
-**Suggested backend functions**
+**Backend functions (already present)**
 
 - `meetings.create`
 - `meetings.archive`
@@ -326,9 +343,9 @@ Use this when scoping tickets so work is additive rather than duplicated.
 
 ## Recommended execution order
 
-1. P1.1 Meeting creation and lifecycle
-2. P1.2 Meeting access control (open vs closed)
-3. P1.3 Invitations and RSVP
+1. P1.2 Meeting access control (open vs closed)
+2. P1.3 Invitations and RSVP
+3. P1.1 Meeting creation and lifecycle (polish + lifecycle clarity)
 4. P1.4 Extract hot meeting runtime state into a runtime table
 5. P1.5 Profile completion
 6. P2.5 Shared notes and minutes
