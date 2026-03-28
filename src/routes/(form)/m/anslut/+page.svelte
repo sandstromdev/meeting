@@ -1,22 +1,21 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
+	import { isAppErrorCode } from '$convex/helpers/error';
+	import { signOut } from '$lib/auth-client';
+	import AlertDescription from '$lib/components/ui/alert/alert-description.svelte';
+	import AlertTitle from '$lib/components/ui/alert/alert-title.svelte';
+	import Alert from '$lib/components/ui/alert/alert.svelte';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import * as Field from '$lib/components/ui/field';
 	import * as InputOTP from '$lib/components/ui/input-otp';
-	import Input from '$lib/components/ui/input/input.svelte';
 	import Label from '$lib/components/ui/label/label.svelte';
+	import Separator from '$lib/components/ui/separator/separator.svelte';
+	import { CONTACT_EMAIL } from '$lib/contact';
+	import AlertTriangle from '@lucide/svelte/icons/alert-triangle';
 	import { REGEXP_ONLY_DIGITS_AND_CHARS } from 'bits-ui';
 	import { connectForm } from './connect.remote';
 	import { ConnectFormSchema } from './schema';
-	import Separator from '$lib/components/ui/separator/separator.svelte';
-	import { resolve } from '$app/paths';
-	import { isAppError, isAppErrorCode } from '$convex/helpers/error';
-	import Alert from '$lib/components/ui/alert/alert.svelte';
-	import AlertTitle from '$lib/components/ui/alert/alert-title.svelte';
-	import AlertDescription from '$lib/components/ui/alert/alert-description.svelte';
-	import AlertTriangle from '@lucide/svelte/icons/alert-triangle';
-	import { CONTACT_EMAIL } from '$lib/contact';
-	import { signOut } from '$lib/auth-client';
-	import { goto } from '$app/navigation';
 
 	let { data } = $props();
 
@@ -38,6 +37,9 @@
 				try {
 					loading = true;
 					await submit();
+					if (connectForm.result?.success) {
+						await goto(resolve('/m'));
+					}
 				} catch (e) {
 					console.error(e);
 				} finally {
