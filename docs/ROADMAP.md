@@ -53,6 +53,30 @@ Use this when scoping tickets so work is additive rather than duplicated.
 
 ## P1 - Core product loop (highest priority)
 
+### Bulk user add system _(current top priority)_
+
+**Problem:** Admins add people one at a time via the meeting participants UI (`add-user-dialog.svelte`): Better Auth `admin.createUser` plus optional `meeting/admin/users.addParticipant`. That is too slow when an organizer needs to onboard a whole team or membership list before a meeting.
+
+**Agreed scope (product)**
+
+- **Accounts:** Create **Better Auth users** in bulk where needed, and **implement the `meetingAccessList` table and writes** as part of the same initiative so closed/access-gated join can use the same identities (see [§2](#2-meeting-access-control-open-vs-closed)).
+- **UI placement:** **Meeting-scoped** (import is for a chosen meeting), but **only platform admins** may run it for now (hard cap **200 rows** per import).
+- **Input:** **CSV, UTF-8**; columns include **email**, **name**, **role** (align with participant roles); **optional password** per row.
+- **Credentials:** **Optional password** column — when present, use it for account creation/update; when absent, generate a **random** password. Organizers will often fill passwords for **temporary-email** rows (`+m{code}@…`-style) they hand out in the room; real-email rows can omit it.
+- **Idempotency / partial success:** **Upsert-style** behavior — if the user already exists, **do not fail the batch**; **attach** `meetingParticipants` and/or `meetingAccessList` as appropriate. **Preview → commit**; per-row outcomes; **downloadable error report** for failures; Swedish UI copy.
+- **Success criterion (MVP):** Organizer completes a typical import (e.g. tens of rows) in **under ~2 minutes** with **low failure rate** (target **&lt; 5%** row failures excluding bad source data); refine with real usage.
+
+**Architecture**
+
+- **Single pipeline** per import row: resolve or create auth user → write **`meetingAccessList`** (and **`meetingParticipants`** per agreed rules) so bulk import is not duplicated as a separate “allowlist-only” tool later.
+- **Server-side:** Convex **action** (or equivalent) with **batching** and rate awareness; **no** large loops of `createUser` from the browser.
+
+**Dependencies**
+
+- Schema and API for **`meetingAccessList`** (and eventually `meetings.accessMode` / `access.canJoin` from §2) must land in step with or immediately before join-gate enforcement; bulk add is the first heavy consumer of allowlist writes.
+
+---
+
 ### 1) Meeting creation and lifecycle (mostly implemented; polish remaining)
 
 **Problem:** Provisioning and lifecycle exist, but there is still some duplication/confusion between `status` vs `isOpen`, and “platform admin provisioning” isn’t yet the same as a dedicated organizer surface with full lifecycle tooling.
@@ -93,6 +117,8 @@ Use this when scoping tickets so work is additive rather than duplicated.
 ### 2) Meeting access control (open vs closed)
 
 **Problem:** Anyone with the code can become a participant (unless banned); there is no allowlist, invite-only gate, or RSVP-backed authorization yet.
+
+**Sequencing note:** Implement the **`meetingAccessList`** table and write paths together with [Bulk user add](#bulk-user-add-system-current-top-priority) so imports populate allowlist (and participants) in one flow; then wire **`accessMode`** and **`access.canJoin`** / join UX so closed meetings actually enforce the list.
 
 **Deliverables**
 
