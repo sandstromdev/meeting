@@ -1,13 +1,49 @@
 <script lang="ts">
 	import { api } from '$convex/_generated/api';
+	import type { Doc } from '$convex/_generated/dataModel';
+	import { hydratePollRowToDraft } from '$lib/components/blocks/admin/agenda/agenda';
 	import { Button } from '$lib/components/ui/button';
 	import { confirm } from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
+	import * as Dialog from '$lib/components/ui/dialog';
+	import EditPoll from '$lib/components/ui/edit-poll.svelte';
 	import { notifyMutation } from '$lib/admin-toast';
 	import { getMeetingContext } from '$lib/context.svelte';
 	import { ABSTAIN_OPTION_LABEL, getVoteShare } from '$lib/polls';
+	import type { PollDraft } from '$lib/validation';
+	import PencilIcon from '@lucide/svelte/icons/pencil';
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
 
 	const meeting = getMeetingContext();
+
+	let editDialogOpen = $state(false);
+	let editDialogPoll = $state<Doc<'meetingPolls'> | null>(null);
+
+	function openEditPollDialog(poll: Doc<'meetingPolls'>) {
+		editDialogPoll = poll;
+		editDialogOpen = true;
+	}
+
+	async function submitMeetingPollEdit(payload: { draft: PollDraft }) {
+		const row = editDialogPoll;
+		if (!row) {
+			return;
+		}
+		try {
+			await notifyMutation(
+				'Omröstningen uppdaterades.',
+				() =>
+					meeting.adminMutate(api.meeting.admin.meetingPoll.editPoll, {
+						pollId: row._id,
+						edits: payload.draft,
+					}),
+				{ rethrow: true },
+			);
+			editDialogOpen = false;
+			editDialogPoll = null;
+		} catch {
+			// Toast shown by notifyMutation
+		}
+	}
 	const currentAgendaItem = $derived(meeting.agenda.currentItem ?? null);
 	const currentPollId = $derived(meeting.meeting.currentPollId);
 	const pollsResult = meeting.adminQuery(
@@ -66,6 +102,10 @@
 									Stäng
 								</Button>
 							{:else if poll.closedAt != null}
+								<Button size="sm" variant="outline" onclick={() => openEditPollDialog(poll)}>
+									<PencilIcon class="size-4" />
+									Redigera
+								</Button>
 								<Button
 									size="sm"
 									onClickPromise={() =>
@@ -174,3 +214,31 @@
 		</div>
 	{/if}
 </section>
+
+<Dialog.Root
+	bind:open={editDialogOpen}
+	onOpenChange={(open) => {
+		if (!open) {
+			editDialogPoll = null;
+		}
+	}}
+>
+	<Dialog.Content class="max-h-[min(90vh,720px)] overflow-y-auto sm:max-w-2xl">
+		{#key editDialogPoll?._id}
+			{#if editDialogPoll}
+				<EditPoll
+					poll={hydratePollRowToDraft(editDialogPoll)}
+					title="Redigera omröstning"
+					submitLabel="Spara ändringar"
+					submitPendingLabel="Sparar..."
+					showDiscard
+					onDiscard={() => {
+						editDialogOpen = false;
+						editDialogPoll = null;
+					}}
+					onSubmit={submitMeetingPollEdit}
+				/>
+			{/if}
+		{/key}
+	</Dialog.Content>
+</Dialog.Root>

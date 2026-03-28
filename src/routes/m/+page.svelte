@@ -32,6 +32,5 @@
 		<Agenda />
 		<RequestView />
 		<QueueControls />
-		<SpeakerQueue />
 	</main>
 {/if}

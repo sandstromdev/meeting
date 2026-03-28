@@ -38,7 +38,6 @@
 		<QueueAdminControls />
 		<Separator />
 		<SpeakerQueue noBorder />
-		<Separator />
 	</aside>
 
 	<main class="col-span-2 flex flex-col gap-4">
