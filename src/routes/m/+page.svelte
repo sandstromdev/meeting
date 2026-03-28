@@ -8,11 +8,17 @@
 	import Timer from '$lib/components/blocks/timer.svelte';
 	import { getMeetingContext } from '$lib/context.svelte';
 	import { useNow } from '$lib/now.svelte';
+	import SeoHead from '$lib/components/ui/seo-head.svelte';
 
 	const ctx = getMeetingContext();
 
 	const now = useNow();
 </script>
+
+<SeoHead
+	title={`${ctx.meeting.title} – Deltagarvy`}
+	description="Deltagarvy för pågående möte: dagordning, kö och omröstningar."
+/>
 
 {#if !ctx.meeting.isOpen || !ctx.meeting.startedAt || now.current < ctx.meeting.startedAt}
 	<div class="flex min-h-[50vh] flex-col items-center justify-center gap-4">

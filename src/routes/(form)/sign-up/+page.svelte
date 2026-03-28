@@ -6,6 +6,7 @@
 	import Input from '$lib/components/ui/input/input.svelte';
 	import Separator from '$lib/components/ui/separator/separator.svelte';
 	import { ErrorMessages } from '$lib/errors';
+	import SeoHead from '$lib/components/ui/seo-head.svelte';
 	import { signUp } from '../data.remote';
 	import { SignUpSchema, validateRedirect } from '../schema';
 
@@ -24,6 +25,8 @@
 			: resolve('/sign-in'),
 	);
 </script>
+
+<SeoHead title="Skapa konto" description="Skapa ett konto för att använda Mötesverktyget." />
 
 <div class="max-w-sm rounded-md border px-6 py-5">
 	<form

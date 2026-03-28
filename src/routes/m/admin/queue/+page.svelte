@@ -7,7 +7,16 @@
 	import SpeakerQueue from '$lib/components/blocks/speaker-queue.svelte';
 	import Timer from '$lib/components/blocks/timer.svelte';
 	import QueueAdminControls from '$lib/components/blocks/admin/queue-admin-controls.svelte';
+	import { getMeetingContext } from '$lib/context.svelte';
+	import SeoHead from '$lib/components/ui/seo-head.svelte';
+
+	const qCtx = getMeetingContext();
 </script>
+
+<SeoHead
+	title={`${qCtx.meeting.title} – Talarkö`}
+	description="Talarkö och dagordning för mötet."
+/>
 
 <main class="mx-auto max-w-2xl space-y-4 p-4 lg:py-12">
 	<MeetingInfo />

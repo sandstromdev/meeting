@@ -21,6 +21,9 @@
 
 <svelte:head>
 	<link rel="icon" href={favicon} />
+	<meta property="og:site_name" content="Mötesverktyg · m.lsnd.se" />
+	<meta property="og:type" content="website" />
+	<meta property="og:locale" content="sv_SE" />
 </svelte:head>
 
 <ModeWatcher />

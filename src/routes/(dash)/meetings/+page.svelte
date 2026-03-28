@@ -2,17 +2,11 @@
 	import { resolve } from '$app/paths';
 	import { api } from '$convex/_generated/api';
 	import * as Alert from '$lib/components/ui/alert';
-	import { Badge, type BadgeVariant } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
-	import * as Card from '$lib/components/ui/card';
-	import { CopyButton } from '$lib/components/ui/copy-button';
-	import type { Id } from '$convex/_generated/dataModel';
-	import type { FunctionReturnType } from 'convex/server';
-	import { useConvexClient, useQuery } from '@mmailaender/convex-svelte';
-	import { toast } from 'svelte-sonner';
-	import CreateMeeting from './create-meeting.svelte';
+	import SeoHead from '$lib/components/ui/seo-head.svelte';
 	import AlertTriangle from '@lucide/svelte/icons/alert-triangle';
-	import Separator from '$lib/components/ui/separator/separator.svelte';
+	import { useConvexClient, useQuery } from '@mmailaender/convex-svelte';
+	import CreateMeeting from './create-meeting.svelte';
 	import MeetingsTable from './meetings-table.svelte';
 
 	let { data } = $props();
@@ -25,6 +19,7 @@
 	const isAdmin = $derived(user?.role === 'admin');
 </script>
 
+<SeoHead title="Möten" description="Skapa, öppna och hantera dina möten." />
 <div class="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4 sm:p-6">
 	<h1 class="text-2xl font-semibold">Möten</h1>
 

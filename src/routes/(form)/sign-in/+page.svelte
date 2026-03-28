@@ -10,6 +10,7 @@
 	import { CONTACT_EMAIL } from '$lib/contact';
 	import { ErrorMessages } from '$lib/errors';
 	import { wait } from '$lib/utils';
+	import SeoHead from '$lib/components/ui/seo-head.svelte';
 	import { signIn } from '../data.remote';
 	import { SignInSchema, validateRedirect } from '../schema';
 
@@ -36,6 +37,11 @@
 
 	const isSignUpDisabled = $derived(PUBLIC_ENABLE_SIGNUP !== 'true');
 </script>
+
+<SeoHead
+	title="Logga in"
+	description="Logga in för att hantera möten och omröstningar i Mötesverktyget."
+/>
 
 <div class="max-w-sm rounded-md border px-6 py-5">
 	<form

@@ -18,8 +18,17 @@
 	import Timer from '$lib/components/blocks/timer.svelte';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import Separator from '$lib/components/ui/separator/separator.svelte';
+	import { getMeetingContext } from '$lib/context.svelte';
+	import SeoHead from '$lib/components/ui/seo-head.svelte';
 	import UsersIcon from '@lucide/svelte/icons/users';
+
+	const adminCtx = getMeetingContext();
 </script>
+
+<SeoHead
+	title={`${adminCtx.meeting.title} – Administration`}
+	description="Administration: styr mötet, dagordning och deltagare."
+/>
 
 <div class="mx-auto flex h-full max-w-[90vw] grid-cols-4 flex-col gap-4 p-4 lg:grid lg:py-12">
 	<aside class="col-span-1 flex flex-col rounded-lg border">

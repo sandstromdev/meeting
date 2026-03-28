@@ -12,6 +12,7 @@
 	import Label from '$lib/components/ui/label/label.svelte';
 	import Separator from '$lib/components/ui/separator/separator.svelte';
 	import { CONTACT_EMAIL } from '$lib/contact';
+	import SeoHead from '$lib/components/ui/seo-head.svelte';
 	import AlertTriangle from '@lucide/svelte/icons/alert-triangle';
 	import { REGEXP_ONLY_DIGITS_AND_CHARS } from 'bits-ui';
 	import { connectForm } from './connect.remote';
@@ -29,6 +30,11 @@
 		}
 	});
 </script>
+
+<SeoHead
+	title="Anslut till möte"
+	description="Ange möteskod för att delta i mötet i samma rum som övriga deltagare."
+/>
 
 <div class="flex max-w-[266px] flex-col gap-4">
 	<div class="rounded-md border px-6 py-5">

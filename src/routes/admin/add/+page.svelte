@@ -6,6 +6,7 @@
 	import * as Field from '$lib/components/ui/field';
 	import Input from '$lib/components/ui/input/input.svelte';
 	import * as NativeSelect from '$lib/components/ui/native-select';
+	import SeoHead from '$lib/components/ui/seo-head.svelte';
 	import { toast } from 'svelte-sonner';
 
 	let name = $state('');
@@ -44,6 +45,8 @@
 		await goto(resolve('/admin'));
 	}
 </script>
+
+<SeoHead title="Lägg till användare" description="Skapa en ny användare med e-post och roll." />
 
 <div class="max-w-md">
 	<form onsubmit={handleSubmit} class="flex flex-col gap-4">

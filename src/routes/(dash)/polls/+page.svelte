@@ -12,6 +12,7 @@
 	import PollResultsDisplay from '$lib/components/poll-results-display.svelte';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import { ABSTAIN_OPTION_LABEL } from '$lib/polls';
+	import SeoHead from '$lib/components/ui/seo-head.svelte';
 	import type { PollDraft, UserPollVisibility } from '$lib/validation';
 	import CreatePoll from './create-poll.svelte';
 	import { toast } from 'svelte-sonner';
@@ -130,6 +131,10 @@
 	}
 </script>
 
+<SeoHead
+	title="Fristående omröstningar"
+	description="Skapa och dela omröstningar som deltagare kan rösta på via länk."
+/>
 <div class="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4 sm:p-6">
 	<h1 class="text-2xl font-semibold">Fristående omröstningar</h1>
 

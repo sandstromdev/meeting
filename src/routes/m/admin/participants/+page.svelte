@@ -2,6 +2,7 @@
 	import { resolve } from '$app/paths';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import { getMeetingContext } from '$lib/context.svelte';
+	import SeoHead from '$lib/components/ui/seo-head.svelte';
 	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
 	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
 	import AddUserDialog from './add-user-dialog.svelte';
@@ -14,6 +15,10 @@
 	const ctx = new ParticipantsContext(meeting);
 </script>
 
+<SeoHead
+	title={`${meeting.meeting.title} – Deltagare`}
+	description="Lista och hantera mötesdeltagare."
+/>
 <div class="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-8">
 	<header class="flex items-center gap-4">
 		<Button href={resolve('/m')} variant="outline" size="icon">

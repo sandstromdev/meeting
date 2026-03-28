@@ -1,10 +1,12 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import Button from '$lib/components/ui/button/button.svelte';
+	import SeoHead from '$lib/components/ui/seo-head.svelte';
 
 	let { data } = $props();
 </script>
 
+<SeoHead title="Användare" description="Hantera plattformsanvändare och roller." />
 <div class="flex flex-col gap-4">
 	<div class="flex items-center justify-between">
 		<h2 class="text-lg font-semibold">Användare ({data.total})</h2>

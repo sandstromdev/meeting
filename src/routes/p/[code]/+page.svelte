@@ -9,6 +9,7 @@
 	import * as Field from '$lib/components/ui/field';
 	import PollResultsDisplay from '$lib/components/poll-results-display.svelte';
 	import * as RadioGroup from '$lib/components/ui/radio-group';
+	import SeoHead from '$lib/components/ui/seo-head.svelte';
 	import {
 		getPollByCode as getPollByCodeRemote,
 		retractVote as retractVoteRemote,
@@ -138,6 +139,15 @@
 		return maxReached && !selectedSet.has(optionIndex);
 	}
 </script>
+
+<SeoHead
+	title={poll?.title ?? 'Röstning hittades inte'}
+	description={!poll
+		? 'Omröstningen kunde inte hittas. Kontrollera länken.'
+		: poll.isOpen
+			? 'Rösta i denna omröstning via m.lsnd.se.'
+			: 'Visa resultat och information om omröstningen.'}
+/>
 
 <main class="mx-auto max-w-2xl space-y-6 p-4 lg:py-10">
 	{#if !poll}
