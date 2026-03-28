@@ -9,6 +9,7 @@
 	import Separator from '$lib/components/ui/separator/separator.svelte';
 	import { CONTACT_EMAIL } from '$lib/contact';
 	import { ErrorMessages } from '$lib/errors';
+	import { wait } from '$lib/utils';
 	import { signIn } from '../data.remote';
 	import { SignInSchema, validateRedirect } from '../schema';
 
