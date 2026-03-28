@@ -39,7 +39,7 @@ type Def<
 	mws: AnyMiddleware[];
 	functionType: TFuncType;
 	validator: TValidator;
-	triggers: Triggers<TDataModel>;
+	triggers?: Triggers<TDataModel>;
 };
 
 class Builder<
@@ -205,7 +205,9 @@ class BuilderWithFuncType<
 			args: unknown,
 		) => {
 			const wrappedCtx =
-				functionType === 'mutation' ? triggers.wrapDB(ctx as GenericMutationCtx<TDataModel>) : ctx;
+				functionType === 'mutation' && triggers
+					? triggers.wrapDB(ctx as GenericMutationCtx<TDataModel>)
+					: ctx;
 
 			const parsed = zodValidator.safeParse(args);
 
@@ -255,7 +257,9 @@ class BuilderWithFuncType<
 	}
 }
 
-export function createBuilder<TDataModel extends GenericDataModel>(triggers: Triggers<TDataModel>) {
+export function createBuilder<TDataModel extends GenericDataModel>(
+	triggers?: Triggers<TDataModel>,
+) {
 	return new Builder<TDataModel, {}, {}, GenericQueryCtx<TDataModel>>({
 		mws: [],
 		validator: {},
