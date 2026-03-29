@@ -8,43 +8,40 @@ Use this when scoping tickets so work is additive rather than duplicated.
 
 **Meetings**
 
-- Meetings have both “stable config” and “hot runtime state” stored on the `meetings` document today: `code`, `title`, `date`, `timezone`, optional `location`/`description`, `agenda`, plus live-state like `currentSpeaker`, request slots (`break`, `pointOfOrder`, `reply`), `currentPollId`, etc.
-- Provisioning exists **in-app** for platform admins via `meeting/platform/meetings`:
-  - `create` (generates unique 6-digit code, inserts meeting row, inserts creator as `meetingParticipants` admin)
-  - `listForCurrentUser` (by `createdByUserId`)
-  - `archive` / `reopen`
-- Lifecycle is now expressed with both `status` (`draft|scheduled|active|closed|archived`) and `isOpen`. In-meeting `toggleMeeting` sets `status` to `active/closed` and keeps `isOpen` in sync.
-- Admins can update `title`, `code`, and `date` in-meeting via `meeting/admin/meeting:updateMeetingData` (code uniqueness enforced).
+- Meetings store both stable config and hot runtime on the `meetings` document: `code`, `title`, `date`, `timezone`, optional `location` / `description`, `agenda`, plus live state (`currentSpeaker`, request slots, `currentPollId`, etc.).
+- **Provisioning (platform admins):** Convex `meeting/platform/meetings` — `create` (unique 6-digit code, creator as meeting admin participant), `listForCurrentUser`, `archive`, `reopen`. Dashboard UI: `(dash)/meetings` with create form (timezone, location, description) and meetings table (status, archive/reopen).
+- **Lifecycle:** `status` is `draft | scheduled | active | closed | archived` (schema). New meetings start as **`draft`**. In-meeting **`toggleMeeting`** opens/closes the session and sets `status` to **`active`** / **`closed`** while syncing **`isOpen`**. **`scheduled`** exists in the schema but is not yet driven by explicit product transitions or UI.
+- In-meeting admins can update `title`, `code`, and `date` via `meeting/admin/meeting:updateMeetingData` (code uniqueness enforced).
 
 **Join and participants**
 
-- Join-by-code flow exists (`meeting/public/meetings.findByCode`, connect/join routes). Participants stored in `meetingParticipants` with roles; absence/return-request behavior documented in [Absence system](absence.md).
-- Access control is still minimal: “know the code” + “not banned” (+ archived meetings are blocked). There is no allowlist / invite token / RSVP model yet.
+- Join-by-code flow (`meeting/public/meetings.findByCode`, connect / join routes). Participants in `meetingParticipants` with roles; absence / return-request behavior in [Absence system](ABSENCE.md).
+- Access control: knowing the code + not banned; **archived** meetings are blocked. No allowlist / invite token / RSVP yet.
 
 **Live meeting features**
 
-- Agenda editing, polls, voting, projector/admin/moderator surfaces, snapshots/backup helpers.
+- Agenda editing, polls, voting, projector / admin / moderator surfaces, snapshots / backup helpers. Simplified HTTP participant mode under `(no-convex)/m/simplified/` per project rules.
 
 **Standalone polls**
 
-- Standalone poll admin UI exists under `/polls` and participant flow under `/p/[code]`.
+- Admin UI under `/polls`, participant flow under `/p/[code]`.
 
 **Auth and admin shell**
 
-- Better Auth; SvelteKit `/admin` area is oriented around **platform user** management (list/create users).
-- Meeting provisioning currently lives under `/meetings` and is restricted to platform admins.
+- Better Auth; SvelteKit platform admin areas for users and meeting list.
 
-**Gaps vs this document**
+**Gaps vs desired product**
 
-- No `accessMode` / allowlist tables, no `meetingInvites` / RSVP.
-- Profile page exists but is currently placeholder/minimal.
-- “Hot runtime state” is still stored on `meetings` (no dedicated runtime table yet).
+- No `accessMode`, **`meetingAccessList`**, or join gating beyond archive + ban.
+- No **`meetingInvites`** / RSVP.
+- Profile route is still a placeholder (`profile/+page.svelte`).
+- No dedicated **runtime** table; hot fields still live on `meetings`.
 
 ---
 
 ## Product goals
 
-1. Complete the full meeting lifecycle (create -> invite -> run -> follow-up).
+1. Complete the full meeting lifecycle (create → invite → run → follow-up).
 2. Improve live collaboration during meetings.
 3. Add operational tooling (notifications, calendar, analytics, integrations).
 4. Support both open and restricted meeting access models.
@@ -77,40 +74,24 @@ Use this when scoping tickets so work is additive rather than duplicated.
 
 ---
 
-### 1) Meeting creation and lifecycle (mostly implemented; polish remaining)
+### 1) Meeting creation and lifecycle
 
-**Problem:** Provisioning and lifecycle exist, but there is still some duplication/confusion between `status` vs `isOpen`, and “platform admin provisioning” isn’t yet the same as a dedicated organizer surface with full lifecycle tooling.
+**Status:** **Core provisioning is implemented.** Remaining work is lifecycle clarity, optional `scheduled` wiring, and contributor-facing documentation (see [docs/TODO.md](TODO.md) for small items).
 
-**Deliverables**
+**Done**
 
-- Keep a single source of truth for lifecycle (either fully adopt `status` or formally define `isOpen` as a derived/runtime flag).
-- Add explicit lifecycle transitions beyond `toggleMeeting`:
-  - `draft` → `scheduled`
-  - `scheduled` → `active`
-  - `active` → `closed`
-  - `closed` → `archived` (already gated)
-- Ensure all participant entrypoints enforce lifecycle consistently (e.g. block archived everywhere; decide expected behavior for `draft/scheduled`).
-- Expand meeting provisioning UI as needed (editing `timezone/location/description`, basic filters, archive/reopen affordances).
+- [x] Meeting schema: `createdByUserId`, `status`, `timezone`, `location`, `description`, indexes (`by_code`, `by_createdByUserId`, `by_status_and_date`, `by_isOpen`).
+- [x] Platform API: `meeting/platform/meetings` — `create`, `listForCurrentUser`, `archive`, `reopen`.
+- [x] Dashboard provisioning UI and archive/reopen; create captures timezone / location / description.
+- [x] In-meeting open/close via `toggleMeeting` (`active` / `closed`, `isOpen` synced).
+- [x] In-meeting metadata updates via `updateMeetingData`.
+- [x] Archived meetings rejected on join / load paths that use `assertMeetingNotArchived`.
 
-**Backend functions (already present)**
+**Still open (strategic)**
 
-- `meetings.create`
-- `meetings.archive`
-- `meetings.reopen`
-- `meetings.listForCurrentUser`
-
-**Schema additions (meetings)**
-
-- `createdByUserId`
-- `status`
-- `timezone`
-- optional `location`, `description`
-
-**Indexes**
-
-- `by_createdByUserId`
-- `by_status_and_date`
-- `by_code` — already present; extend if composite queries are needed
+- Decide product semantics for **`draft` / `scheduled`** vs “session open” (join is currently allowed for non-archived meetings regardless of `draft`).
+- Optional explicit transitions: `draft` → `scheduled` → `active` → `closed` → `archived` (beyond today’s create-as-draft + toggle + archive).
+- Single mental model for **`status` vs `isOpen`** across the codebase and UI.
 
 ---
 
@@ -225,7 +206,7 @@ Use this when scoping tickets so work is additive rather than duplicated.
 
 ## P2 - Collaboration layer
 
-### 5) Shared notes and minutes
+### 6) Shared notes and minutes
 
 **Deliverables**
 
@@ -245,7 +226,7 @@ Use this when scoping tickets so work is additive rather than duplicated.
 
 ---
 
-### 6) Action items and follow-ups
+### 7) Action items and follow-ups
 
 **Deliverables**
 
@@ -272,7 +253,7 @@ Use this when scoping tickets so work is additive rather than duplicated.
 
 ---
 
-### 7) In-meeting chat (lightweight)
+### 8) In-meeting chat (lightweight)
 
 **Deliverables**
 
@@ -298,7 +279,7 @@ Use this when scoping tickets so work is additive rather than duplicated.
 
 ## P3 - Operations, reliability, integrations
 
-### 8) Notifications and reminders
+### 9) Notifications and reminders
 
 **Deliverables**
 
@@ -314,7 +295,7 @@ Use this when scoping tickets so work is additive rather than duplicated.
 
 ---
 
-### 9) Calendar support (ICS first)
+### 10) Calendar support (ICS first)
 
 **Deliverables**
 
@@ -327,7 +308,7 @@ Use this when scoping tickets so work is additive rather than duplicated.
 
 ---
 
-### 10) Analytics dashboard
+### 11) Analytics dashboard
 
 **Deliverables**
 
@@ -341,7 +322,7 @@ Use this when scoping tickets so work is additive rather than duplicated.
 
 ---
 
-### 11) Integrations and webhooks
+### 12) Integrations and webhooks
 
 **Deliverables**
 
@@ -369,15 +350,15 @@ Use this when scoping tickets so work is additive rather than duplicated.
 
 ## Recommended execution order
 
-1. P1.2 Meeting access control (open vs closed)
-2. P1.3 Invitations and RSVP
-3. P1.1 Meeting creation and lifecycle (polish + lifecycle clarity)
-4. P1.4 Extract hot meeting runtime state into a runtime table
-5. P1.5 Profile completion
-6. P2.5 Shared notes and minutes
-7. P2.6 Action items and follow-ups
-8. P2.7 In-meeting chat
-9. P3.8 Notifications and reminders
-10. P3.9 Calendar support (ICS)
-11. P3.10 Analytics dashboard
-12. P3.11 Integrations and webhooks
+1. Bulk user add + **`meetingAccessList`** (with join writes), then **P1.2** access modes + **`access.canJoin`**
+2. **P1.3** Invitations and RSVP
+3. **P1.1** Lifecycle polish (`scheduled`, draft join policy, `status` vs `isOpen` documentation)
+4. **P1.4** Extract hot meeting runtime state
+5. **P1.5** Profile completion
+6. **P2.6** Shared notes and minutes
+7. **P2.7** Action items and follow-ups
+8. **P2.8** In-meeting chat
+9. **P3.9** Notifications and reminders
+10. **P3.10** Calendar support (ICS)
+11. **P3.11** Analytics dashboard
+12. **P3.12** Integrations and webhooks
