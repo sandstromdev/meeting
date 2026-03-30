@@ -6,6 +6,7 @@
 	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
 	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
 	import AddUserDialog from './add-user-dialog.svelte';
+	import BulkUserImportDialog from './bulk-user-import-dialog.svelte';
 	import { ParticipantsContext } from './context.svelte';
 	import Controls from './controls.svelte';
 	import UsersTable from './users-table.svelte';
@@ -42,6 +43,7 @@
 			<UsersTable />
 			<Controls />
 			<AddUserDialog />
+			<BulkUserImportDialog />
 		</div>
 	{/if}
 </div>

@@ -1,4 +1,5 @@
 import { AppError, appErrors } from '$convex/helpers/error';
+import { canUserJoinMeeting } from '$convex/helpers/meetingAccess';
 import { authed, withMe } from '$convex/helpers/auth';
 import { getMeetingByCode, getMeetingParticipant } from '$convex/helpers/meeting';
 import { MeetingCode } from '$lib/validation';
@@ -27,6 +28,12 @@ export const connect = authed
 		AppError.assertNotNull(meeting, appErrors.meeting_not_found({ meetingCode: args.meetingCode }));
 
 		const userId = ctx.user.subject;
+		const access = await canUserJoinMeeting(ctx, {
+			meeting,
+			userId,
+			email: ctx.user.email,
+		});
+		AppError.assert(access.allowed, appErrors.meeting_access_denied());
 
 		const result = await ensureParticipantInMeeting(ctx, {
 			meeting,

@@ -139,6 +139,7 @@ export const appErrors = {
 	email_exists: () => new AppError('email_exists', 400),
 	invalid_credentials: () => new AppError('invalid_credentials', 400),
 	participant_banned: () => new AppError('participant_banned', 403),
+	meeting_access_denied: () => new AppError('meeting_access_denied', 403),
 
 	// Meeting
 	meeting_not_found: (args: { meetingId?: Id<'meetings'>; meetingCode?: string }) =>

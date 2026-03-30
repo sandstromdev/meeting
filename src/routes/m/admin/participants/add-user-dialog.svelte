@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { api } from '$convex/_generated/api';
-	import { authClient } from '$lib/auth-client';
+	import type { Id } from '$convex/_generated/dataModel';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import Checkbox from '$lib/components/ui/checkbox/checkbox.svelte';
 	import * as Dialog from '$lib/components/ui/dialog';
@@ -8,8 +8,8 @@
 	import { Input } from '$lib/components/ui/input';
 	import * as InputGroup from '$lib/components/ui/input-group/index.js';
 	import * as NativeSelect from '$lib/components/ui/native-select';
-	import { notifyMutation } from '$lib/admin-toast';
 	import { getMeetingContext } from '$lib/context.svelte';
+	import type { FunctionReference } from 'convex/server';
 	import { useParticipantsContext } from './context.svelte';
 	import { toast } from 'svelte-sonner';
 
@@ -20,11 +20,57 @@
 	let error = $state<string | null>(null);
 	let temporary = $state(true);
 
-	let addToMeeting = $state(false);
 	let role = $state<'admin' | 'moderator' | 'participant' | 'adjuster'>('participant');
+	type CreateAndAddUserResult =
+		| {
+				ok: false;
+				email: string;
+				name: string;
+				role: typeof role;
+				userId: string;
+				outcome: 'participant_banned';
+				createdUser: boolean;
+				passwordUpdated: boolean;
+				participantCreated: boolean;
+				accessGranted: boolean;
+				message: string;
+		  }
+		| {
+				ok: true;
+				email: string;
+				name: string;
+				role: typeof role;
+				userId: string;
+				outcome: 'already_in_meeting' | 'added_to_meeting';
+				createdUser: boolean;
+				passwordUpdated: boolean;
+				participantCreated: boolean;
+				accessGranted: boolean;
+				message: string;
+		  };
 
 	const ctx = useParticipantsContext();
 	const meeting = getMeetingContext();
+	const participantAdminApi = api as typeof api & {
+		meeting: {
+			admin: {
+				access: {
+					createAndAddUser: FunctionReference<
+						'mutation',
+						'public',
+						{
+							meetingId: Id<'meetings'>;
+							email: string;
+							name: string;
+							role: 'admin' | 'moderator' | 'participant' | 'adjuster';
+							password?: string;
+						},
+						CreateAndAddUserResult
+					>;
+				};
+			};
+		};
+	};
 
 	const tempEmailSuffix = $derived(`+m${meeting.meeting.code}@m.lsnd.se`);
 	const tempEmailPrefix = $derived(
@@ -47,6 +93,8 @@
 		name = '';
 		password = '';
 		error = null;
+		temporary = true;
+		role = 'participant';
 	}
 
 	function handleClose() {
@@ -69,8 +117,9 @@
 			return;
 		}
 
-		if (password.length === 0) {
-			error = 'Lösenordet är obligatoriskt';
+		const trimmedPassword = password.trim();
+		if (trimmedPassword.length > 0 && trimmedPassword.length < 4) {
+			error = 'Lösenordet måste vara minst 4 tecken om du anger ett';
 			toast.warning(error);
 			return;
 		}
@@ -79,39 +128,34 @@
 		error = null;
 
 		try {
-			const { data, error: err } = await authClient.admin.createUser({
-				email,
-				name,
-				password,
-			});
+			const result = await meeting.adminMutate(
+				participantAdminApi.meeting.admin.access.createAndAddUser,
+				{
+					email,
+					name: name.trim(),
+					role,
+					...(trimmedPassword.length > 0 ? { password: trimmedPassword } : {}),
+				},
+			);
 
-			if (err) {
-				error = JSON.stringify(err, null, 2) ?? 'Något gick fel';
-				toast.error('Kunde inte skapa användaren.');
+			if (result === undefined) {
+				toast.error('Du har inte behörighet att lägga till användare.');
 				return;
 			}
 
-			if (addToMeeting && data?.user.id) {
-				await notifyMutation(
-					'Användare skapad och tillagd i mötet.',
-					() =>
-						meeting.adminMutate(api.meeting.admin.users.addParticipant, {
-							userId: data.user.id,
-							name,
-							role,
-						}),
-					{
-						errorMessage: 'Användare skapades men kunde inte läggas till i mötet.',
-						rethrow: true,
-					},
-				);
-			} else {
-				toast.success('Användare skapad.');
+			if (!result.ok) {
+				error = result.message ?? 'Kunde inte lägga till användaren';
+				toast.error(error ?? 'Kunde inte lägga till användaren');
+				return;
 			}
 
+			toast.success(
+				result.message ?? 'Användaren skapades eller uppdaterades och har lagts till i mötet.',
+			);
 			handleClose();
-		} catch {
-			// notifyMutation har redan visat fel-toast
+		} catch (e) {
+			console.error(e);
+			toast.error('Kunde inte lägga till användaren.');
 		} finally {
 			loading = false;
 		}
@@ -123,7 +167,11 @@
 		<form onsubmit={handleSubmit} class="flex flex-col gap-4">
 			<Dialog.Header>
 				<Dialog.Title>Lägg till deltagare</Dialog.Title>
-				<Dialog.Description>Skapa ett nytt konto med e-post, namn och lösenord.</Dialog.Description>
+				<Dialog.Description>
+					Skapar eller uppdaterar kontot och lägger alltid till personen i detta möte med vald roll.
+					Lösenord kan utelämnas — då genereras ett slumpmässigt lösenord (användaren kan sätta nytt
+					via återställning).
+				</Dialog.Description>
 			</Dialog.Header>
 
 			<Field.Set class="gap-4">
@@ -173,32 +221,28 @@
 					/>
 				</Field.Field>
 				<Field.Field>
-					<Field.Label for="add-user-password">Lösenord</Field.Label>
+					<Field.Label for="add-user-password">Lösenord (valfritt)</Field.Label>
 					<Input
 						id="add-user-password"
 						type="password"
 						bind:value={password}
-						placeholder="Minst 4 tecken"
-						required
+						placeholder="Lämna tomt för auto-genererat lösenord"
 						autocomplete="new-password"
 						disabled={loading}
 					/>
+					<p class="text-xs text-muted-foreground">
+						Minst 4 tecken om du anger lösenord. Tomt fält ger ett internt genererat lösenord.
+					</p>
 				</Field.Field>
-				<Field.Field orientation="horizontal">
-					<Checkbox id="add-user-add-to-meeting" bind:checked={addToMeeting} />
-					<Field.Label for="add-user-add-to-meeting">Lägg till i möte</Field.Label>
+				<Field.Field>
+					<Field.Label for="add-user-role">Roll i mötet</Field.Label>
+					<NativeSelect.Root id="add-user-role" bind:value={role}>
+						<NativeSelect.Option value="admin">Admin</NativeSelect.Option>
+						<NativeSelect.Option value="moderator">Moderator</NativeSelect.Option>
+						<NativeSelect.Option value="participant">Deltagare</NativeSelect.Option>
+						<NativeSelect.Option value="adjuster">Justerare</NativeSelect.Option>
+					</NativeSelect.Root>
 				</Field.Field>
-				{#if addToMeeting}
-					<Field.Field>
-						<Field.Label for="add-user-role">Roll</Field.Label>
-						<NativeSelect.Root id="add-user-role" bind:value={role}>
-							<NativeSelect.Option value="admin">Admin</NativeSelect.Option>
-							<NativeSelect.Option value="moderator">Moderator</NativeSelect.Option>
-							<NativeSelect.Option value="participant">Deltagare</NativeSelect.Option>
-							<NativeSelect.Option value="adjuster">Justerare</NativeSelect.Option>
-						</NativeSelect.Root>
-					</Field.Field>
-				{/if}
 				{#if error}
 					<p class="text-sm text-destructive">{error}</p>
 				{/if}
@@ -208,7 +252,7 @@
 				<Button type="button" variant="outline" onclick={handleClose} disabled={loading}>
 					Avbryt
 				</Button>
-				<Button type="submit" {loading} disabled={loading}>Lägg till</Button>
+				<Button type="submit" {loading} disabled={loading}>Lägg till i möte</Button>
 			</Dialog.Footer>
 		</form>
 	</Dialog.Content>

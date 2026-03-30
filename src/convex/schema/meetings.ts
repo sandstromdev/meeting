@@ -33,11 +33,19 @@ export const MeetingStatus = v.union(
 	v.literal('archived'),
 );
 
+export const MeetingAccessMode = v.union(
+	v.literal('open'),
+	v.literal('closed'),
+	v.literal('invite_only'),
+);
+
 export const Meeting = v.object({
 	code: v.string(),
 	title: v.string(),
 	createdByUserId: v.string(),
 	status: MeetingStatus,
+	// Optional during rollout so existing meetings remain schema-compatible until backfilled.
+	accessMode: v.optional(MeetingAccessMode),
 	timezone: v.string(),
 	location: v.optional(v.string()),
 	description: v.optional(v.string()),
@@ -130,6 +138,14 @@ export const MeetingParticipant = v.object({
 	banned: v.boolean(),
 });
 
+export const MeetingAccessListEntry = v.object({
+	meetingId: v.id('meetings'),
+	userId: v.optional(v.string()),
+	email: v.optional(v.string()),
+	addedByUserId: v.string(),
+	addedAt: v.number(),
+});
+
 /** Stored backup row for an open meeting (payload shape matches meeting snapshot export). */
 export const MeetingSnapshot = v.object({
 	meetingId: v.id('meetings'),
@@ -144,6 +160,11 @@ export const meetingTables = {
 		.index('by_user_meeting', ['userId', 'meetingId'])
 		.index('by_meeting', ['meetingId'])
 		.index('by_meeting_absent', ['meetingId', 'absentSince']),
+
+	meetingAccessList: defineTable(MeetingAccessListEntry)
+		.index('by_meetingId', ['meetingId'])
+		.index('by_meetingId_and_userId', ['meetingId', 'userId'])
+		.index('by_meetingId_and_email', ['meetingId', 'email']),
 
 	meetings: defineTable(Meeting)
 		.index('by_code', ['code'])

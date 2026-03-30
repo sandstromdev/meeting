@@ -5,6 +5,7 @@ import {
 	getBannedCounter,
 	getParticipantCounter,
 } from '$convex/helpers/counters';
+import { grantMeetingAccess, revokeMeetingAccess } from '$convex/helpers/meetingAccess';
 import { completeReturnToMeeting, markParticipantAbsentNow } from '$convex/helpers/meeting';
 import { ensureParticipantInMeeting } from '$convex/helpers/users';
 import { zid } from 'convex-helpers/server/zod4';
@@ -136,6 +137,7 @@ export const removeParticipant = admin
 		if (!p || p.meetingId !== ctx.meeting._id) {
 			return false;
 		}
+		const authUser = await authComponent.getAnyUserById(ctx, p.userId);
 
 		// Remove from speaker queue entries (if any)
 		const entries = await ctx.db
@@ -182,6 +184,11 @@ export const removeParticipant = admin
 			await getBannedCounter(ctx.meeting._id).dec(ctx);
 		}
 
+		await revokeMeetingAccess(ctx, {
+			meetingId: ctx.meeting._id,
+			userId: p.userId,
+			email: authUser?.email,
+		});
 		await ctx.db.delete('meetingParticipants', args.userId);
 
 		return true;
@@ -224,11 +231,22 @@ export const addParticipant = admin
 		role: z.enum(['admin', 'moderator', 'participant', 'adjuster']),
 	})
 	.public(async ({ ctx, args }) => {
+		const authUser = await authComponent.getAnyUserById(ctx, args.userId);
+		await grantMeetingAccess(ctx, {
+			meetingId: ctx.meeting._id,
+			userId: args.userId,
+			email: authUser?.email,
+			addedByUserId: ctx.user.subject,
+		});
+
 		const result = await ensureParticipantInMeeting(ctx, {
 			meeting: ctx.meeting,
 			userId: args.userId,
 			name: args.name,
 			role: args.role,
+			requestReturnIfAbsent: false,
+			syncExistingName: true,
+			syncExistingRole: true,
 		});
 
 		if (!result.ok) {

@@ -5,6 +5,7 @@ import type { MeetingState } from '$lib/context.svelte';
 
 export class ParticipantsContext {
 	addUserDialogOpen = $state(false);
+	bulkImportDialogOpen = $state(false);
 	#query: UseQueryReturn<typeof api.meeting.admin.users.getParticipants>;
 	#meeting: MeetingState;
 

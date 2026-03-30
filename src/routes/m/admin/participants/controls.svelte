@@ -1,30 +1,68 @@
 <script lang="ts">
 	import Button from '$lib/components/ui/button/button.svelte';
+	import type { Id } from '$convex/_generated/dataModel';
 	import PlusIcon from '@lucide/svelte/icons/plus';
+	import UploadIcon from '@lucide/svelte/icons/upload';
 	import { useParticipantsContext } from './context.svelte';
-	import { useQuery } from '@mmailaender/convex-svelte';
 	import { api } from '$convex/_generated/api';
 	import RefreshCcwIcon from '@lucide/svelte/icons/refresh-ccw';
 	import UserXIcon from '@lucide/svelte/icons/user-x';
 	import { getMeetingContext } from '$lib/context.svelte';
 	import { notifyMutation } from '$lib/admin-toast';
 	import { confirm } from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
+	import type { FunctionReference } from 'convex/server';
 	import { toast } from 'svelte-sonner';
 
 	const ctx = useParticipantsContext();
 	const meeting = getMeetingContext();
+	const participantAdminApi = api as typeof api & {
+		meeting: {
+			admin: {
+				access: {
+					getSettings: FunctionReference<
+						'query',
+						'public',
+						{ meetingId: Id<'meetings'> },
+						{ accessMode: 'open' | 'closed' | 'invite_only'; canBulkImport: boolean }
+					>;
+					setMode: FunctionReference<
+						'mutation',
+						'public',
+						{ meetingId: Id<'meetings'>; mode: 'open' | 'closed' | 'invite_only' },
+						'open' | 'closed' | 'invite_only'
+					>;
+				};
+			};
+		};
+	};
 
-	const currentUser = useQuery(api.app.me.getCurrentUser);
+	const accessSettings = meeting.adminQuery(participantAdminApi.meeting.admin.access.getSettings);
 
-	const otherPresentCount = $derived(
-		ctx.participants.filter((p) => p.absentSince === 0 && p._id !== meeting.me._id).length,
-	);
+	function accessModeLabel(mode: string | undefined) {
+		switch (mode) {
+			case 'open':
+				return 'Öppet';
+			case 'closed':
+				return 'Stängt';
+			case 'invite_only':
+				return 'Endast inbjudna';
+			default:
+				return 'Öppet';
+		}
+	}
+
+	async function setAccessMode(mode: 'open' | 'closed') {
+		const current = accessSettings.data?.accessMode;
+		if (current === mode) {
+			return;
+		}
+		await notifyMutation('Åtkomstläge uppdaterat.', () =>
+			meeting.adminMutate(participantAdminApi.meeting.admin.access.setMode, { mode }),
+		);
+	}
 
 	async function runMarkAllPresentAbsent(skipNonParticipants: boolean) {
 		try {
-			await new Promise((resolve) => setTimeout(resolve, 4000));
-			return;
-
 			const result = await meeting.adminMutate(
 				api.meeting.admin.users.markAllPresentParticipantsAbsent,
 				{
@@ -88,11 +126,40 @@
 	</Button>
 </div>
 
-{#if currentUser?.data?.role === 'admin'}
+{#if meeting.isAdmin && accessSettings.data}
+	<div class="flex flex-col gap-2 rounded-md border border-border bg-muted/30 p-3">
+		<div class="flex flex-wrap items-center gap-2 text-sm">
+			<span class="text-muted-foreground">Mötesåtkomst:</span>
+			<span class="font-medium">{accessModeLabel(accessSettings.data.accessMode)}</span>
+		</div>
+		<div class="flex flex-wrap gap-2">
+			<Button
+				variant={accessSettings.data.accessMode === 'open' ? 'default' : 'outline'}
+				size="sm"
+				onclick={() => setAccessMode('open')}
+			>
+				Öppet
+			</Button>
+			<Button
+				variant={accessSettings.data.accessMode === 'closed' ? 'default' : 'outline'}
+				size="sm"
+				onclick={() => setAccessMode('closed')}
+			>
+				Stängt
+			</Button>
+		</div>
+	</div>
+{/if}
+
+{#if accessSettings.data?.canBulkImport}
 	<div class="flex flex-wrap gap-2">
 		<Button variant="outline" size="sm" onclick={() => (ctx.addUserDialogOpen = true)}>
 			<PlusIcon class="size-4" />
 			Lägg till användare
+		</Button>
+		<Button variant="outline" size="sm" onclick={() => (ctx.bulkImportDialogOpen = true)}>
+			<UploadIcon class="size-4" />
+			Massimportera CSV
 		</Button>
 	</div>
 {/if}

@@ -139,6 +139,16 @@
 					</p></AlertDescription
 				>
 			</Alert>
+		{:else if data.error === 'meeting_access_denied'}
+			<Alert variant="warning">
+				<AlertTriangle class="size-4" />
+				<AlertTitle>Du kan inte ansluta till mötet</AlertTitle>
+				<AlertDescription
+					><p>
+						Detta möte är stängt för nya deltagare. Be organisatören lägga till dig först.
+					</p></AlertDescription
+				>
+			</Alert>
 		{:else}
 			<Alert variant="destructive">
 				<AlertTriangle class="size-4" />
