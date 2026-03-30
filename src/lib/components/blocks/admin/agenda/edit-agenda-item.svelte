@@ -1,14 +1,13 @@
 <script lang="ts">
 	import { api } from '$convex/_generated/api';
 	import type { Id } from '$convex/_generated/dataModel';
+	import { createAgendaItem, updateAgendaItem } from '$lib/components/blocks/admin/agenda/agenda';
 	import {
-		createAgendaItem,
 		hydratePollRowToDraft,
 		newPollDraft,
 		POLL_PRESETS,
-		updateAgendaItem,
-		type EditablePollDraft,
-	} from '$lib/components/blocks/admin/agenda/agenda';
+		type MeetingPollDraft,
+	} from '$lib/polls';
 	import EditPolls from '$lib/components/blocks/admin/agenda/edit-polls.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
@@ -44,10 +43,10 @@
 	);
 
 	let newTitle = $state('');
-	let polls = $state<EditablePollDraft[]>([]);
+	let polls = $state<MeetingPollDraft[]>([]);
 	let lastSyncedId = $state<string | null>(null);
 	let initialPollIds = $state<Id<'meetingPolls'>[]>([]);
-	let originalPolls = new SvelteMap<Id<'meetingPolls'>, EditablePollDraft>();
+	let originalPolls = new SvelteMap<Id<'meetingPolls'>, MeetingPollDraft>();
 
 	const drafts = new PollDrafts(() => polls);
 
@@ -62,7 +61,7 @@
 				return;
 			}
 
-			polls = currentPolls.map(hydratePollRowToDraft);
+			polls = currentPolls.map((p) => hydratePollRowToDraft(p));
 			initialPollIds = currentPolls.map((p) => p._id);
 			originalPolls.clear();
 

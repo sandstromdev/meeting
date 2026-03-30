@@ -1,49 +1,49 @@
 <script lang="ts">
 	import { api } from '$convex/_generated/api';
 	import type { Doc } from '$convex/_generated/dataModel';
-	import { hydratePollRowToDraft } from '$lib/components/blocks/admin/agenda/agenda';
 	import { Button } from '$lib/components/ui/button';
 	import { confirm } from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
-	import * as Dialog from '$lib/components/ui/dialog';
+	import * as AlertDialog from '$lib/components/ui/alert-dialog';
 	import EditPoll from '$lib/components/ui/edit-poll.svelte';
 	import { notifyMutation } from '$lib/admin-toast';
 	import { getMeetingContext } from '$lib/context.svelte';
-	import { ABSTAIN_OPTION_LABEL, getVoteShare } from '$lib/polls';
+	import {
+		ABSTAIN_OPTION_LABEL,
+		getVoteShare,
+		hydratePollRowToDraft,
+		type MeetingPollDraft,
+	} from '$lib/polls';
 	import type { PollDraft } from '$lib/validation';
 	import PencilIcon from '@lucide/svelte/icons/pencil';
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
+	import EditPollDialog from '$lib/components/ui/edit-poll-dialog.svelte';
+	import { toast } from 'svelte-sonner';
 
 	const meeting = getMeetingContext();
 
-	let editDialogOpen = $state(false);
-	let editDialogPoll = $state<Doc<'meetingPolls'> | null>(null);
+	let editDialogPoll = $state<MeetingPollDraft | null>(null);
 
 	function openEditPollDialog(poll: Doc<'meetingPolls'>) {
-		editDialogPoll = poll;
-		editDialogOpen = true;
+		editDialogPoll = hydratePollRowToDraft(poll);
 	}
 
-	async function submitMeetingPollEdit(payload: { draft: PollDraft }) {
-		const row = editDialogPoll;
-		if (!row) {
+	async function submitMeetingPollEdit(draft: MeetingPollDraft) {
+		const { id, ...edits } = draft;
+
+		if (!id) {
+			toast.error('Kunde inte spara ändringar.');
 			return;
 		}
-		try {
-			await notifyMutation(
-				'Omröstningen uppdaterades.',
-				() =>
-					meeting.adminMutate(api.meeting.admin.meetingPoll.editPoll, {
-						pollId: row._id,
-						edits: payload.draft,
-					}),
-				{ rethrow: true },
-			);
-			editDialogOpen = false;
+
+		await notifyMutation('Omröstningen uppdaterades.', async () => {
+			await meeting.adminMutate(api.meeting.admin.meetingPoll.editPoll, {
+				pollId: id,
+				edits,
+			});
 			editDialogPoll = null;
-		} catch {
-			// Toast shown by notifyMutation
-		}
+		});
 	}
+
 	const currentAgendaItem = $derived(meeting.agenda.currentItem ?? null);
 	const currentPollId = $derived(meeting.meeting.currentPollId);
 	const pollsResult = meeting.adminQuery(
@@ -101,20 +101,11 @@
 								>
 									Stäng
 								</Button>
-							{:else if poll.closedAt != null}
+							{:else}
 								<Button size="sm" variant="outline" onclick={() => openEditPollDialog(poll)}>
 									<PencilIcon class="size-4" />
 									Redigera
 								</Button>
-								<Button
-									size="sm"
-									onClickPromise={() =>
-										notifyMutation('Resultat visas för deltagare.', () =>
-											meeting.adminMutate(api.meeting.admin.meetingPoll.showPollResults, {
-												pollId: poll._id,
-											}),
-										)}>Visa resultat</Button
-								>
 								<Button
 									size="sm"
 									variant="outline"
@@ -127,6 +118,17 @@
 								>
 									Duplicera
 								</Button>
+							{/if}
+							{#if poll.closedAt != null}
+								<Button
+									size="sm"
+									onClickPromise={() =>
+										notifyMutation('Resultat visas för deltagare.', () =>
+											meeting.adminMutate(api.meeting.admin.meetingPoll.showPollResults, {
+												pollId: poll._id,
+											}),
+										)}>Visa resultat</Button
+								>
 								<Button
 									size="icon-sm"
 									variant="destructive"
@@ -215,30 +217,12 @@
 	{/if}
 </section>
 
-<Dialog.Root
-	bind:open={editDialogOpen}
-	onOpenChange={(open) => {
-		if (!open) {
-			editDialogPoll = null;
-		}
-	}}
->
-	<Dialog.Content class="max-h-[min(90vh,720px)] overflow-y-auto sm:max-w-2xl">
-		{#key editDialogPoll?._id}
-			{#if editDialogPoll}
-				<EditPoll
-					poll={hydratePollRowToDraft(editDialogPoll)}
-					title="Redigera omröstning"
-					submitLabel="Spara ändringar"
-					submitPendingLabel="Sparar..."
-					showDiscard
-					onDiscard={() => {
-						editDialogOpen = false;
-						editDialogPoll = null;
-					}}
-					onSubmit={submitMeetingPollEdit}
-				/>
-			{/if}
-		{/key}
-	</Dialog.Content>
-</Dialog.Root>
+<EditPollDialog
+	dialogTitle="Redigera omröstning"
+	dialogDescription="Redigera omröstningen för att ändra titel, alternativ eller röstningsregler."
+	bind:poll={editDialogPoll}
+	onSubmit={async (d) => submitMeetingPollEdit(d as MeetingPollDraft)}
+	submitLabel="Spara ändringar"
+	submitPendingLabel="Sparar..."
+	showDiscard
+/>

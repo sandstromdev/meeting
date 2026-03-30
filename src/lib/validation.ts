@@ -32,6 +32,9 @@ export const AdminNotificationSchema = z.object({
 	endTime: z.optional(z.number()),
 });
 
+export const UserPollVisibilitySchema = z.enum(['public', 'account_required']);
+export type UserPollVisibility = z.infer<typeof UserPollVisibilitySchema>;
+
 export const PollDraftSchema = z.object({
 	title: z.string().min(1),
 	options: z
@@ -48,13 +51,8 @@ export const PollDraftSchema = z.object({
 	isResultPublic: z.boolean().default(false),
 	allowsAbstain: z.boolean().default(true),
 	maxVotesPerVoter: z.number().min(1),
+	visibilityMode: UserPollVisibilitySchema.optional(),
 });
-export const UserPollVisibilitySchema = z.enum(['public', 'account_required']);
-export type UserPollVisibility = z.infer<typeof UserPollVisibilitySchema>;
-/** @deprecated Use `UserPollVisibilitySchema` */
-export const StandaloneVisibilitySchema = UserPollVisibilitySchema;
-/** @deprecated Use `UserPollVisibility` */
-export type StandaloneVisibility = UserPollVisibility;
 
 /** Flat poll type fields; use with `refinePollRowTypeConfig` when `options` is present (stored rows / inserts). */
 export const pollTypeConfigZod = z.object({

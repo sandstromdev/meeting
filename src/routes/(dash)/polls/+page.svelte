@@ -1,43 +1,30 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { PUBLIC_SITE_URL } from '$env/static/public';
 	import { api } from '$convex/_generated/api';
 	import type { Doc, Id } from '$convex/_generated/dataModel';
-	import { useConvexClient, useQuery } from '@mmailaender/convex-svelte';
+	import { PUBLIC_SITE_URL } from '$env/static/public';
+	import PollResultsDisplay from '$lib/components/poll-results-display.svelte';
 	import * as Alert from '$lib/components/ui/alert';
 	import { Button } from '$lib/components/ui/button';
 	import { CopyButton } from '$lib/components/ui/copy-button';
+	import * as Dialog from '$lib/components/ui/dialog';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
 	import EditPoll from '$lib/components/ui/edit-poll.svelte';
-	import PollResultsDisplay from '$lib/components/poll-results-display.svelte';
-	import * as Dialog from '$lib/components/ui/dialog';
-	import { ABSTAIN_OPTION_LABEL } from '$lib/polls';
+	import Heading from '$lib/components/ui/heading.svelte';
 	import SeoHead from '$lib/components/ui/seo-head.svelte';
-	import type { PollDraft, UserPollVisibility } from '$lib/validation';
-	import CreatePoll from './create-poll.svelte';
-	import { toast } from 'svelte-sonner';
+	import { hydratePollRowToDraft, type UserPollDraft } from '$lib/polls';
 	import CopyIcon from '@lucide/svelte/icons/copy';
 	import EllipsisVerticalIcon from '@lucide/svelte/icons/ellipsis-vertical';
 	import PencilIcon from '@lucide/svelte/icons/pencil';
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
+	import { useConvexClient, useQuery } from '@mmailaender/convex-svelte';
+	import { toast } from 'svelte-sonner';
+	import CreatePoll from './create-poll.svelte';
+	import EditPollDialog from '$lib/components/ui/edit-poll-dialog.svelte';
 
 	function participantPollUrl(code: string): string {
 		const base = PUBLIC_SITE_URL.replace(/\/$/, '');
 		return `${base}${resolve(`/p/${code}`)}`;
-	}
-
-	function userPollRowToDraft(poll: Doc<'userPolls'>): PollDraft {
-		const options = poll.options.filter((o) => o !== ABSTAIN_OPTION_LABEL);
-		return {
-			title: poll.title,
-			options: options.length >= 1 ? options : ['', ''],
-			type: poll.type,
-			winningCount: poll.winningCount ?? 1,
-			majorityRule: poll.majorityRule ?? 'simple',
-			isResultPublic: poll.isResultPublic,
-			allowsAbstain: poll.allowsAbstain,
-			maxVotesPerVoter: poll.maxVotesPerVoter,
-		};
 	}
 
 	let { data } = $props();
@@ -51,8 +38,7 @@
 	let resultsDialogPollId = $state<Id<'userPolls'> | null>(null);
 	let resultsDialogPollTitle = $state('');
 
-	let editDialogOpen = $state(false);
-	let editDialogPoll = $state<Doc<'userPolls'> | null>(null);
+	let editDialogPoll = $state<UserPollDraft | null>(null);
 
 	const resultsSnapshot = useQuery(standaloneAdminApi.getMyPollResultsSnapshot, () =>
 		resultsDialogOpen && resultsDialogPollId ? { pollId: resultsDialogPollId } : 'skip',
@@ -68,35 +54,23 @@
 	}
 
 	function openEditDialog(poll: Doc<'userPolls'>) {
-		editDialogPoll = poll;
-		editDialogOpen = true;
+		editDialogPoll = hydratePollRowToDraft(poll) as UserPollDraft;
 	}
 
-	async function submitPollEdit(payload: {
-		draft: PollDraft;
-		visibilityMode?: UserPollVisibility;
-	}) {
-		const row = editDialogPoll;
-		if (!row) {
+	async function submitPollEdit(draft: UserPollDraft) {
+		const { id, ...edits } = draft;
+
+		if (!id) {
+			toast.error('Kunde inte spara ändringar.');
 			return;
 		}
+
 		try {
 			await convex.mutation(standaloneAdminApi.editPoll, {
-				pollId: row._id,
-				edits: {
-					title: payload.draft.title,
-					options: payload.draft.options,
-					type: payload.draft.type,
-					winningCount: payload.draft.winningCount,
-					majorityRule: payload.draft.majorityRule,
-					maxVotesPerVoter: payload.draft.maxVotesPerVoter,
-					allowsAbstain: payload.draft.allowsAbstain,
-					isResultPublic: payload.draft.isResultPublic,
-					visibilityMode: payload.visibilityMode ?? row.visibilityMode,
-				},
+				pollId: id,
+				edits: edits,
 			});
 			toast.success('Omröstningen uppdaterades.');
-			editDialogOpen = false;
 			editDialogPoll = null;
 		} catch (error) {
 			console.error(error);
@@ -215,39 +189,8 @@
 			</Dialog.Content>
 		</Dialog.Root>
 
-		<Dialog.Root
-			bind:open={editDialogOpen}
-			onOpenChange={(open) => {
-				if (!open) {
-					editDialogPoll = null;
-				}
-			}}
-		>
-			<Dialog.Content class="max-h-[min(90vh,720px)] overflow-y-auto sm:max-w-2xl">
-				{#key editDialogPoll?._id}
-					{#if editDialogPoll}
-						<EditPoll
-							poll={userPollRowToDraft(editDialogPoll)}
-							isStandalone
-							visibilityMode={editDialogPoll.visibilityMode}
-							title="Redigera omröstning"
-							titlePlaceholder="Till exempel: Val av mötesordförande"
-							submitLabel="Spara"
-							submitPendingLabel="Sparar..."
-							showDiscard
-							onDiscard={() => {
-								editDialogOpen = false;
-								editDialogPoll = null;
-							}}
-							onSubmit={submitPollEdit}
-						/>
-					{/if}
-				{/key}
-			</Dialog.Content>
-		</Dialog.Root>
-
 		<section class="rounded-md border p-4 sm:p-5">
-			<h2 class="mb-4 text-lg font-medium">Mina omröstningar</h2>
+			<Heading size="md">Mina omröstningar</Heading>
 			<div class="flex flex-col gap-3">
 				{#if ownedPolls.isLoading}
 					<p class="text-sm text-muted-foreground">Laddar omröstningar...</p>
@@ -417,6 +360,24 @@
 			</div>
 		</section>
 
-		<CreatePoll />
+		<section class="space-y-4 rounded-md border p-4 sm:p-6">
+			<Heading size="md">Skapa omröstning</Heading>
+			<CreatePoll />
+		</section>
 	{/if}
 </div>
+
+<EditPollDialog
+	bind:poll={editDialogPoll}
+	onSubmit={async (d) => submitPollEdit(d as UserPollDraft)}
+	onDiscard={() => {
+		editDialogPoll = null;
+	}}
+	isStandalone
+	titlePlaceholder="Till exempel: Val av mötesordförande"
+	submitLabel="Spara"
+	submitPendingLabel="Sparar..."
+	dialogTitle="Redigera omröstning"
+	dialogDescription="Redigera omröstningen för att ändra titel, alternativ eller röstningsregler."
+	showDiscard
+/>

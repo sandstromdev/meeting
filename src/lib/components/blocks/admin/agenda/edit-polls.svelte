@@ -3,12 +3,17 @@
 	import { type PollDrafts } from './agenda-poll-drafts.svelte';
 	import EditPoll from '$lib/components/ui/edit-poll.svelte';
 	import * as Card from '$lib/components/ui/card';
+	import type { EditablePollDraft, MeetingPollDraft } from '$lib/polls';
 
 	let {
 		drafts,
 	}: {
 		drafts: PollDrafts;
 	} = $props();
+
+	async function submitAgendaDraft(draft: EditablePollDraft) {
+		drafts.submit(draft as MeetingPollDraft);
+	}
 </script>
 
 {#if drafts.polls.length > 0}
@@ -17,23 +22,26 @@
 			<div class="relative flex items-center gap-2">
 				<AgendaPollDraftToolbar index={i} {drafts} />
 				<div class="min-w-0 flex-1">
-					{#if drafts.isEditing(i)}
-						<EditPoll
-							poll={pollDraft}
-							showDiscard
-							onDiscard={() => drafts.discard()}
-							onSubmit={async ({ draft }) => drafts.submit(draft)}
-							submitLabel="Spara ändringar"
-							submitPendingLabel="Sparar..."
-						/>
-					{:else}
-						<Card.Root class=" gap-1 bg-transparent px-6">
+					<Card.Root size="sm" class="">
+						<Card.Header>
 							<Card.Title>Poll: {pollDraft.title}</Card.Title>
 							<Card.Description>
 								Alternativ: {pollDraft.options.join(', ')} ({pollDraft.options.length} st)
 							</Card.Description>
-						</Card.Root>
-					{/if}
+						</Card.Header>
+						{#if drafts.isEditing(i)}
+							<Card.Content>
+								<EditPoll
+									poll={pollDraft}
+									showDiscard
+									onDiscard={() => drafts.discard()}
+									onSubmit={submitAgendaDraft}
+									submitLabel="Spara ändringar"
+									submitPendingLabel="Sparar..."
+								/>
+							</Card.Content>
+						{/if}
+					</Card.Root>
 				</div>
 			</div>
 		{/each}

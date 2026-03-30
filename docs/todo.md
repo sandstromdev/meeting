@@ -11,3 +11,7 @@ Engineering backlog items that are not yet issue-tracker tickets. Remove or move
 ## Documentation hygiene
 
 - **README:** Update the “Product snapshot” line that still says in-app provisioning is missing; it now exists under `/meetings` for platform admins (`docs/ROADMAP.md`).
+
+## No votes?
+
+Handle case when noone submits a vote

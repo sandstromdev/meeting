@@ -1,48 +1,43 @@
 <script lang="ts">
 	import { api } from '$convex/_generated/api';
 	import EditPoll from '$lib/components/ui/edit-poll.svelte';
-	import type { PollDraft, StandaloneVisibility } from '$lib/validation';
 	import { useConvexClient } from '@mmailaender/convex-svelte';
-	import { toast } from 'svelte-sonner';
+	import type { UserPollDraft } from '$lib/polls';
+	import { notifyMutation } from '$lib/admin-toast';
 
 	const convex = useConvexClient();
 	const standaloneAdminApi = api.userPoll.admin;
 
-	async function handleSubmit(payload: {
-		draft: PollDraft;
-		visibilityMode?: StandaloneVisibility;
-	}) {
-		const vm = payload.visibilityMode ?? 'public';
-		try {
-			await convex.mutation(standaloneAdminApi.createPoll, {
+	async function handleSubmit(payload: UserPollDraft) {
+		await notifyMutation('Omröstningen skapades.', () =>
+			convex.mutation(standaloneAdminApi.createPoll, {
 				draft: {
-					title: payload.draft.title,
-					options: payload.draft.options,
-					type: payload.draft.type,
-					winningCount: payload.draft.winningCount ?? 1,
-					majorityRule: payload.draft.majorityRule,
-					maxVotesPerVoter: payload.draft.maxVotesPerVoter,
-					allowsAbstain: payload.draft.allowsAbstain,
-					isResultPublic: payload.draft.isResultPublic,
+					title: payload.title,
+					options: payload.options,
+					type: payload.type,
+					winningCount: payload.winningCount ?? 1,
+					majorityRule: payload.majorityRule,
+					maxVotesPerVoter: payload.maxVotesPerVoter,
+					allowsAbstain: payload.allowsAbstain,
+					isResultPublic: payload.isResultPublic,
+					visibilityMode: payload.visibilityMode,
 				},
-				visibilityMode: vm,
-			});
-			toast.success('Omröstningen skapades.');
-		} catch (error) {
-			console.error(error);
-			toast.error('Kunde inte skapa omröstningen.');
-		}
+			}),
+		);
 	}
 </script>
 
-<div class="flex flex-col gap-4">
-	<h2 class="text-xl font-semibold">Skapa omröstning</h2>
-	<EditPoll
-		isStandalone
-		title="Omröstningens egenskaper"
-		titlePlaceholder="Till exempel: Val av mötesordförande"
-		onSubmit={handleSubmit}
-		submitLabel="Skapa omröstning"
-		submitPendingLabel="Skapar..."
-	/>
-</div>
+<!-- <Card.Root class="mx-auto w-full max-w-xl">
+	<Card.Header>
+		<Card.Title>Skapa omröstning</Card.Title>
+	</Card.Header>
+	<Card.Content> -->
+<EditPoll
+	isStandalone
+	titlePlaceholder="Till exempel: Val av mötesordförande"
+	onSubmit={async (d) => handleSubmit(d as UserPollDraft)}
+	submitLabel="Skapa omröstning"
+	submitPendingLabel="Skapar..."
+/>
+<!-- 	</Card.Content>
+</Card.Root> -->

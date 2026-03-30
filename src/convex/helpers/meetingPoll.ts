@@ -9,7 +9,7 @@ import { PollBaseSchema, PollTypeSchema, refinePollRowTypeConfig } from '$lib/va
 import { findAgendaItemById, setPollIdsForItem } from './agenda';
 import type { Db } from './types';
 import { z } from 'zod';
-import type { EditablePollDraft } from '$lib/components/blocks/admin/agenda/agenda';
+import type { MeetingPollDraft } from '$lib/polls';
 import type { PollOptionTotal } from './poll';
 
 export type OptionTotal = PollOptionTotal;
@@ -134,8 +134,8 @@ export async function createMeetingPollHelper(
 	return pollId;
 }
 export function meetingPollDraftChanged(
-	draft: EditablePollDraft,
-	originalPolls: ReadonlyMap<Id<'meetingPolls'>, EditablePollDraft>,
+	draft: MeetingPollDraft,
+	originalPolls: ReadonlyMap<Id<'meetingPolls'>, MeetingPollDraft>,
 ): boolean {
 	if (!draft.id) {
 		return false;
