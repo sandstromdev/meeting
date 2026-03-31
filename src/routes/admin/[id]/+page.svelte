@@ -7,6 +7,7 @@
 	import Input from '$lib/components/ui/input/input.svelte';
 	import * as NativeSelect from '$lib/components/ui/native-select';
 	import Separator from '$lib/components/ui/separator/separator.svelte';
+	import SeoHead from '$lib/components/ui/seo-head.svelte';
 	import { toast } from 'svelte-sonner';
 
 	let { data } = $props();
@@ -75,6 +76,10 @@
 	}
 </script>
 
+<SeoHead
+	title={`Redigera ${data.user.name}`}
+	description="Ändra namn och roll för denna plattformsanvändare."
+/>
 <div class="max-w-md">
 	<form onsubmit={handleSubmit} class="flex flex-col gap-4">
 		<h2 class="text-lg font-semibold">Redigera användare</h2>

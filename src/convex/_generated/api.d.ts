@@ -16,21 +16,32 @@ import type * as helpers_agenda from "../helpers/agenda.js";
 import type * as helpers_auth from "../helpers/auth.js";
 import type * as helpers_builder_index from "../helpers/builder/index.js";
 import type * as helpers_builder_types from "../helpers/builder/types.js";
+import type * as helpers_bulkMeetingUsers from "../helpers/bulkMeetingUsers.js";
 import type * as helpers_counters from "../helpers/counters.js";
 import type * as helpers_error from "../helpers/error.js";
 import type * as helpers_index from "../helpers/index.js";
+import type * as helpers_lobbyPresence from "../helpers/lobbyPresence.js";
 import type * as helpers_meeting from "../helpers/meeting.js";
+import type * as helpers_meetingAccess from "../helpers/meetingAccess.js";
+import type * as helpers_meetingAttendanceReset from "../helpers/meetingAttendanceReset.js";
 import type * as helpers_meetingBackup from "../helpers/meetingBackup.js";
 import type * as helpers_meetingLifecycle from "../helpers/meetingLifecycle.js";
 import type * as helpers_meetingPoll from "../helpers/meetingPoll.js";
+<<<<<<< HEAD
 import type * as helpers_meetingRuntime from "../helpers/meetingRuntime.js";
+=======
+import type * as helpers_pagination from "../helpers/pagination.js";
+>>>>>>> dev
 import type * as helpers_poll from "../helpers/poll.js";
 import type * as helpers_snapshotChecksum from "../helpers/snapshotChecksum.js";
+import type * as helpers_triggers from "../helpers/triggers.js";
 import type * as helpers_types from "../helpers/types.js";
 import type * as helpers_userPoll from "../helpers/userPoll.js";
 import type * as helpers_users from "../helpers/users.js";
 import type * as http from "../http.js";
+import type * as meeting_admin_access from "../meeting/admin/access.js";
 import type * as meeting_admin_agenda from "../meeting/admin/agenda.js";
+import type * as meeting_admin_bulkUsers from "../meeting/admin/bulkUsers.js";
 import type * as meeting_admin_meeting from "../meeting/admin/meeting.js";
 import type * as meeting_admin_meetingPoll from "../meeting/admin/meetingPoll.js";
 import type * as meeting_admin_users from "../meeting/admin/users.js";
@@ -77,21 +88,32 @@ declare const fullApi: ApiFromModules<{
   "helpers/auth": typeof helpers_auth;
   "helpers/builder/index": typeof helpers_builder_index;
   "helpers/builder/types": typeof helpers_builder_types;
+  "helpers/bulkMeetingUsers": typeof helpers_bulkMeetingUsers;
   "helpers/counters": typeof helpers_counters;
   "helpers/error": typeof helpers_error;
   "helpers/index": typeof helpers_index;
+  "helpers/lobbyPresence": typeof helpers_lobbyPresence;
   "helpers/meeting": typeof helpers_meeting;
+  "helpers/meetingAccess": typeof helpers_meetingAccess;
+  "helpers/meetingAttendanceReset": typeof helpers_meetingAttendanceReset;
   "helpers/meetingBackup": typeof helpers_meetingBackup;
   "helpers/meetingLifecycle": typeof helpers_meetingLifecycle;
   "helpers/meetingPoll": typeof helpers_meetingPoll;
+<<<<<<< HEAD
   "helpers/meetingRuntime": typeof helpers_meetingRuntime;
+=======
+  "helpers/pagination": typeof helpers_pagination;
+>>>>>>> dev
   "helpers/poll": typeof helpers_poll;
   "helpers/snapshotChecksum": typeof helpers_snapshotChecksum;
+  "helpers/triggers": typeof helpers_triggers;
   "helpers/types": typeof helpers_types;
   "helpers/userPoll": typeof helpers_userPoll;
   "helpers/users": typeof helpers_users;
   http: typeof http;
+  "meeting/admin/access": typeof meeting_admin_access;
   "meeting/admin/agenda": typeof meeting_admin_agenda;
+  "meeting/admin/bulkUsers": typeof meeting_admin_bulkUsers;
   "meeting/admin/meeting": typeof meeting_admin_meeting;
   "meeting/admin/meetingPoll": typeof meeting_admin_meetingPoll;
   "meeting/admin/users": typeof meeting_admin_users;

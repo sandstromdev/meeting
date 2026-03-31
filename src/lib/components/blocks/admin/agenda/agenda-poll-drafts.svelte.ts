@@ -1,12 +1,12 @@
 import type { Getter } from 'runed';
-import type { EditablePollDraft } from './agenda';
+import type { MeetingPollDraft } from '$lib/polls';
 import { RefinePollDraftSchema } from '$lib/validation';
 
 export class PollDrafts {
-	#polls: EditablePollDraft[];
+	#polls: MeetingPollDraft[];
 	#editingIdx: number | null;
 
-	constructor(polls: Getter<EditablePollDraft[]>) {
+	constructor(polls: Getter<MeetingPollDraft[]>) {
 		this.#polls = $derived(polls());
 		this.#editingIdx = $derived(null);
 	}
@@ -19,7 +19,7 @@ export class PollDrafts {
 		return this.#editingIdx;
 	}
 
-	addPollDraft(draft: EditablePollDraft) {
+	addPollDraft(draft: MeetingPollDraft) {
 		this.#polls = [...this.#polls, draft];
 		this.#editingIdx = this.#polls.length - 1;
 	}
@@ -28,7 +28,7 @@ export class PollDrafts {
 		this.#polls = [...this.#polls.slice(0, index), ...this.#polls.slice(index + 1)];
 	}
 
-	updatePollDraft(index: number, draft: EditablePollDraft) {
+	updatePollDraft(index: number, draft: MeetingPollDraft) {
 		this.#polls = [...this.#polls.slice(0, index), draft, ...this.#polls.slice(index + 1)];
 	}
 
@@ -77,11 +77,13 @@ export class PollDrafts {
 	}
 
 	discard() {
-		if (!this.#editingIdx) {
+		if (this.#editingIdx === null) {
 			return;
 		}
 
 		const idx = this.#editingIdx;
+
+		console.log('discard', this.#polls[idx]);
 
 		if (!this.#polls[idx].id) {
 			// This poll hasn't been saved yet, remove it
@@ -91,7 +93,7 @@ export class PollDrafts {
 		this.stopEditing();
 	}
 
-	submit(draft: EditablePollDraft) {
+	submit(draft: MeetingPollDraft) {
 		if (this.#editingIdx == null) {
 			return;
 		}

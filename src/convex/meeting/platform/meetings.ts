@@ -78,6 +78,7 @@ export const create = platformAdmin
 			title: args.title,
 			createdByUserId: ctx.user.subject,
 			status: MeetingStatusSchema.enum.draft,
+			accessMode: 'open',
 			timezone: args.timezone.trim(),
 			...(location ? { location } : {}),
 			...(description ? { description } : {}),

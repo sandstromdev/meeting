@@ -1,6 +1,6 @@
 import { createAuth } from '$convex/auth';
-import { ENVIRONMENT, TRUSTED_ORIGINS } from '$env/static/private';
-import { PUBLIC_SITE_URL } from '$env/static/public';
+import * as privateEnv from '$env/static/private';
+import * as publicEnv from '$env/static/public';
 import { getSecureCookieName } from '$lib/server/cookie';
 import { getMeetingCookie } from '$lib/server/meeting-cookie';
 import { getToken } from '@mmailaender/convex-better-auth-svelte/sveltekit';
@@ -18,9 +18,10 @@ const auth: Handle = async ({ event, resolve }) => {
 		});
 	}
 
-	process.env.PUBLIC_SITE_URL = PUBLIC_SITE_URL;
-	process.env.TRUSTED_ORIGINS = TRUSTED_ORIGINS;
-	process.env.ENVIRONMENT = ENVIRONMENT;
+	Object.assign(process.env, {
+		...privateEnv,
+		...publicEnv,
+	});
 
 	const sessionToken = event.cookies.get(getSecureCookieName('better-auth.session_token'));
 	let token = await getToken(createAuth, event.cookies);

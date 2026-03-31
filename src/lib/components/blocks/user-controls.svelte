@@ -9,11 +9,15 @@
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
 	import { getMeetingContext } from '$lib/context.svelte';
 	import { usePageState } from '$lib/page-state.svelte';
+	import ComputerIcon from '@lucide/svelte/icons/computer';
 	import DoorOpenIcon from '@lucide/svelte/icons/door-open';
-	import LogOutIcon from '@lucide/svelte/icons/log-out';
 	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
+	import LogOutIcon from '@lucide/svelte/icons/log-out';
+	import MoonIcon from '@lucide/svelte/icons/moon';
+	import SunIcon from '@lucide/svelte/icons/sun';
 	import UserIcon from '@lucide/svelte/icons/user';
 	import { useQuery } from '@mmailaender/convex-svelte';
+	import { setMode, userPrefersMode } from 'mode-watcher';
 
 	const meeting = getMeetingContext();
 	const ps = usePageState();
@@ -68,7 +72,7 @@
 					</Button>
 				{/snippet}
 			</DropdownMenu.Trigger>
-			<DropdownMenu.Content align="start">
+			<DropdownMenu.Content align="start" class="w-max">
 				{#if user}
 					<div class="flex flex-col px-2 py-1.5 text-sm">
 						<div class="flex items-center gap-1">
@@ -88,7 +92,31 @@
 						{/if}
 					</div>
 
-					{#if !isTemporaryUser}
+					<DropdownMenu.Item
+						onclick={() => {
+							if (userPrefersMode.current === 'dark') {
+								setMode('light');
+							} else if (userPrefersMode.current === 'light') {
+								setMode('system');
+							} else {
+								setMode('dark');
+							}
+						}}
+					>
+						{#if userPrefersMode.current === 'dark'}
+							<MoonIcon />
+							Tema: Mörkt
+						{:else if userPrefersMode.current === 'light'}
+							<SunIcon />
+							Tema: Ljust
+						{:else}
+							<ComputerIcon />
+							Tema: System
+						{/if}
+					</DropdownMenu.Item>
+
+					<!-- TODO: Add profile link when implemented -->
+					{#if false && !isTemporaryUser}
 						<DropdownMenu.Link href={resolve('/profile')}>
 							<UserIcon class="size-4" />
 							Profil

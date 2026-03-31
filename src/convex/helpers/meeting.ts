@@ -39,7 +39,10 @@ export async function completeReturnToMeeting(
 	if (toClose) {
 		await db.patch('absenceEntries', toClose._id, { endTime: now });
 	}
-	await db.patch('meetingParticipants', userId, { absentSince: 0, returnRequestedAt: 0 });
+	await db.patch('meetingParticipants', userId, {
+		absentSince: 0,
+		returnRequestedAt: 0,
+	});
 	await getAbsentCounter(meeting._id).dec(ctx);
 }
 

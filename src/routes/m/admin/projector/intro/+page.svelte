@@ -4,6 +4,7 @@
 	import { getMeetingContext } from '$lib/context.svelte';
 	import { usePageState } from '$lib/page-state.svelte';
 	import { qr } from '@svelte-put/qr/svg';
+	import SeoHead from '$lib/components/ui/seo-head.svelte';
 
 	const meeting = getMeetingContext();
 	const vs = usePageState();
@@ -11,6 +12,10 @@
 	const cs = $derived(queue.current);
 </script>
 
+<SeoHead
+	title={`${meeting.meeting.title} – Intro (projektor)`}
+	description="Intro för projektor med möteskod och välkomst."
+/>
 <main class="mx-auto flex max-w-6xl gap-6 px-8 pt-[10vh]">
 	<div class="flex w-full max-w-2xl flex-col gap-6">
 		<MeetingInfo />

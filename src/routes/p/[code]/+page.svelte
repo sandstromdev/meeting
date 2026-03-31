@@ -1,7 +1,7 @@
 <script lang="ts">
+	import { invalidateAll } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import { api } from '$convex/_generated/api';
 	import * as Alert from '$lib/components/ui/alert';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
@@ -9,20 +9,47 @@
 	import * as Field from '$lib/components/ui/field';
 	import PollResultsDisplay from '$lib/components/poll-results-display.svelte';
 	import * as RadioGroup from '$lib/components/ui/radio-group';
-	import { useConvexClient } from '@mmailaender/convex-svelte';
+	import SeoHead from '$lib/components/ui/seo-head.svelte';
+	import {
+		getPollByCode as getPollByCodeRemote,
+		retractVote as retractVoteRemote,
+		vote as voteRemote,
+	} from './data.remote';
 	import { toast } from 'svelte-sonner';
+	import Delayed from '$lib/components/ui/delayed.svelte';
+	import { useInterval } from 'runed';
 
 	let { data } = $props();
-
-	const convex = useConvexClient();
-	const userPollApi = api.userPoll.public;
 
 	let draftSelectedOptionIndexes = $state<number[] | null>(null);
 	let submitting = $state(false);
 
-	const poll = $derived(data.poll.data);
-	const voteCounts = $derived(data.voteCounts?.data ?? null);
+	let poll = $derived(data.poll);
 	const currentUser = $derived(data.currentUser);
+
+	let lastUpdatedAt = $state(0);
+
+	useInterval(10_000, {
+		callback: async () => {
+			if (!data.poll) {
+				return;
+			}
+
+			const result = await getPollByCodeRemote({
+				code: data.poll.code,
+				voterSessionToken: data.voterSessionToken,
+			});
+
+			if (result.ok) {
+				if (JSON.stringify(result.poll) !== JSON.stringify(poll)) {
+					poll = result.poll;
+					lastUpdatedAt = Date.now();
+				}
+			} else {
+				console.error(result);
+			}
+		},
+	});
 
 	const selectedOptionIndexes = $derived(
 		draftSelectedOptionIndexes ?? poll?.myVoteOptionIndexes ?? [],
@@ -58,13 +85,19 @@
 		}
 		try {
 			submitting = true;
-			await convex.mutation(userPollApi.vote, {
+			const result = await voteRemote({
 				pollId: poll.id,
 				optionIndexes: selectedOptionIndexes,
 				voterSessionToken: data.voterSessionToken,
 			});
-			draftSelectedOptionIndexes = [...selectedOptionIndexes];
-			toast.success('Din röst har sparats.');
+			if (result.ok) {
+				draftSelectedOptionIndexes = [...selectedOptionIndexes];
+				toast.success('Din röst har sparats.');
+				await invalidateAll();
+			} else {
+				console.error(result);
+				toast.error(result.error.message);
+			}
 		} catch (error) {
 			console.error(error);
 			toast.error('Kunde inte spara din röst.');
@@ -79,12 +112,18 @@
 		}
 		try {
 			submitting = true;
-			await convex.mutation(userPollApi.retractVote, {
+			const result = await retractVoteRemote({
 				pollId: poll.id,
 				voterSessionToken: data.voterSessionToken,
 			});
-			draftSelectedOptionIndexes = [];
-			toast.success('Din röst har tagits bort.');
+			if (result.ok) {
+				draftSelectedOptionIndexes = [];
+				toast.success('Din röst har tagits bort.');
+				await invalidateAll();
+			} else {
+				console.error(result);
+				toast.error(result.error.message);
+			}
 		} catch (error) {
 			console.error(error);
 			toast.error('Kunde inte ta bort din röst.');
@@ -100,6 +139,15 @@
 		return maxReached && !selectedSet.has(optionIndex);
 	}
 </script>
+
+<SeoHead
+	title={poll?.title ?? 'Röstning hittades inte'}
+	description={!poll
+		? 'Omröstningen kunde inte hittas. Kontrollera länken.'
+		: poll.isOpen
+			? 'Rösta i denna omröstning via m.lsnd.se.'
+			: 'Visa resultat och information om omröstningen.'}
+/>
 
 <main class="mx-auto max-w-2xl space-y-6 p-4 lg:py-10">
 	{#if !poll}
@@ -133,8 +181,6 @@
 			</Card.Header>
 			<Card.Content class="space-y-4 pt-0">
 				<div class="grid gap-1 text-sm text-muted-foreground sm:grid-cols-2">
-					<p>Röster: {voteCounts?.votesCount ?? 0}</p>
-					<p>Röstande: {voteCounts?.votersCount ?? 0}</p>
 					<p>Status: {poll.isOpen ? 'Öppen' : 'Stängd'}</p>
 					<p>Synlighet: {poll.visibilityMode === 'account_required' ? 'Konto krävs' : 'Publik'}</p>
 				</div>
@@ -209,11 +255,19 @@
 					<Card.Description>Den här omröstningen tar inte längre emot röster.</Card.Description>
 				</Card.Header>
 				<Card.Content class="space-y-4 pt-0">
-					{#if poll.results && (poll.isResultPublic || currentUser?._id === poll.ownerUserId)}
+					{#if poll.results && poll.isResultPublic}
 						<PollResultsDisplay data={{ results: poll.results }} showDetailedResults />
 					{/if}
 				</Card.Content>
 			</Card.Root>
 		{/if}
 	{/if}
+
+	{#key lastUpdatedAt}
+		<Delayed delay={10_000}>
+			<Button variant="link" class="mx-auto" onclick={() => location.reload()}
+				>Ladda om sidan</Button
+			>
+		</Delayed>
+	{/key}
 </main>

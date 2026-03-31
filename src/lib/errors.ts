@@ -11,6 +11,7 @@ export const ErrorMessages = {
 	email_exists: () => 'En användare med den e-postadressen finns redan.',
 	invalid_credentials: () => 'Felaktig e-post eller lösenord.',
 	participant_banned: () => 'Du har blivit avstängd från mötet.',
+	meeting_access_denied: () => 'Du har inte behorighet att ansluta till det har motet.',
 
 	// Meeting
 	meeting_not_found: ({ meetingCode, meetingId }) =>

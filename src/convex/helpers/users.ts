@@ -75,6 +75,9 @@ export type EnsureParticipantInMeetingArgs = {
 	userId: string;
 	name: string;
 	role: 'admin' | 'moderator' | 'participant' | 'adjuster';
+	requestReturnIfAbsent?: boolean;
+	syncExistingName?: boolean;
+	syncExistingRole?: boolean;
 };
 
 export type EnsureParticipantInMeetingResult =
@@ -121,8 +124,23 @@ export async function ensureParticipantInMeeting(
 		});
 	}
 
-	if (p && p.absentSince > 0 && p.role !== 'admin') {
-		await ctx.db.patch('meetingParticipants', p._id, { returnRequestedAt: now });
+	if (!p) {
+		return { ok: true, meetingId: args.meeting._id };
+	}
+
+	const patch: Partial<Doc<'meetingParticipants'>> = {};
+	if (args.syncExistingName && p.name !== args.name) {
+		patch.name = args.name;
+	}
+	if (args.syncExistingRole && p.role !== args.role) {
+		patch.role = args.role;
+	}
+	if ((args.requestReturnIfAbsent ?? true) && p.absentSince > 0 && p.role !== 'admin') {
+		patch.returnRequestedAt = now;
+	}
+
+	if (Object.keys(patch).length > 0) {
+		await ctx.db.patch('meetingParticipants', p._id, patch);
 	}
 
 	return { ok: true, meetingId: args.meeting._id };

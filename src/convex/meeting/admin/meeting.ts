@@ -12,6 +12,9 @@ import {
 	getParticipantCounter,
 } from '$convex/helpers/counters';
 import { AppError, appErrors } from '$convex/helpers/error';
+import { resetMeetingAttendanceState } from '$convex/helpers/meetingAttendanceReset';
+import { applyLobbyAttendanceAtMeetingOpen } from '$convex/helpers/lobbyPresence';
+import { c } from '$convex/helpers';
 
 // --- Public queries ---
 
@@ -226,14 +229,27 @@ export const clearReply = admin.mutation().public(async ({ ctx }) => {
 	return true;
 });
 
+/** Clears return requests, closes open absence periods, marks everyone present, resyncs counters. */
+export const resetAttendanceState = admin.mutation().public(async ({ ctx }) => {
+	await resetMeetingAttendanceState(ctx, ctx.meeting._id, Date.now());
+	return true;
+});
+
 export const toggleMeeting = admin.mutation().public(async ({ ctx }) => {
 	const { db, meeting } = ctx;
+
 	AppError.assert(
 		meeting.status !== 'archived',
 		appErrors.bad_request({ reason: 'cannot_toggle_archived_meeting' }),
 	);
+
 	if (meeting.isOpen) {
 		const now = Date.now();
+
+		await ctx.scheduler.runAfter(0, internal.meeting.admin.meeting.clearLobbyPresence, {
+			meetingId: meeting._id,
+		});
+
 		if (meeting.currentPollId) {
 			const currentPoll = await db.get('meetingPolls', meeting.currentPollId);
 			if (currentPoll && currentPoll.meetingId === meeting._id && currentPoll.isOpen) {
@@ -252,21 +268,23 @@ export const toggleMeeting = admin.mutation().public(async ({ ctx }) => {
 			}
 		}
 
+		await resetMeetingAttendanceState(ctx, meeting._id, now);
+
 		await db.patch('meetings', meeting._id, {
 			isOpen: false,
 			currentPollId: null,
 			status: 'closed',
 		});
-		await bumpMeetingRuntimeVersions(ctx, meeting._id, { cold: true, hot: true });
 		return true;
 	}
+
 	const now = Date.now();
 	await db.patch('meetings', meeting._id, {
 		isOpen: true,
 		startedAt: now,
 		status: 'active',
 	});
-	await bumpMeetingRuntimeVersions(ctx, meeting._id, { cold: true, hot: true });
+	await applyLobbyAttendanceAtMeetingOpen(ctx, { meeting, now });
 	return true;
 });
 
@@ -412,3 +430,19 @@ export const recountParticipants = admin.mutation().public(async ({ ctx }) => {
 
 	return true;
 });
+
+export const clearLobbyPresence = c
+	.mutation()
+	.input({ meetingId: zid('meetings') })
+	.internal(async ({ ctx, args }) => {
+		const rows = await ctx.db
+			.query('meetingLobbyPresence')
+			.withIndex('by_meeting', (q) => q.eq('meetingId', args.meetingId))
+			.collect();
+
+		for (const row of rows) {
+			await ctx.db.delete(row._id);
+		}
+
+		return true;
+	});

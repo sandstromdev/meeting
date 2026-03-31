@@ -21,7 +21,7 @@
 	const canGoBack = $derived(previousSpeakerResult.data != null);
 </script>
 
-<div class="space-y-2 p-4">
+<div class="mx-auto w-full max-w-md space-y-2 p-4">
 	<div class="grid grid-cols-3 gap-2">
 		<Button
 			onClickPromise={() => meeting.moderatorMutate(api.meeting.moderator.meeting.previousSpeaker)}

@@ -113,7 +113,7 @@
 		data-slot="button"
 		class={cn(buttonVariants({ variant, size }), className)}
 		type={type as HTMLButtonAttributes['type']}
-		{disabled}
+		disabled={disabled || loading}
 		{...rest as HTMLButtonAttributes}
 		onclick={async (e: any) => {
 			onclick?.(e);

@@ -5,7 +5,9 @@ import type { Id, Doc } from '$convex/_generated/dataModel';
 
 declare global {
 	namespace App {
-		// interface Error {}
+		interface Error {
+			message: string;
+		}
 		interface Locals {
 			token?: string;
 			currentUser?: typeof api.app.me.getCurrentUser._returnType;

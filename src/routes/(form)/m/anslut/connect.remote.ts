@@ -27,6 +27,12 @@ export const connectForm = form(ConnectFormSchema, async (data, issue) => {
 			if (err.is('meeting_not_found')) {
 				invalid(issue.meetingCode(err.message));
 			}
+			if (err.is('meeting_access_denied')) {
+				redirect(
+					303,
+					`/m/anslut?error=meeting_access_denied&m=${encodeURIComponent(data.meetingCode)}`,
+				);
+			}
 
 			invalid(err.message);
 		}
@@ -35,5 +41,7 @@ export const connectForm = form(ConnectFormSchema, async (data, issue) => {
 		error(500);
 	}
 
-	redirect(303, '/m');
+	return {
+		success: true,
+	};
 });

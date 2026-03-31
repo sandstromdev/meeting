@@ -44,7 +44,7 @@ Polls are the “vote on a question” surface: a lightweight, shareable poll ex
 
 ## Product snapshot (as of this repo)
 
-- **Meetings exist and can be updated in-meeting**, but **in-app meeting provisioning (create/list)** is not yet implemented. Details and planned work live in `docs/ROADMAP.md`.
+- **Meetings exist and can be updated in-meeting**, but **in-app meeting provisioning (create/list)** is not yet implemented. Details and planned work live in `docs/roadmap.md`.
 - **Primary experience** uses Convex’s realtime client (WebSocket).
 - **Fallback simplified experience** exists under `src/routes/(no-convex)/...` for networks where WSS is blocked (see docs link below).
 
@@ -116,11 +116,11 @@ bun run preview
 
 ## Documentation
 
-- [Roadmap](docs/ROADMAP.md)
-- [Absence system](docs/ABSENCE.md)
-- [Convex race condition analysis](docs/RACE_CONDITION_ANALYSIS.md)
+- [Roadmap](docs/roadmap.md)
+- [Absence system](docs/absence.md)
+- [Convex race condition analysis](docs/race-condition-analysis.md)
 - [Simplified meeting view (HTTP polling fallback)](docs/features/simplified-meeting-http-fallback.md)
 
 ## Project status
 
-Current focus is the core meeting loop (lifecycle, access control, invites/RSVP). See the [roadmap](docs/ROADMAP.md) for priorities and next steps.
+Current focus is the core meeting loop (lifecycle, access control, invites/RSVP). See the [roadmap](docs/roadmap.md) for priorities and next steps.

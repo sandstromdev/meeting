@@ -41,7 +41,7 @@
 
 <div
 	class={cn(
-		'flex flex-col p-4',
+		' mx-auto flex w-full max-w-md flex-col p-4',
 		!noBorder && 'rounded-lg border',
 		size === 'sm' ? 'gap-2' : 'gap-4',
 	)}
@@ -81,85 +81,70 @@
 	<Separator />
 
 	{#if !meeting.me.absentSince}
-		<Collapsible class="rounded-lg border">
-			<CollapsibleTrigger
-				class={cn(
-					'flex w-full items-center justify-between px-4 text-left hover:bg-muted/50 data-[state=open]:[&>svg]:rotate-180',
-					size === 'sm' ? 'h-8 text-sm' : 'h-12 text-base',
-				)}
-			>
-				<h2 class="font-semibold">Avancerat</h2>
-				<ChevronDownIcon class="size-4 shrink-0 transition-transform " />
-			</CollapsibleTrigger>
-			<CollapsibleContent class="@container">
-				<div class="grid items-center gap-x-3 gap-y-2 border-t p-3 @sm:grid-cols-3">
-					{#if queue.canRequestPointOfOrder}
-						<Button
-							variant="outline"
-							{size}
-							onClickPromise={() =>
-								meeting.mutate(api.meeting.users.queue.request, { type: 'pointOfOrder' })}
-							type="button"
-						>
-							Ordningsfråga
-						</Button>
-					{:else if queue.canRecallPointOfOrder}
-						<Button
-							variant="outline"
-							{size}
-							onClickPromise={() =>
-								meeting.mutate(api.meeting.users.queue.recallRequest, { type: 'pointOfOrder' })}
-							type="button"
-						>
-							Återkalla ordningsfråga
-						</Button>
-					{/if}
-					{#if queue.canRequestReply}
-						<Button
-							variant="outline"
-							{size}
-							onClickPromise={() =>
-								meeting.mutate(api.meeting.users.queue.request, { type: 'reply' })}
-							type="button"
-						>
-							Begär replik
-						</Button>
-					{:else if queue.canRecallReplyRequest}
-						<Button
-							variant="outline"
-							{size}
-							onClickPromise={() =>
-								meeting.mutate(api.meeting.users.queue.recallRequest, { type: 'reply' })}
-							type="button"
-						>
-							Återkalla replik
-						</Button>
-					{/if}
-					{#if !hasRequestedBreak}
-						<Button
-							disabled={!queue.canRequestBreak}
-							variant="outline"
-							{size}
-							onClickPromise={() =>
-								meeting.mutate(api.meeting.users.queue.request, { type: 'break' })}
-							type="button"
-						>
-							Föreslå streck
-						</Button>
-					{:else}
-						<Button
-							variant="outline"
-							{size}
-							onClickPromise={() =>
-								meeting.mutate(api.meeting.users.queue.recallRequest, { type: 'break' })}
-							type="button"
-						>
-							Återkalla streck
-						</Button>
-					{/if}
-				</div>
-			</CollapsibleContent>
-		</Collapsible>
+		<div class="grid items-center gap-x-2 gap-y-2 sm:grid-cols-3">
+			{#if queue.canRequestPointOfOrder}
+				<Button
+					variant="outline"
+					{size}
+					onClickPromise={() =>
+						meeting.mutate(api.meeting.users.queue.request, { type: 'pointOfOrder' })}
+					type="button"
+				>
+					Ordningsfråga
+				</Button>
+			{:else if queue.canRecallPointOfOrder}
+				<Button
+					variant="outline"
+					{size}
+					onClickPromise={() =>
+						meeting.mutate(api.meeting.users.queue.recallRequest, { type: 'pointOfOrder' })}
+					type="button"
+				>
+					Återkalla fråga
+				</Button>
+			{/if}
+			{#if queue.canRequestReply}
+				<Button
+					variant="outline"
+					{size}
+					onClickPromise={() => meeting.mutate(api.meeting.users.queue.request, { type: 'reply' })}
+					type="button"
+				>
+					Replik
+				</Button>
+			{:else if queue.canRecallReplyRequest}
+				<Button
+					variant="outline"
+					{size}
+					onClickPromise={() =>
+						meeting.mutate(api.meeting.users.queue.recallRequest, { type: 'reply' })}
+					type="button"
+				>
+					Återkalla replik
+				</Button>
+			{/if}
+			{#if !hasRequestedBreak}
+				<Button
+					disabled={!queue.canRequestBreak}
+					variant="outline"
+					{size}
+					onClickPromise={() => meeting.mutate(api.meeting.users.queue.request, { type: 'break' })}
+					type="button"
+				>
+					Streck
+				</Button>
+			{:else}
+				<Button
+					variant="outline"
+					{size}
+					onClickPromise={() =>
+						meeting.mutate(api.meeting.users.queue.recallRequest, { type: 'break' })}
+					type="button"
+				>
+					Återkalla streck
+				</Button>
+			{/if}
+		</div>
 
 		<Separator />
 	{/if}

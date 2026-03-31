@@ -1,22 +1,22 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
+	import { isAppErrorCode } from '$convex/helpers/error';
+	import { signOut } from '$lib/auth-client';
+	import AlertDescription from '$lib/components/ui/alert/alert-description.svelte';
+	import AlertTitle from '$lib/components/ui/alert/alert-title.svelte';
+	import Alert from '$lib/components/ui/alert/alert.svelte';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import * as Field from '$lib/components/ui/field';
 	import * as InputOTP from '$lib/components/ui/input-otp';
-	import Input from '$lib/components/ui/input/input.svelte';
 	import Label from '$lib/components/ui/label/label.svelte';
+	import Separator from '$lib/components/ui/separator/separator.svelte';
+	import { CONTACT_EMAIL } from '$lib/contact';
+	import SeoHead from '$lib/components/ui/seo-head.svelte';
+	import AlertTriangle from '@lucide/svelte/icons/alert-triangle';
 	import { REGEXP_ONLY_DIGITS_AND_CHARS } from 'bits-ui';
 	import { connectForm } from './connect.remote';
 	import { ConnectFormSchema } from './schema';
-	import Separator from '$lib/components/ui/separator/separator.svelte';
-	import { resolve } from '$app/paths';
-	import { isAppError, isAppErrorCode } from '$convex/helpers/error';
-	import Alert from '$lib/components/ui/alert/alert.svelte';
-	import AlertTitle from '$lib/components/ui/alert/alert-title.svelte';
-	import AlertDescription from '$lib/components/ui/alert/alert-description.svelte';
-	import AlertTriangle from '@lucide/svelte/icons/alert-triangle';
-	import { CONTACT_EMAIL } from '$lib/contact';
-	import { signOut } from '$lib/auth-client';
-	import { goto } from '$app/navigation';
 
 	let { data } = $props();
 
@@ -31,6 +31,11 @@
 	});
 </script>
 
+<SeoHead
+	title="Anslut till möte"
+	description="Ange möteskod för att delta i mötet i samma rum som övriga deltagare."
+/>
+
 <div class="flex max-w-[266px] flex-col gap-4">
 	<div class="rounded-md border px-6 py-5">
 		<form
@@ -38,6 +43,9 @@
 				try {
 					loading = true;
 					await submit();
+					if (connectForm.result?.success) {
+						await goto(resolve('/m'));
+					}
 				} catch (e) {
 					console.error(e);
 				} finally {
@@ -128,6 +136,16 @@
 				<AlertDescription
 					><p>
 						Detta möte kan inte längre öppnas. Organisatören kan återställa det från möteslistan.
+					</p></AlertDescription
+				>
+			</Alert>
+		{:else if data.error === 'meeting_access_denied'}
+			<Alert variant="warning">
+				<AlertTriangle class="size-4" />
+				<AlertTitle>Du kan inte ansluta till mötet</AlertTitle>
+				<AlertDescription
+					><p>
+						Detta möte är stängt för nya deltagare. Be organisatören lägga till dig först.
 					</p></AlertDescription
 				>
 			</Alert>

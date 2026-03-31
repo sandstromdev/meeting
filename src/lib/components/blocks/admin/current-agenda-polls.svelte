@@ -1,13 +1,49 @@
 <script lang="ts">
 	import { api } from '$convex/_generated/api';
+	import type { Doc } from '$convex/_generated/dataModel';
 	import { Button } from '$lib/components/ui/button';
 	import { confirm } from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
+	import * as AlertDialog from '$lib/components/ui/alert-dialog';
+	import EditPoll from '$lib/components/ui/edit-poll.svelte';
 	import { notifyMutation } from '$lib/admin-toast';
 	import { getMeetingContext } from '$lib/context.svelte';
-	import { ABSTAIN_OPTION_LABEL, getVoteShare } from '$lib/polls';
+	import {
+		ABSTAIN_OPTION_LABEL,
+		getVoteShare,
+		hydratePollRowToDraft,
+		type MeetingPollDraft,
+	} from '$lib/polls';
+	import type { PollDraft } from '$lib/validation';
+	import PencilIcon from '@lucide/svelte/icons/pencil';
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
+	import EditPollDialog from '$lib/components/ui/edit-poll-dialog.svelte';
+	import { toast } from 'svelte-sonner';
 
 	const meeting = getMeetingContext();
+
+	let editDialogPoll = $state<MeetingPollDraft | null>(null);
+
+	function openEditPollDialog(poll: Doc<'meetingPolls'>) {
+		editDialogPoll = hydratePollRowToDraft(poll);
+	}
+
+	async function submitMeetingPollEdit(draft: MeetingPollDraft) {
+		const { id, ...edits } = draft;
+
+		if (!id) {
+			toast.error('Kunde inte spara ändringar.');
+			return;
+		}
+
+		await notifyMutation('Omröstningen uppdaterades.', async () => {
+			await meeting.adminMutate(api.meeting.admin.meetingPoll.editPoll, {
+				pollId: id,
+				edits,
+			});
+			editDialogPoll = null;
+		});
+	}
+
 	const currentAgendaItem = $derived(meeting.agenda.currentItem ?? null);
 	const currentPollId = $derived(meeting.meeting.currentPollId);
 	const pollsResult = meeting.adminQuery(
@@ -65,16 +101,11 @@
 								>
 									Stäng
 								</Button>
-							{:else if poll.closedAt != null}
-								<Button
-									size="sm"
-									onClickPromise={() =>
-										notifyMutation('Resultat visas för deltagare.', () =>
-											meeting.adminMutate(api.meeting.admin.meetingPoll.showPollResults, {
-												pollId: poll._id,
-											}),
-										)}>Visa resultat</Button
-								>
+							{:else}
+								<Button size="sm" variant="outline" onclick={() => openEditPollDialog(poll)}>
+									<PencilIcon class="size-4" />
+									Redigera
+								</Button>
 								<Button
 									size="sm"
 									variant="outline"
@@ -87,6 +118,17 @@
 								>
 									Duplicera
 								</Button>
+							{/if}
+							{#if poll.closedAt != null}
+								<Button
+									size="sm"
+									onClickPromise={() =>
+										notifyMutation('Resultat visas för deltagare.', () =>
+											meeting.adminMutate(api.meeting.admin.meetingPoll.showPollResults, {
+												pollId: poll._id,
+											}),
+										)}>Visa resultat</Button
+								>
 								<Button
 									size="icon-sm"
 									variant="destructive"
@@ -174,3 +216,13 @@
 		</div>
 	{/if}
 </section>
+
+<EditPollDialog
+	dialogTitle="Redigera omröstning"
+	dialogDescription="Redigera omröstningen för att ändra titel, alternativ eller röstningsregler."
+	bind:poll={editDialogPoll}
+	onSubmit={async (d) => submitMeetingPollEdit(d as MeetingPollDraft)}
+	submitLabel="Spara ändringar"
+	submitPendingLabel="Sparar..."
+	showDiscard
+/>

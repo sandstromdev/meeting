@@ -36,14 +36,9 @@ export const load = (async ({ locals, cookies, url }) => {
 		) {
 			deleteMeetingCookie(cookies);
 
-			redirect(
-				307,
-				err?.is('participant_banned')
-					? '/m/anslut?error=participant_banned'
-					: (err?.is('meeting_archived')
-						? '/m/anslut?error=meeting_archived'
-						: '/m/anslut'),
-			);
+			const message = err?.is('participant_banned') || err?.is('meeting_archived');
+
+			redirect(307, message ? `/m/anslut?error=${err.code}` : '/m/anslut');
 		}
 
 		console.error(e);

@@ -5,6 +5,7 @@ import { AppError, appErrors } from '$convex/helpers/error';
 import {
 	assertUserPollEditable,
 	assertUserPollOwner,
+	getLatestUserPollResultSnapshot,
 	getUserPollOrThrow,
 } from '$convex/helpers/userPoll';
 import { ABSTAIN_OPTION_LABEL } from '$lib/polls';
@@ -14,7 +15,6 @@ import {
 	PollTypeSchema,
 	refinePollRowTypeConfig,
 	UserPollBaseSchema,
-	UserPollVisibilitySchema,
 } from '$lib/validation';
 import { zid } from 'convex-helpers/server/zod4';
 
@@ -70,20 +70,45 @@ export const getPoll = userPollAdmin
 		return poll;
 	});
 
+/** Latest stored result snapshot for dashboard / owner review (ignores `isResultPublic`). */
+export const getMyPollResultsSnapshot = userPollAdmin
+	.query()
+	.input({ pollId: zid('userPolls') })
+	.public(async ({ ctx, args }) => {
+		const poll = await getUserPollOrThrow(ctx.db, args.pollId);
+		assertUserPollOwner(poll, ctx.user.subject);
+
+		if (poll.isOpen) {
+			return { kind: 'open' as const };
+		}
+		if (poll.closedAt == null) {
+			return { kind: 'cancelled' as const };
+		}
+
+		const snapshot = await getLatestUserPollResultSnapshot(ctx.db, args.pollId);
+		if (!snapshot) {
+			return { kind: 'pending' as const };
+		}
+
+		return {
+			kind: 'ready' as const,
+			complete: snapshot.complete,
+			results: snapshot.results,
+		};
+	});
+
 // --- Public mutations ---
 
 export const createPoll = userPollAdmin
 	.mutation()
 	.input({
 		draft: PollDraftSchema,
-		visibilityMode: UserPollVisibilitySchema,
 	})
 	.public(async ({ ctx, args }) => {
 		const draft = {
 			...args.draft,
 			code: await createUniqueCode(ctx),
 			ownerUserId: ctx.user.subject,
-			visibilityMode: args.visibilityMode,
 			isOpen: false,
 			updatedAt: Date.now(),
 			openedAt: null,
@@ -95,6 +120,42 @@ export const createPoll = userPollAdmin
 			.and(PollTypeSchema)
 			.superRefine((data, ctx) => refinePollRowTypeConfig(data, ctx))
 			.safeParse(draft);
+
+		AppError.assertZodSuccess(validated, appErrors.invalid_poll_draft);
+
+		return await ctx.db.insert('userPolls', validated.data);
+	});
+
+export const duplicatePoll = userPollAdmin
+	.mutation()
+	.input({ pollId: zid('userPolls') })
+	.public(async ({ ctx, args }) => {
+		const source = await getUserPollOrThrow(ctx.db, args.pollId);
+		assertUserPollOwner(source, ctx.user.subject);
+
+		const draftOptions = source.options.filter((o) => o !== ABSTAIN_OPTION_LABEL);
+		const draft = {
+			title: `${source.title} (kopia)`,
+			type: source.type,
+			winningCount: source.winningCount,
+			majorityRule: source.majorityRule,
+			maxVotesPerVoter: source.maxVotesPerVoter,
+			allowsAbstain: source.allowsAbstain,
+			isResultPublic: source.isResultPublic,
+			code: await createUniqueCode(ctx),
+			ownerUserId: ctx.user.subject,
+			visibilityMode: source.visibilityMode,
+			isOpen: false,
+			updatedAt: Date.now(),
+			openedAt: null,
+			closedAt: null,
+			options: optionsWithAbstainLast(draftOptions, source.allowsAbstain),
+		};
+
+		const validated = UserPollBaseSchema.omit({ _id: true, _creationTime: true })
+			.and(PollTypeSchema)
+			.superRefine((data, zCtx) => refinePollRowTypeConfig(data, zCtx))
+			.safeParse(draft);
 		AppError.assertZodSuccess(validated, appErrors.invalid_poll_draft);
 
 		return await ctx.db.insert('userPolls', validated.data);
@@ -104,14 +165,14 @@ export const editPoll = userPollAdmin
 	.mutation()
 	.input({
 		pollId: zid('userPolls'),
-		edits: PollDraftSchema.partial().extend({
-			visibilityMode: UserPollVisibilitySchema.optional(),
-		}),
+		edits: PollDraftSchema.partial(),
 	})
 	.public(async ({ ctx, args }) => {
 		const poll = await getUserPollOrThrow(ctx.db, args.pollId);
 		assertUserPollOwner(poll, ctx.user.subject);
 		assertUserPollEditable(poll);
+
+		console.log(args.edits);
 
 		const nextAllowsAbstain = args.edits.allowsAbstain ?? poll.allowsAbstain;
 		const rawOptions = args.edits.options ?? poll.options;
