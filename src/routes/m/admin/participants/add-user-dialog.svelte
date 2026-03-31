@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { api } from '$convex/_generated/api';
-	import type { Id } from '$convex/_generated/dataModel';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import Checkbox from '$lib/components/ui/checkbox/checkbox.svelte';
 	import * as Dialog from '$lib/components/ui/dialog';
@@ -9,7 +8,6 @@
 	import * as InputGroup from '$lib/components/ui/input-group/index.js';
 	import * as NativeSelect from '$lib/components/ui/native-select';
 	import { getMeetingContext } from '$lib/context.svelte';
-	import type { FunctionReference } from 'convex/server';
 	import { useParticipantsContext } from './context.svelte';
 	import { toast } from 'svelte-sonner';
 
@@ -51,26 +49,6 @@
 
 	const ctx = useParticipantsContext();
 	const meeting = getMeetingContext();
-	const participantAdminApi = api as typeof api & {
-		meeting: {
-			admin: {
-				access: {
-					createAndAddUser: FunctionReference<
-						'mutation',
-						'public',
-						{
-							meetingId: Id<'meetings'>;
-							email: string;
-							name: string;
-							role: 'admin' | 'moderator' | 'participant' | 'adjuster';
-							password?: string;
-						},
-						CreateAndAddUserResult
-					>;
-				};
-			};
-		};
-	};
 
 	const tempEmailSuffix = $derived(`+m${meeting.meeting.code}@m.lsnd.se`);
 	const tempEmailPrefix = $derived(
@@ -128,15 +106,12 @@
 		error = null;
 
 		try {
-			const result = await meeting.adminMutate(
-				participantAdminApi.meeting.admin.access.createAndAddUser,
-				{
-					email,
-					name: name.trim(),
-					role,
-					...(trimmedPassword.length > 0 ? { password: trimmedPassword } : {}),
-				},
-			);
+			const result = await meeting.adminMutate(api.meeting.admin.access.createAndAddUser, {
+				email,
+				name: name.trim(),
+				role,
+				...(trimmedPassword.length > 0 ? { password: trimmedPassword } : {}),
+			});
 
 			if (result === undefined) {
 				toast.error('Du har inte behörighet att lägga till användare.');

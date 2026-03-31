@@ -1,6 +1,5 @@
 <script lang="ts">
 	import Button from '$lib/components/ui/button/button.svelte';
-	import type { Id } from '$convex/_generated/dataModel';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import UploadIcon from '@lucide/svelte/icons/upload';
 	import { useParticipantsContext } from './context.svelte';
@@ -10,33 +9,11 @@
 	import { getMeetingContext } from '$lib/context.svelte';
 	import { notifyMutation } from '$lib/admin-toast';
 	import { confirm } from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
-	import type { FunctionReference } from 'convex/server';
 	import { toast } from 'svelte-sonner';
 
 	const ctx = useParticipantsContext();
 	const meeting = getMeetingContext();
-	const participantAdminApi = api as typeof api & {
-		meeting: {
-			admin: {
-				access: {
-					getSettings: FunctionReference<
-						'query',
-						'public',
-						{ meetingId: Id<'meetings'> },
-						{ accessMode: 'open' | 'closed' | 'invite_only'; canBulkImport: boolean }
-					>;
-					setMode: FunctionReference<
-						'mutation',
-						'public',
-						{ meetingId: Id<'meetings'>; mode: 'open' | 'closed' | 'invite_only' },
-						'open' | 'closed' | 'invite_only'
-					>;
-				};
-			};
-		};
-	};
-
-	const accessSettings = meeting.adminQuery(participantAdminApi.meeting.admin.access.getSettings);
+	const accessSettings = meeting.adminQuery(api.meeting.admin.access.getSettings);
 
 	function accessModeLabel(mode: string | undefined) {
 		switch (mode) {
@@ -57,7 +34,7 @@
 			return;
 		}
 		await notifyMutation('Åtkomstläge uppdaterat.', () =>
-			meeting.adminMutate(participantAdminApi.meeting.admin.access.setMode, { mode }),
+			meeting.adminMutate(api.meeting.admin.access.setMode, { mode }),
 		);
 	}
 
