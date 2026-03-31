@@ -149,6 +149,21 @@ describe('meeting access helpers', () => {
 		expect(result).toEqual({ allowed: true, mode: 'closed', via: 'access_list' });
 	});
 
+	it('allows first-time join on allowlist without a participant row', async () => {
+		const result = await canUserJoinMeeting(
+			createAccessCtx({
+				accessList: [{ meetingId: 'meeting-1', userId: 'user-2' }],
+			}) as never,
+			{
+				meeting: { _id: 'meeting-1' as never, accessMode: 'closed' },
+				userId: 'user-2',
+				email: 'person@example.com',
+			},
+		);
+
+		expect(result).toEqual({ allowed: true, mode: 'closed', via: 'access_list' });
+	});
+
 	it('denies closed meetings when the user is neither participant nor allowlisted', async () => {
 		const result = await canUserJoinMeeting(createAccessCtx({}) as never, {
 			meeting: { _id: 'meeting-1' as never, accessMode: 'closed' },

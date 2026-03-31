@@ -5,6 +5,7 @@
 	import { useParticipantsContext } from './context.svelte';
 	import { api } from '$convex/_generated/api';
 	import RefreshCcwIcon from '@lucide/svelte/icons/refresh-ccw';
+	import RotateCcwKeyIcon from '@lucide/svelte/icons/rotate-ccw-key';
 	import UserXIcon from '@lucide/svelte/icons/user-x';
 	import { getMeetingContext } from '$lib/context.svelte';
 	import { notifyMutation } from '$lib/admin-toast';
@@ -59,6 +60,38 @@
 		}
 	}
 
+	async function runResetAttendanceState() {
+		try {
+			await notifyMutation(
+				'Närvaroläge har återställts.',
+				() => meeting.adminMutate(api.meeting.admin.meeting.resetAttendanceState),
+				{
+					errorMessage: 'Kunde inte återställa närvaro.',
+				},
+			);
+		} catch (e) {
+			console.error(e);
+			throw e;
+		}
+	}
+
+	function handleResetAttendanceState() {
+		confirm({
+			title: 'Återställ närvaro',
+			description:
+				'Alla öppna frånvaroperioder stängs, återkomstbegäran rensas och alla markeras som närvarande i systemet. Användbart efter test eller för att städa läget utan att stänga mötet. Detta ändrar inte mötesåtkomst eller lobby.',
+			cancel: { text: 'Avbryt' },
+			actions: [
+				{
+					value: 'reset',
+					text: 'Återställ',
+					variant: 'destructive',
+					onClick: () => runResetAttendanceState(),
+				},
+			],
+		});
+	}
+
 	function handleMarkEveryoneAbsent() {
 		confirm({
 			title: 'Markera alla frånvarande',
@@ -100,6 +133,10 @@
 	<Button variant="outline" size="sm" onclick={() => handleMarkEveryoneAbsent()}>
 		<UserXIcon class="size-4" />
 		Markera alla frånvarande
+	</Button>
+	<Button variant="outline" size="sm" onclick={() => handleResetAttendanceState()}>
+		<RotateCcwKeyIcon class="size-4" />
+		Återställ närvaro
 	</Button>
 </div>
 

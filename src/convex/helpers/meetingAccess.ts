@@ -195,6 +195,7 @@ export async function canUserJoinMeeting(
 	}
 
 	const participant = await getMeetingParticipantByUserId(ctx, args.meeting._id, args.userId);
+
 	if (participant && !(participant.banned ?? false)) {
 		return { allowed: true, mode, via: 'participant' };
 	}

@@ -76,6 +76,23 @@ export class MeetingState {
 				banned: attendance.data?.banned ?? 0,
 			};
 		});
+
+		// Lobby-only presence heartbeat until the meeting opens (closed / invite_only gating uses snapshot at open).
+		$effect(() => {
+			const loaded = data();
+			const meeting = loaded.meeting;
+			if (!meeting?._id || meeting.isOpen) {
+				return;
+			}
+
+			const intervalMs = 8000;
+			const tick = () => {
+				void this.mutate(api.meeting.users.auth.refreshLobbyPresence);
+			};
+			tick();
+			const handle = setInterval(tick, intervalMs);
+			return () => clearInterval(handle);
+		});
 	}
 
 	async mutate<

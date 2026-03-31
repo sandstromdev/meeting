@@ -136,6 +136,16 @@ export const MeetingParticipant = v.object({
 
 	/** When true, participant cannot connect or access the meeting. */
 	banned: v.boolean(),
+
+	/** Legacy field from earlier reconnect gating; no longer read or written. */
+	postOpenAccessAt: v.optional(v.number()),
+});
+
+/** Ephemeral lobby heartbeat while meeting.isOpen is false; cleared when the meeting opens. */
+export const MeetingLobbyPresence = v.object({
+	meetingId: v.id('meetings'),
+	userId: v.string(),
+	lastSeenAt: v.number(),
 });
 
 export const MeetingAccessListEntry = v.object({
@@ -190,4 +200,8 @@ export const meetingTables = {
 		.index('by_meeting', ['meetingId'])
 		.index('by_meeting_user', ['meetingId', 'userId'])
 		.index('by_meeting_startTime', ['meetingId', 'startTime']),
+
+	meetingLobbyPresence: defineTable(MeetingLobbyPresence)
+		.index('by_meeting', ['meetingId'])
+		.index('by_meeting_user', ['meetingId', 'userId']),
 };
