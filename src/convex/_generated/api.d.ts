@@ -27,14 +27,10 @@ import type * as helpers_meetingAttendanceReset from "../helpers/meetingAttendan
 import type * as helpers_meetingBackup from "../helpers/meetingBackup.js";
 import type * as helpers_meetingLifecycle from "../helpers/meetingLifecycle.js";
 import type * as helpers_meetingPoll from "../helpers/meetingPoll.js";
-<<<<<<< HEAD
 import type * as helpers_meetingRuntime from "../helpers/meetingRuntime.js";
-=======
 import type * as helpers_pagination from "../helpers/pagination.js";
->>>>>>> dev
 import type * as helpers_poll from "../helpers/poll.js";
 import type * as helpers_snapshotChecksum from "../helpers/snapshotChecksum.js";
-import type * as helpers_triggers from "../helpers/triggers.js";
 import type * as helpers_types from "../helpers/types.js";
 import type * as helpers_userPoll from "../helpers/userPoll.js";
 import type * as helpers_users from "../helpers/users.js";
@@ -99,14 +95,10 @@ declare const fullApi: ApiFromModules<{
   "helpers/meetingBackup": typeof helpers_meetingBackup;
   "helpers/meetingLifecycle": typeof helpers_meetingLifecycle;
   "helpers/meetingPoll": typeof helpers_meetingPoll;
-<<<<<<< HEAD
   "helpers/meetingRuntime": typeof helpers_meetingRuntime;
-=======
   "helpers/pagination": typeof helpers_pagination;
->>>>>>> dev
   "helpers/poll": typeof helpers_poll;
   "helpers/snapshotChecksum": typeof helpers_snapshotChecksum;
-  "helpers/triggers": typeof helpers_triggers;
   "helpers/types": typeof helpers_types;
   "helpers/userPoll": typeof helpers_userPoll;
   "helpers/users": typeof helpers_users;
