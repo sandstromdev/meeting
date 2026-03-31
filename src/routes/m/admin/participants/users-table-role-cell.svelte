@@ -16,17 +16,23 @@
 
 	const meeting = getMeetingContext();
 	const isMe = $derived(userId === meeting.me._id);
+	let selectedRole = $derived(role);
 
-	function handleRoleChange(userId: Id<'meetingParticipants'>, role: string) {
-		if (!isValidRole(role)) {
+	function handleRoleChange(userId: Id<'meetingParticipants'>, nextRole: string) {
+		if (!isValidRole(nextRole)) {
+			selectedRole = role;
 			return;
 		}
 
+		const previousRole = role;
 		confirm({
 			title: 'Ändra roll',
-			description: `Ändra roll till ${ROLE_LABELS[role]}?`,
+			description: `Ändra roll till ${ROLE_LABELS[nextRole]}?`,
 			onConfirm: () =>
-				meeting.adminMutate(api.meeting.admin.users.setParticipantRole, { userId, role }),
+				meeting.adminMutate(api.meeting.admin.users.setParticipantRole, { userId, role: nextRole }),
+			onCancel: () => {
+				selectedRole = previousRole;
+			},
 		});
 	}
 </script>
@@ -37,7 +43,7 @@
 	</span>
 {:else}
 	<NativeSelect.Root
-		value={role}
+		bind:value={selectedRole}
 		onchange={(e) => handleRoleChange(userId, e.currentTarget.value)}
 		class="h-8 text-xs"
 	>

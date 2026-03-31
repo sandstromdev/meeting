@@ -1,6 +1,11 @@
 <script lang="ts">
 	import Button from '$lib/components/ui/button/button.svelte';
-	import { FlexRender, createSvelteTable, renderComponent } from '$lib/components/ui/data-table';
+	import {
+		FlexRender,
+		createSvelteTable,
+		renderComponent,
+		runUpdater,
+	} from '$lib/components/ui/data-table';
 	import { Input } from '$lib/components/ui/input';
 	import * as Table from '$lib/components/ui/table';
 	import { getMeetingContext } from '$lib/context.svelte';
@@ -14,7 +19,7 @@
 		getPaginationRowModel,
 		getSortedRowModel,
 	} from '@tanstack/table-core';
-	import { useParticipantsContext } from './context.svelte';
+	import { ParticipantsContext, useParticipantsContext } from './context.svelte';
 	import UsersTableActionsCell from './users-table-actions-cell.svelte';
 	import UsersTableRoleCell from './users-table-role-cell.svelte';
 	import UsersTableSortableHeader from './users-table-sortable-header.svelte';
@@ -123,7 +128,7 @@
 		}),
 	];
 
-	let pagination = $state<PaginationState>({ pageIndex: 0, pageSize: 25 });
+	let pagination = $state<PaginationState>({ pageIndex: 0, pageSize: 15 });
 	let sorting = $state<SortingState>([]);
 	let columnFilters = $state<ColumnFiltersState>([]);
 
@@ -145,14 +150,14 @@
 			},
 		},
 		onPaginationChange: (updater) => {
-			pagination = typeof updater === 'function' ? updater(pagination) : updater;
+			pagination = runUpdater(updater, pagination);
 		},
 		onSortingChange: (updater) => {
-			sorting = typeof updater === 'function' ? updater(sorting) : updater;
+			sorting = runUpdater(updater, sorting);
 			pagination = { ...pagination, pageIndex: 0 };
 		},
 		onColumnFiltersChange: (updater) => {
-			columnFilters = typeof updater === 'function' ? updater(columnFilters) : updater;
+			columnFilters = runUpdater(updater, columnFilters);
 			pagination = { ...pagination, pageIndex: 0 };
 		},
 		getCoreRowModel: getCoreRowModel(),
@@ -172,6 +177,13 @@
 			class="max-w-sm"
 		/>
 	</div>
+
+	{#if ctx.hasMoreParticipants}
+		<div class="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+			Visar de första {ParticipantsContext.QUERY_LIMIT} deltagarna. Fler deltagare finns, men visas inte
+			ännu.
+		</div>
+	{/if}
 
 	<div class="rounded-md border">
 		<Table.Root>

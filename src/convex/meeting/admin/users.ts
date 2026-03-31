@@ -10,27 +10,36 @@ import { completeReturnToMeeting, markParticipantAbsentNow } from '$convex/helpe
 import { ensureParticipantInMeeting } from '$convex/helpers/users';
 import { zid } from 'convex-helpers/server/zod4';
 import { z } from 'zod';
+import { paginationOptsValidator } from '$convex/helpers/pagination';
 
 // --- Public queries ---
 
-export const getParticipants = admin.query().public(async ({ ctx }) => {
-	const participants = await ctx.db
-		.query('meetingParticipants')
-		.withIndex('by_meeting', (q) => q.eq('meetingId', ctx.meeting._id))
-		.take(500);
+export const getParticipants = admin
+	.query()
+	.input({
+		pagination: paginationOptsValidator,
+	})
+	.public(async ({ ctx, args }) => {
+		const participants = await ctx.db
+			.query('meetingParticipants')
+			.withIndex('by_meeting', (q) => q.eq('meetingId', ctx.meeting._id))
+			.paginate(args.pagination);
 
-	return participants.map((p) => ({
-		_id: p._id,
-		name: p.name,
-		role: p.role,
-		userId: p.userId,
-		joinedAt: p.joinedAt ?? p._creationTime,
-		absentSince: p.absentSince,
-		isInSpeakerQueue: p.isInSpeakerQueue,
-		returnRequestedAt: p.returnRequestedAt,
-		banned: p.banned ?? false,
-	}));
-});
+		return {
+			...participants,
+			page: participants.page.map((p) => ({
+				_id: p._id,
+				name: p.name,
+				role: p.role,
+				userId: p.userId,
+				joinedAt: p.joinedAt ?? p._creationTime,
+				absentSince: p.absentSince,
+				isInSpeakerQueue: p.isInSpeakerQueue,
+				returnRequestedAt: p.returnRequestedAt,
+				banned: p.banned ?? false,
+			})),
+		};
+	});
 
 export const getParticipantEmail = admin
 	.query()

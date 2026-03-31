@@ -1,21 +1,21 @@
 <script lang="ts">
 	import { api } from '$convex/_generated/api';
-	import type { Id } from '$convex/_generated/dataModel';
-	import Button from '$lib/components/ui/button/button.svelte';
-	import * as Dialog from '$lib/components/ui/dialog';
-	import * as Field from '$lib/components/ui/field';
-	import * as Table from '$lib/components/ui/table';
-	import ScrollArea from '$lib/components/ui/scroll-area/scroll-area.svelte';
-	import { getMeetingContext } from '$lib/context.svelte';
-	import type { FunctionReference } from 'convex/server';
-	import { useParticipantsContext } from './context.svelte';
-	import { toast } from 'svelte-sonner';
-	import DownloadIcon from '@lucide/svelte/icons/download';
 	import {
 		BulkMeetingUsersCsvError,
 		parseBulkMeetingUsersCsvToRawRows,
 		type BulkImportRawRow,
 	} from '$lib/bulkMeetingUsersCsv';
+	import Button from '$lib/components/ui/button/button.svelte';
+	import * as Dialog from '$lib/components/ui/dialog';
+	import * as Field from '$lib/components/ui/field';
+	import ScrollArea from '$lib/components/ui/scroll-area/scroll-area.svelte';
+	import * as Table from '$lib/components/ui/table';
+	import * as Tabs from '$lib/components/ui/tabs';
+	import { Textarea } from '$lib/components/ui/textarea';
+	import { getMeetingContext } from '$lib/context.svelte';
+	import DownloadIcon from '@lucide/svelte/icons/download';
+	import { toast } from 'svelte-sonner';
+	import { useParticipantsContext } from './context.svelte';
 
 	type PreviewSummary = {
 		total: number;
@@ -59,29 +59,11 @@
 
 	const ctx = useParticipantsContext();
 	const meeting = getMeetingContext();
-	const participantAdminApi = api as typeof api & {
-		meeting: {
-			admin: {
-				bulkUsers: {
-					previewImport: FunctionReference<
-						'action',
-						'public',
-						{ meetingId: Id<'meetings'>; rows: BulkImportRawRow[] },
-						PreviewImportResult
-					>;
-					commitImport: FunctionReference<
-						'action',
-						'public',
-						{ meetingId: Id<'meetings'>; rows: BulkImportRawRow[] },
-						CommitImportResult
-					>;
-				};
-			};
-		};
-	};
+	const participantAdminApi = api.meeting.admin.bulkUsers;
 
 	let csvText = $state('');
 	let fileName = $state<string | null>(null);
+	let importMode = $state<'file' | 'paste'>('file');
 	let previewLoading = $state(false);
 	let commitLoading = $state(false);
 	let previewResult = $state<PreviewImportResult | null>(null);
@@ -96,8 +78,16 @@
 	function reset() {
 		csvText = '';
 		fileName = null;
+		importMode = 'file';
 		previewLoading = false;
 		commitLoading = false;
+		previewResult = null;
+		commitResult = null;
+	}
+
+	function setCsvText(value: string) {
+		csvText = value;
+		fileName = null;
 		previewResult = null;
 		commitResult = null;
 	}
@@ -116,11 +106,9 @@
 		}
 		fileName = file.name;
 		const reader = new FileReader();
-		reader.onload = () => {
-			csvText = String(reader.result ?? '');
-			previewResult = null;
-			commitResult = null;
-		};
+		reader.addEventListener('load', () => {
+			setCsvText(String(reader.result ?? ''));
+		});
 		reader.readAsText(file, 'UTF-8');
 	}
 
@@ -200,7 +188,7 @@
 			return;
 		}
 		if (csvText.trim().length === 0) {
-			toast.warning('Välj en CSV-fil först.');
+			toast.warning('Lägg till CSV först.');
 			return;
 		}
 		let rows: BulkImportRawRow[];
@@ -214,13 +202,10 @@
 		previewLoading = true;
 		commitResult = null;
 		try {
-			const result = await meeting.convex.action(
-				participantAdminApi.meeting.admin.bulkUsers.previewImport,
-				{
-					meetingId: meeting.id,
-					rows,
-				},
-			);
+			const result = await meeting.convex.action(participantAdminApi.previewImport, {
+				meetingId: meeting.id,
+				rows,
+			});
 			previewResult = result;
 			toast.success('Förhandsgranskning klar.');
 		} catch (e) {
@@ -238,7 +223,7 @@
 			return;
 		}
 		if (csvText.trim().length === 0) {
-			toast.warning('Välj en CSV-fil först.');
+			toast.warning('Lägg till CSV först.');
 			return;
 		}
 		if (!previewResult) {
@@ -255,13 +240,10 @@
 		}
 		commitLoading = true;
 		try {
-			const result = await meeting.convex.action(
-				participantAdminApi.meeting.admin.bulkUsers.commitImport,
-				{
-					meetingId: meeting.id,
-					rows,
-				},
-			);
+			const result = await meeting.convex.action(participantAdminApi.commitImport, {
+				meetingId: meeting.id,
+				rows,
+			});
 			commitResult = result;
 			const { succeeded, failed } = result.summary;
 			if (failed === 0) {
@@ -284,25 +266,50 @@
 		<Dialog.Header>
 			<Dialog.Title>Massimport av användare</Dialog.Title>
 			<Dialog.Description>
-				Ladda upp en CSV-fil (UTF-8). Förhandsgranska och verkställ när resultatet ser rätt ut.
-				Endast plattformsadministratörer kan importera.
+				Ladda upp en CSV-fil eller klistra in CSV-innehåll i UTF-8-format. Första raden ska vara
+				rubrikerna `email` och `name`. `role` och `password` kan också skickas med som valfria
+				kolumner, och saknad roll blir `participant`. Förhandsgranska och verkställ när resultatet
+				ser rätt ut.
 			</Dialog.Description>
 		</Dialog.Header>
 
-		<Field.Field class="gap-2">
-			<Field.Label for="bulk-csv-file">CSV-fil</Field.Label>
-			<input
-				id="bulk-csv-file"
-				type="file"
-				accept=".csv,text/csv"
-				class="text-sm file:mr-2 file:rounded-md file:border file:border-input file:bg-background file:px-2 file:py-1"
-				onchange={onFilePick}
-				disabled={previewLoading || commitLoading}
-			/>
-			{#if fileName}
-				<p class="text-xs text-muted-foreground">Vald fil: {fileName}</p>
-			{/if}
-		</Field.Field>
+		<Tabs.Root bind:value={importMode} class="gap-3">
+			<Tabs.List class="grid w-full grid-cols-2">
+				<Tabs.Trigger value="file">Ladda upp fil</Tabs.Trigger>
+				<Tabs.Trigger value="paste">Klistra in CSV</Tabs.Trigger>
+			</Tabs.List>
+
+			<Tabs.Content value="file">
+				<Field.Field class="gap-2">
+					<Field.Label for="bulk-csv-file">CSV-fil</Field.Label>
+					<input
+						id="bulk-csv-file"
+						type="file"
+						accept=".csv,text/csv"
+						class="text-sm file:mr-2 file:rounded-md file:border file:border-input file:bg-background file:px-2 file:py-1"
+						onchange={onFilePick}
+						disabled={previewLoading || commitLoading}
+					/>
+					{#if fileName}
+						<p class="text-xs text-muted-foreground">Vald fil: {fileName}</p>
+					{/if}
+				</Field.Field>
+			</Tabs.Content>
+
+			<Tabs.Content value="paste">
+				<Field.Field class="gap-2">
+					<Field.Label for="bulk-csv-text">CSV-innehåll</Field.Label>
+					<Textarea
+						id="bulk-csv-text"
+						rows={8}
+						value={csvText}
+						oninput={(event) => setCsvText(event.currentTarget.value)}
+						placeholder="Klistra in CSV här, inklusive rubrikrad med email och name. role och password är valfria."
+						disabled={previewLoading || commitLoading}
+					/>
+				</Field.Field>
+			</Tabs.Content>
+		</Tabs.Root>
 
 		<div class="flex flex-wrap gap-2">
 			<Button
@@ -353,7 +360,7 @@
 
 		{#if previewResult || commitResult}
 			{@const rows = commitResult?.rows ?? previewResult?.rows ?? []}
-			<ScrollArea class="max-h-64 rounded-md border">
+			<ScrollArea class="h-64 rounded-md border">
 				<Table.Root>
 					<Table.Header>
 						<Table.Row>

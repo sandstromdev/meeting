@@ -2,6 +2,7 @@ import { ROLES, type Role } from '$lib/roles';
 import { z } from 'zod';
 
 export const BULK_MEETING_USER_IMPORT_LIMIT = 200;
+export const DEFAULT_BULK_MEETING_USER_ROLE: Role = 'participant';
 
 export type BulkMeetingUsersCsvErrorReason =
 	| 'bulk_user_add_invalid_csv_quotes'
@@ -19,8 +20,12 @@ export class BulkMeetingUsersCsvError extends Error {
 		super(reason);
 		this.name = 'BulkMeetingUsersCsvError';
 		this.reason = reason;
-		if (init?.columns !== undefined) {this.columns = init.columns;}
-		if (init?.limit !== undefined) {this.limit = init.limit;}
+		if (init?.columns !== undefined) {
+			this.columns = init.columns;
+		}
+		if (init?.limit !== undefined) {
+			this.limit = init.limit;
+		}
 	}
 }
 
@@ -149,7 +154,6 @@ export function parseBulkMeetingUsersCsvToRawRows(csvText: string): BulkImportRa
 	const missingColumns = [
 		emailIndex === -1 ? 'email' : null,
 		nameIndex === -1 ? 'name' : null,
-		roleIndex === -1 ? 'role' : null,
 	].filter((column): column is string => column !== null);
 
 	if (missingColumns.length > 0) {
@@ -173,11 +177,13 @@ export function parseBulkMeetingUsersCsvToRawRows(csvText: string): BulkImportRa
 		const rowNumber = index + 2;
 		const passwordRaw = passwordIndex >= 0 ? row[passwordIndex] : '';
 		const passwordTrimmed = passwordRaw?.trim();
+		const roleRaw = roleIndex >= 0 ? row[roleIndex] : '';
+		const roleTrimmed = roleRaw?.trim().toLowerCase();
 		return {
 			rowNumber,
 			email: normalizeEmail(row[emailIndex] ?? ''),
 			name: (row[nameIndex] ?? '').trim(),
-			role: (row[roleIndex] ?? '').trim().toLowerCase(),
+			role: roleTrimmed && roleTrimmed.length > 0 ? roleTrimmed : DEFAULT_BULK_MEETING_USER_ROLE,
 			password: passwordTrimmed && passwordTrimmed.length > 0 ? passwordTrimmed : undefined,
 		};
 	});

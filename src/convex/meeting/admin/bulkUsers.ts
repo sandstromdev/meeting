@@ -82,7 +82,7 @@ function buildInvalidRowResult(row: BulkMeetingUserImportValidationRow): Preview
 		passwordMode: row.passwordProvided ? 'provided' : 'generated',
 		ok: false,
 		outcome: 'invalid',
-		message: row.errors[0] ?? 'Raden innehaller ogiltiga varden.',
+		message: row.errors[0] ?? 'Raden innehåller ogiltiga värden.',
 		errors: row.errors,
 	};
 }
@@ -115,10 +115,9 @@ export const previewImport = authed
 		assertPlatformAdmin(ctx.user);
 
 		const parsedRows = serverValidateBulkImportRows(args.rows);
-		const importState: Awaited<typeof api.meeting.admin.access.getImportState._returnType> =
-			await ctx.runQuery(api.meeting.admin.access.getImportState, {
-				meetingId: args.meetingId,
-			});
+		const importState = await ctx.runQuery(api.meeting.admin.access.getImportState, {
+			meetingId: args.meetingId,
+		});
 
 		const validRows = parsedRows.flatMap((row) => (row.data ? [row.data] : []));
 		const uniqueEmails = [...new Set(validRows.map((row) => row.email))];
@@ -156,7 +155,7 @@ export const previewImport = authed
 					passwordMode: row.data.passwordMode,
 					ok: true,
 					outcome: 'already_in_meeting',
-					message: 'Anvandaren finns redan i motet och uppdateras vid behov.',
+					message: 'Användaren finns redan i mötet och uppdateras vid behov.',
 					errors: [],
 				};
 			}
@@ -170,7 +169,7 @@ export const previewImport = authed
 					passwordMode: row.data.passwordMode,
 					ok: true,
 					outcome: 'add_participant',
-					message: 'Anvandaren har redan tillgang och laggs till som deltagare.',
+					message: 'Användaren har redan tillgång och läggs till som deltagare.',
 					errors: [],
 				};
 			}
@@ -184,7 +183,7 @@ export const previewImport = authed
 					passwordMode: row.data.passwordMode,
 					ok: true,
 					outcome: 'allow_and_add_existing_user',
-					message: 'Befintlig anvandare far tillgang och laggs till i motet.',
+					message: 'Befintlig användare får tillgång och läggs till i mötet.',
 					errors: [],
 				};
 			}
@@ -197,7 +196,7 @@ export const previewImport = authed
 				passwordMode: row.data.passwordMode,
 				ok: true,
 				outcome: 'create_allow_and_add_user',
-				message: 'Ny anvandare skapas och laggs till i motet.',
+				message: 'Ny användare skapas och läggs till i mötet.',
 				errors: [],
 			};
 		});
