@@ -1,16 +1,12 @@
 # Meeting Tools
 
-A meeting platform primarily for **non-profit organizations**, focused on the full meeting lifecycle: create meetings, invite participants, run sessions, and follow up on decisions and tasks.
+A meeting platform for **non-profit organizations**, focused on the full meeting lifecycle: creating meetings, inviting participants, running sessions, and following up on decisions and tasks.
 
-**UI language (at this time):** All user-facing copy in the app is **Swedish**. Developer documentation (including this file) is in **English**.
-
-## Purpose (why this exists)
-
-This platform contains a **collection of useful tools for meetings** (and related things). It’s a **full-stack meeting app** intended to make it easy to run a structured meeting with live collaboration (agenda, speaking queue, polls/voting) while building toward the full product loop (provisioning → invites/RSVP → run → follow-up).
+It is a **full-stack meeting app** for structured meetings with live collaboration, including agenda flow, speaking queue, and polls/voting.
 
 The **meeting experience is primarily designed for scenarios where participants are physically in the same room**. It can also be used alongside a video-conferencing tool, but it is not built around remote-first meeting dynamics.
 
-## Main functionality
+## Main features
 
 ### Meetings
 
@@ -20,10 +16,10 @@ Meetings are the “run a session” surface: a structured in-meeting experience
 - **Coupled polls**: a meeting can contain **in-meeting (coupled) polls** that are only accessible to participants in that meeting (as opposed to a standalone poll link).
 - **Fallback mode**: there is a **simplified HTTP-only view** (polling) for networks or clients where WSS is blocked. This is intentionally participant-focused and avoids fast-changing moderator/admin surfaces.
 - **Where it lives**:
-  - **Primary**: `src/routes/(form)/...`
-  - **Simplified HTTP fallback**: `src/routes/(no-convex)/m/simplified/`
+  - **Primary**: `src/routes/(realtime)/m/...`
+  - **Simplified HTTP fallback**: `src/routes/(no-realtime)/m/simplified/`
 
-### Polls
+### Shareable polls
 
 Polls are the “vote on a question” surface: a lightweight, shareable poll experience that can work broadly across the web.
 
@@ -42,23 +38,9 @@ Polls are the “vote on a question” surface: a lightweight, shareable poll ex
 - This is not a generic video-conferencing tool.
 - The “simplified” HTTP fallback is intentionally **participant-focused** and does not attempt to replicate realtime admin/moderator features.
 
-## Product snapshot (as of this repo)
+## Notes
 
-- **Meetings exist and can be updated in-meeting**, but **in-app meeting provisioning (create/list)** is not yet implemented. Details and planned work live in `docs/roadmap.md`.
-- **Primary experience** uses Convex’s realtime client (WebSocket).
-- **Fallback simplified experience** exists under `src/routes/(no-convex)/...` for networks where WSS is blocked (see docs link below).
-
-## Stack
-
-- **SvelteKit** + **Svelte 5**
-- **Convex** (backend)
-- **Better Auth**
-- **Tailwind CSS**
-- **Bun** (package manager and script runner)
-
-## Prerequisites
-
-- [Bun](https://bun.sh) installed
+- **UI language**: All user-facing copy in the app is **Swedish**. Developer documentation (including this file) is in **English**.
 
 ## Getting started
 
@@ -83,6 +65,10 @@ Set the same `PUBLIC_*` values in the [Convex dashboard](https://dashboard.conve
 bun run dev:all
 ```
 
+Convex should be running during local development so generated types stay current. If you want to run Convex on your own machine instead of using a hosted dev deployment, Convex supports local deployments via `convex dev --local` (currently in beta). The deployment only exists while the dev command is running. See the [Convex local deployments docs](https://docs.convex.dev/cli/local-deployments).
+
+If you would rather use a cloud dev deployment, setup is lightweight: sign in to Convex and start `bunx convex dev`, and Convex will guide you through linking the project.
+
 Or run processes separately:
 
 ```sh
@@ -100,27 +86,9 @@ The app is usually served at `http://localhost:4000`.
 - **Backend (Convex)**: `src/convex/`
 - **UI primitives**: `src/lib/components/ui/`
 
-## Common scripts
-
-```sh
-bun run check        # Svelte / TS check
-bun run lint         # Prettier + oxlint
-bun run fix          # Format + auto-fix
-
-bun run test         # Vitest (once)
-bun run test:watch   # Vitest (watch)
-
-bun run build
-bun run preview
-```
-
 ## Documentation
 
 - [Roadmap](docs/roadmap.md)
 - [Absence system](docs/absence.md)
 - [Convex race condition analysis](docs/race-condition-analysis.md)
 - [Simplified meeting view (HTTP polling fallback)](docs/features/simplified-meeting-http-fallback.md)
-
-## Project status
-
-Current focus is the core meeting loop (lifecycle, access control, invites/RSVP). See the [roadmap](docs/roadmap.md) for priorities and next steps.
