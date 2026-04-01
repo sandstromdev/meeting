@@ -12,7 +12,7 @@
 		"dev:all": "conc 'bun dev:vite' 'bun dev:convex'",
 		"dev:convex": "convex dev",
 		"dev:vite": "vite dev --port 4000 --host",
-		"env:validate": "varlock load --path .env.schema",
+		"env:validate": "varlock load",
 		"fix": "prettier --cache --write . && oxlint --fix .",
 		"format": "prettier --cache --write .",
 		"lint": "prettier --cache --check . && oxlint .",
