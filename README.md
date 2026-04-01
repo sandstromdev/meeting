@@ -44,21 +44,8 @@ Polls are the “vote on a question” surface: a lightweight, shareable poll ex
 
 ## Product snapshot (as of this repo)
 
-- **Meetings exist and can be updated in-meeting**, but **in-app meeting provisioning (create/list)** is not yet implemented. Details and planned work live in `docs/roadmap.md`.
-- **Primary experience** uses Convex’s realtime client (WebSocket).
-- **Fallback simplified experience** exists under `src/routes/(no-convex)/...` for networks where WSS is blocked (see docs link below).
-
-## Stack
-
-- **SvelteKit** + **Svelte 5**
-- **Convex** (backend)
-- **Better Auth**
-- **Tailwind CSS**
-- **Bun** (package manager and script runner)
-
-## Prerequisites
-
-- [Bun](https://bun.sh) installed
+- **UI language**: All user-facing copy in the app is **Swedish**. Developer documentation (including this file) is in **English**.
+- **License**: This project is licensed under **AGPL-3.0-only**. See [`LICENSE`](LICENSE).
 
 ## Getting started
 
@@ -95,8 +82,8 @@ The app is usually served at `http://localhost:4000`.
 ## Repo quick tour
 
 - **Routes (app UI)**: `src/routes/`
-  - Primary meeting UI lives under `src/routes/(form)/...` (Convex client / realtime).
-  - HTTP-only simplified UI lives under `src/routes/(no-convex)/m/simplified/`.
+  - Primary meeting UI lives under `src/routes/(realtime)/...` (Convex client / realtime).
+  - HTTP-only simplified UI lives under `src/routes/(no-realtime)/m/simplified/`.
 - **Backend (Convex)**: `src/convex/`
 - **UI primitives**: `src/lib/components/ui/`
 
@@ -116,6 +103,8 @@ bun run preview
 
 ## Documentation
 
+- [Contributing](CONTRIBUTING.md)
+- [License](LICENSE)
 - [Roadmap](docs/roadmap.md)
 - [Absence system](docs/absence.md)
 - [Convex race condition analysis](docs/race-condition-analysis.md)
