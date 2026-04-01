@@ -32,7 +32,7 @@ This fallback is intentionally scoped: it prioritizes participant-critical actio
 ## Where this lives (routing)
 
 - **Primary meeting experience**: existing meeting routes (WebSocket-based Convex client).
-- **Fallback simplified experience**: `src/routes/(no-convex)/m/simplified/`\*
+- **Fallback simplified experience**: `src/routes/(no-realtime)/m/simplified/`\*
   - This route group should be designed to work without the reactive Convex subscription model.
 
 ## Detecting WebSocket failure

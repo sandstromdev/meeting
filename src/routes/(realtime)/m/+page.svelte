@@ -6,9 +6,13 @@
 	import RequestView from '$lib/components/blocks/request-view.svelte';
 	import SpeakerQueue from '$lib/components/blocks/speaker-queue.svelte';
 	import Timer from '$lib/components/blocks/timer.svelte';
+	import {
+		convexConnection,
+		DISCONNECT_REDIRECT_MS,
+		RETRY_REDIRECT_THRESHOLD,
+	} from '$lib/convex-connection.svelte';
 	import { getMeetingContext } from '$lib/context.svelte';
 	import { useNow } from '$lib/now.svelte';
-	import { useConvexClient } from '@mmailaender/convex-svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import SeoHead from '$lib/components/ui/seo-head.svelte';
@@ -17,16 +21,14 @@
 
 	const ctx = getMeetingContext();
 	const now = useNow();
-	const convex = useConvexClient();
-
-	const DISCONNECT_REDIRECT_MS = 14_000;
-	const RETRY_REDIRECT_THRESHOLD = 14;
 
 	$effect(() => {
 		const role = data.meeting.data?.me.role;
 		if (role !== 'participant' && role !== 'adjuster') {
 			return;
 		}
+
+		const { connectionRetries, isWebSocketConnected, hasEverConnected } = convexConnection;
 
 		let disconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -42,26 +44,18 @@
 			void goto(resolve('/m/simplified'));
 		};
 
-		const unsub = convex.subscribeToConnectionState((s) => {
-			if (s.connectionRetries >= RETRY_REDIRECT_THRESHOLD) {
-				goSimplified();
-				return;
-			}
+		if (connectionRetries >= RETRY_REDIRECT_THRESHOLD) {
+			goSimplified();
+			return () => clearDisconnectTimer();
+		}
 
-			if (s.isWebSocketConnected || !s.hasEverConnected) {
-				clearDisconnectTimer();
-				return;
-			}
+		if (isWebSocketConnected || !hasEverConnected) {
+			return () => clearDisconnectTimer();
+		}
 
-			if (!disconnectTimer) {
-				disconnectTimer = setTimeout(goSimplified, DISCONNECT_REDIRECT_MS);
-			}
-		});
+		disconnectTimer = setTimeout(goSimplified, DISCONNECT_REDIRECT_MS);
 
-		return () => {
-			clearDisconnectTimer();
-			unsub();
-		};
+		return () => clearDisconnectTimer();
 	});
 </script>
 

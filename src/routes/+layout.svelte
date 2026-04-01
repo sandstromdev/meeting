@@ -9,12 +9,18 @@
 	import MoonIcon from '@lucide/svelte/icons/moon';
 	import SunIcon from '@lucide/svelte/icons/sun';
 	import { createSvelteAuthClient } from '@mmailaender/convex-better-auth-svelte/svelte';
+	import { useConvexClient } from '@mmailaender/convex-svelte';
+	import { subscribeConvexConnection } from '$lib/convex-connection.svelte';
 	import { ModeWatcher, setMode, userPrefersMode } from 'mode-watcher';
 	import './layout.css';
 
 	let { children, data } = $props();
 
 	createSvelteAuthClient({ authClient, getServerState: () => data.authState });
+
+	const convex = useConvexClient();
+
+	$effect(() => subscribeConvexConnection(convex));
 
 	const ps = usePageState();
 </script>

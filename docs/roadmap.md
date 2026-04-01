@@ -9,7 +9,7 @@ Use this when scoping tickets so work is additive rather than duplicated.
 **Meetings**
 
 - Meetings store both stable config and hot runtime on the `meetings` document: `code`, `title`, `date`, `timezone`, optional `location` / `description`, `agenda`, plus live state (`currentSpeaker`, request slots, `currentPollId`, etc.).
-- **Provisioning (platform admins):** Convex `meeting/platform/meetings` — `create` (unique 6-digit code, creator as meeting admin participant), `listForCurrentUser`, `archive`, `reopen`. Dashboard UI: `(dash)/meetings` with create form (timezone, location, description) and meetings table (status, archive/reopen).
+- **Provisioning (platform admins):** Convex `meeting/platform/meetings` — `create` (unique 6-digit code, creator as meeting admin participant), `listForCurrentUser`, `archive`, `reopen`. Dashboard UI: `(realtime)/(dash)/meetings` with create form (timezone, location, description) and meetings table (status, archive/reopen).
 - **Lifecycle:** `status` is `draft | scheduled | active | closed | archived` (schema). New meetings start as **draft**. In-meeting `toggleMeeting` opens/closes the session and sets `status` to **active** / **closed** while syncing `isOpen`. **scheduled** exists in the schema but is not yet driven by explicit product transitions or UI.
 - In-meeting admins can update `title`, `code`, and `date` via `meeting/admin/meeting:updateMeetingData` (code uniqueness enforced).
 
@@ -20,7 +20,7 @@ Use this when scoping tickets so work is additive rather than duplicated.
 
 **Live meeting features**
 
-- Agenda editing, polls, voting, projector / admin / moderator surfaces, snapshots / backup helpers. Simplified HTTP participant mode under `(no-convex)/m/simplified/` per project rules.
+- Agenda editing, polls, voting, projector / admin / moderator surfaces, snapshots / backup helpers. Simplified HTTP participant mode under `(no-realtime)/m/simplified/` per project rules.
 
 **Standalone polls**
 

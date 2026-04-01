@@ -9,7 +9,7 @@
 
 ## Purpose
 
-Enable participants to **cast and retract votes via plain HTTP** using SvelteKit **remote functions** (server-side `query`/`command` handlers), instead of calling Convex mutations directly from the browser in `src/routes/p/[code]/+page.svelte`.
+Enable participants to **cast and retract votes via plain HTTP** using SvelteKit **remote functions** (server-side `query`/`command` handlers), instead of calling Convex mutations directly from the browser in `src/routes/(no-realtime)/p/[code]/+page.svelte`.
 
 This is specifically intended to support:
 
@@ -44,7 +44,7 @@ The Convex backend remains the source of truth; HTTP endpoints should be thin wr
 
 This feature should be implemented as **remote functions colocated with the route**, e.g.:
 
-- `src/routes/p/[code]/data.remote.ts` (suggested)
+- `src/routes/(no-realtime)/p/[code]/data.remote.ts` (suggested)
 
 Remote functions should:
 
@@ -123,7 +123,7 @@ Non-goal for now. Keep the surface **same-origin only**.
 
 ### Source-of-truth functions
 
-Prefer reusing the existing standalone poll functions used by `src/routes/p/[code]/+page.svelte`:
+Prefer reusing the existing standalone poll functions used by `src/routes/(no-realtime)/p/[code]/+page.svelte`:
 
 - Query: `api.userPoll.public.getByCode` (or equivalent)
 - Query: `api.userPoll.public.getVoteCounts` (or equivalent)
@@ -165,7 +165,7 @@ Do not leak sensitive details in `message`. Prefer a stable `code` for UI branch
 
 ## Rollout plan
 
-1. Implement remote functions (`getPollByCode`, `vote`, `retractVote`) colocated with `src/routes/p/[code]/`.
-2. Switch `src/routes/p/[code]/+page.svelte` to call the remote functions instead of Convex browser mutations.
+1. Implement remote functions (`getPollByCode`, `vote`, `retractVote`) colocated with `src/routes/(no-realtime)/p/[code]/`.
+2. Switch `src/routes/(no-realtime)/p/[code]/+page.svelte` to call the remote functions instead of Convex browser mutations.
 3. Keep behavior identical (including `visibilityMode` gating, validation rules, and Swedish UI strings).
 4. Add observability: event when remote voting is used (success/failure codes, latency buckets).

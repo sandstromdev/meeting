@@ -12,3 +12,12 @@ All of the user facing text in this project is in **swedish**. Agentic communica
 Product context (important for agents and users): the meeting experience in this app is primarily intended for **in-room meetings** where participants are physically in the same room. It can also be used alongside a video-conferencing tool, but it is not designed as a remote-first meeting platform.
 
 Implication for the simplified (HTTP polling) mode: avoid polling or returning **rapidly-changing live state** that is expected to be visible in the room via **projector/admin/moderator surfaces**. For example, including the **speaker queue** in a simplified snapshot is typically redundant and can be expensive to poll frequently (it may touch a fast-changing set of documents). In the normal realtime Convex participant UI this is less of a concern due to reactive subscriptions, but in polling mode prefer stable, participant-critical state.
+
+## SvelteKit routing (`src/routes`)
+
+Route group folders `(realtime)` and `(no-realtime)` do **not** appear in URLs; they document **Convex / transport expectations**.
+
+- **`(realtime)`** — Surfaces that assume or will assume **live Convex** in the browser (`useQuery`, `convexLoad` + client sync, meeting realtime UI). Examples: `(realtime)/m`, `(realtime)/(dash)`.
+- **`(no-realtime)`** — Surfaces that **must not rely** on realtime Convex for correctness: HTTP / remote polling patterns, simplified meeting fallback, standalone poll-by-code. Examples: `(no-realtime)/m/simplified`, `(no-realtime)/p`.
+
+**Leave at `src/routes` root** when a route is orthogonal (auth, profile, platform `/admin`, marketing home, API) or grouping would only be cosmetic. See [docs/architecture.md](docs/architecture.md) for a slightly longer rationale.

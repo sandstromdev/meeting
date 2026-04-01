@@ -28,7 +28,7 @@ Meetings are the “run a session” surface: a structured in-meeting experience
 Polls are the “vote on a question” surface: a lightweight, shareable poll experience that can work broadly across the web.
 
 - **How it works**: the poll page is designed to support **plain HTTPS** interactions via **SvelteKit server endpoints** that call Convex server-side (Convex stays source-of-truth).
-- **Standalone entrypoint**: `/p/[code]` (see `src/routes/p/[code]/+page.svelte`).
+- **Standalone entrypoint**: `/p/[code]` (see `src/routes/(no-realtime)/p/[code]/+page.svelte`).
 - **Why it’s different from meetings**: it’s intentionally decoupled from the realtime meeting UI so voting can work in restricted environments and be consumed by other web surfaces without embedding Convex client logic.
 
 ### How they differ (at a glance)
