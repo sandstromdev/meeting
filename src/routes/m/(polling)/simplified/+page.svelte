@@ -20,6 +20,7 @@
 	import WifiOffIcon from '@lucide/svelte/icons/wifi-off';
 	import { SvelteSet } from 'svelte/reactivity';
 	import { createSimplifiedPolling } from './simplified-polling.svelte';
+	import SeoHead from '$lib/components/ui/seo-head.svelte';
 
 	const p = createSimplifiedPolling();
 
@@ -152,6 +153,11 @@
 		return isMultiWinner && !canSelectMoreOptions() && !selectedOptionIndexes.has(optionIndex);
 	}
 </script>
+
+<SeoHead
+	title={`${meeting?.title ?? 'Möte'} – Deltagarevy`}
+	description="Deltagarevy: se mötet i förenklat läge."
+/>
 
 <div class="mx-auto max-w-2xl space-y-4 p-4 lg:py-10">
 	<Alert class="border-amber-500/40 bg-amber-50 dark:bg-amber-950/30">

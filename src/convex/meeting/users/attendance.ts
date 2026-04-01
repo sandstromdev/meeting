@@ -1,6 +1,5 @@
 import { withMe } from '$convex/helpers/auth';
 import { AppError, appErrors } from '$convex/helpers/error';
-import { bumpMeetingRuntimeVersions } from '$convex/helpers/meetingRuntime';
 import { getAbsentCounter } from '$convex/helpers/counters';
 import { completeReturnToMeeting } from '$convex/helpers/meeting';
 import { clearLobbyPresenceForUser } from '$convex/helpers/lobbyPresence';

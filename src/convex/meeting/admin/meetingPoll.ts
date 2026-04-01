@@ -16,7 +16,6 @@ import {
 	getMeetingPollOrThrow,
 	optionsWithAbstainLast,
 } from '$convex/helpers/meetingPoll';
-import { bumpMeetingRuntimeVersions } from '$convex/helpers/meetingRuntime';
 import { ABSTAIN_OPTION_LABEL } from '$lib/polls';
 import { FullPollSchema, PollDraftSchema, RefinePollDraftSchema } from '$lib/validation';
 import { zid } from 'convex-helpers/server/zod4';
@@ -186,9 +185,6 @@ export const editPoll = admin
 		AppError.assertZodSuccess(validated, appErrors.invalid_poll_draft);
 
 		await ctx.db.replace('meetingPolls', args.pollId, validated.data);
-		if (ctx.meeting.currentPollId === args.pollId) {
-			await bumpMeetingRuntimeVersions(ctx, ctx.meeting._id, { hot: true });
-		}
 
 		return true;
 	});
@@ -240,10 +236,6 @@ export const openPoll = admin
 			didChange = true;
 		}
 
-		if (didChange) {
-			await bumpMeetingRuntimeVersions(ctx, ctx.meeting._id, { hot: true });
-		}
-
 		return didChange;
 	});
 
@@ -263,7 +255,6 @@ export const showPollResults = admin
 		await ctx.db.patch('meetings', ctx.meeting._id, {
 			currentPollId: args.pollId,
 		});
-		await bumpMeetingRuntimeVersions(ctx, ctx.meeting._id, { hot: true });
 
 		return true;
 	});
@@ -302,10 +293,6 @@ export const closePollByAdmin = admin
 			didChange = true;
 		}
 
-		if (didChange) {
-			await bumpMeetingRuntimeVersions(ctx, ctx.meeting._id, { hot: true });
-		}
-
 		return didChange;
 	});
 
@@ -336,7 +323,6 @@ export const closePollAndShowResults = admin
 				pollId: args.pollId,
 			},
 		);
-		await bumpMeetingRuntimeVersions(ctx, ctx.meeting._id, { hot: true });
 
 		return true;
 	});
@@ -345,7 +331,6 @@ export const clearCurrentPollId = admin.mutation().public(async ({ ctx }) => {
 	await ctx.db.patch('meetings', ctx.meeting._id, {
 		currentPollId: null,
 	});
-	await bumpMeetingRuntimeVersions(ctx, ctx.meeting._id, { hot: true });
 	return true;
 });
 
@@ -377,7 +362,6 @@ export const removePoll = admin
 			await ctx.db.patch('meetings', ctx.meeting._id, {
 				currentPollId: null,
 			});
-			await bumpMeetingRuntimeVersions(ctx, ctx.meeting._id, { hot: true });
 		}
 
 		await ctx.db.delete('meetingPolls', args.pollId);
@@ -454,8 +438,6 @@ export const cancelPoll = admin
 				currentPollId: null,
 			});
 		}
-
-		await bumpMeetingRuntimeVersions(ctx, ctx.meeting._id, { hot: true });
 
 		return true;
 	});

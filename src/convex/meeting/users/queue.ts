@@ -1,6 +1,5 @@
 import { withMe } from '$convex/helpers/auth';
 import { logSpeakerSlot } from '$convex/helpers/meeting';
-import { bumpMeetingRuntimeVersions } from '$convex/helpers/meetingRuntime';
 import { Request } from '$convex/schema/meetings';
 import { z } from 'zod';
 
@@ -43,7 +42,6 @@ export const request = withMe
 		await ctx.db.patch('meetings', meeting._id, {
 			[type]: request,
 		});
-		await bumpMeetingRuntimeVersions(ctx, meeting._id, { hot: true });
 
 		return true;
 	});
@@ -64,7 +62,6 @@ export const recallRequest = withMe
 		await ctx.db.patch('meetings', meeting._id, {
 			[type]: null,
 		});
-		await bumpMeetingRuntimeVersions(ctx, meeting._id, { hot: true });
 
 		return true;
 	});
@@ -123,7 +120,6 @@ export const doneSpeaking = withMe.mutation().public(async ({ ctx }) => {
 	if (meeting.reply?.type === 'accepted' && meeting.reply.by.userId === me._id) {
 		await logSpeakerSlot(ctx, 'reply', meeting.reply.by, meeting.reply.startTime ?? now, now);
 		await db.patch('meetings', _id, { reply: null });
-		await bumpMeetingRuntimeVersions(ctx, _id, { hot: true });
 		return true;
 	}
 
@@ -136,7 +132,6 @@ export const doneSpeaking = withMe.mutation().public(async ({ ctx }) => {
 			now,
 		);
 		await db.patch('meetings', _id, { pointOfOrder: null });
-		await bumpMeetingRuntimeVersions(ctx, _id, { hot: true });
 		return true;
 	}
 

@@ -1,8 +1,33 @@
 import type { DataModel, Doc, Id } from '$convex/_generated/dataModel';
+import type { MutationCtx } from '$convex/_generated/server';
+import { getMeetingRuntimeState } from '$convex/helpers/meetingRuntime';
 import type { Triggers } from 'convex-helpers/server/triggers';
-import { scheduleMeetingRuntimeVersionBump } from '$convex/helpers/meetingRuntime';
 
-/** HTTP simplified snapshot invalidation for meeting-scoped tables (polls, participation, …). */
+async function bumpMeetingRuntimeVersions(
+	ctx: MutationCtx,
+	meetingId: Id<'meetings'>,
+	{ cold, hot }: { cold?: boolean; hot?: boolean },
+) {
+	if (!cold && !hot) {
+		return;
+	}
+
+	const runtime = await getMeetingRuntimeState(ctx.db, meetingId);
+
+	if (!runtime) {
+		await ctx.db.insert('meetingRuntimeStates', {
+			meetingId,
+			simplifiedColdVersion: cold ? 1 : 0,
+			simplifiedHotVersion: hot ? 1 : 0,
+		});
+		return;
+	}
+
+	await ctx.db.patch('meetingRuntimeStates', runtime._id, {
+		...(cold ? { simplifiedColdVersion: runtime.simplifiedColdVersion + 1 } : {}),
+		...(hot ? { simplifiedHotVersion: runtime.simplifiedHotVersion + 1 } : {}),
+	});
+}
 
 type MeetingScopedChange =
 	| {
@@ -21,10 +46,10 @@ type MeetingScopedChange =
 			newDoc: null;
 	  };
 
-function scheduleHotBumpFromMeetingScopedDoc(change: MeetingScopedChange) {
+async function bumpHotFromMeetingScopedDoc(ctx: MutationCtx, change: MeetingScopedChange) {
 	const meetingId =
 		change.operation === 'delete' ? change.oldDoc.meetingId : change.newDoc.meetingId;
-	scheduleMeetingRuntimeVersionBump(meetingId, { hot: true });
+	await bumpMeetingRuntimeVersions(ctx, meetingId, { hot: true });
 }
 
 const meetingColdFieldKeys = [
@@ -71,26 +96,34 @@ function simplifiedMeetingHotChanged(before: Doc<'meetings'>, after: Doc<'meetin
 }
 
 export function registerMeetingSimplifiedSnapshotTriggers(triggers: Triggers<DataModel>) {
-	triggers.register('meetings', async (_ctx, change) => {
+	triggers.register('meetings', async (ctx, change) => {
 		if (change.operation === 'delete') {
+			const runtime = await getMeetingRuntimeState(ctx.db, change.oldDoc._id);
+			if (runtime) {
+				await ctx.db.delete('meetingRuntimeStates', runtime._id);
+			}
 			return;
 		}
+
 		if (change.operation === 'insert') {
-			scheduleMeetingRuntimeVersionBump(change.newDoc._id, { cold: true, hot: true });
+			await bumpMeetingRuntimeVersions(ctx as MutationCtx, change.newDoc._id, {
+				cold: true,
+				hot: true,
+			});
 			return;
 		}
 
 		const cold = simplifiedMeetingColdChanged(change.oldDoc, change.newDoc);
 		const hot = simplifiedMeetingHotChanged(change.oldDoc, change.newDoc);
 
-		scheduleMeetingRuntimeVersionBump(change.newDoc._id, { cold, hot });
+		await bumpMeetingRuntimeVersions(ctx as MutationCtx, change.newDoc._id, { cold, hot });
 	});
 
-	// Poll and participation tables: hot-only (`scheduleHotBumpFromMeetingScopedDoc`). Cold snapshot stays on `meetings` + agenda keys above.
 	const pollTables = ['meetingPolls', 'meetingPollVotes', 'meetingPollResults'] as const;
+
 	for (const table of pollTables) {
-		triggers.register(table, async (_ctx, change) => {
-			scheduleHotBumpFromMeetingScopedDoc(change);
+		triggers.register(table, async (ctx, change) => {
+			await bumpHotFromMeetingScopedDoc(ctx as MutationCtx, change);
 		});
 	}
 
@@ -99,9 +132,10 @@ export function registerMeetingSimplifiedSnapshotTriggers(triggers: Triggers<Dat
 		'meetingParticipants',
 		'absenceEntries',
 	] as const;
+
 	for (const table of participationTables) {
-		triggers.register(table, async (_ctx, change) => {
-			scheduleHotBumpFromMeetingScopedDoc(change);
+		triggers.register(table, async (ctx, change) => {
+			await bumpHotFromMeetingScopedDoc(ctx as MutationCtx, change);
 		});
 	}
 }

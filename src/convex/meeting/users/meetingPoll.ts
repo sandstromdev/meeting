@@ -12,7 +12,6 @@ import {
 	getLatestMeetingPollResultSnapshot,
 	getMeetingPollOrThrow,
 } from '$convex/helpers/meetingPoll';
-import { bumpMeetingRuntimeVersions } from '$convex/helpers/meetingRuntime';
 import { zid } from 'convex-helpers/server/zod4';
 import { z } from 'zod';
 
@@ -224,7 +223,6 @@ export const vote = withMe
 			counterUpdates.push(getVotersCounter(ctx.meeting._id, args.pollId).inc(ctx));
 		}
 		await Promise.all(counterUpdates);
-		await bumpMeetingRuntimeVersions(ctx, ctx.meeting._id, { hot: true });
 
 		return true;
 	});
@@ -254,7 +252,6 @@ export const retractVote = withMe
 		await Promise.all(existingVotes.map((v) => ctx.db.delete('meetingPollVotes', v._id)));
 		await getVotesCounter(ctx.meeting._id, args.pollId).subtract(ctx, existingVotes.length);
 		await getVotersCounter(ctx.meeting._id, args.pollId).dec(ctx);
-		await bumpMeetingRuntimeVersions(ctx, ctx.meeting._id, { hot: true });
 
 		return true;
 	});

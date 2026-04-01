@@ -11,6 +11,7 @@
 	import { useConvexClient } from '@mmailaender/convex-svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import SeoHead from '$lib/components/ui/seo-head.svelte';
 
 	let { data } = $props();
 
@@ -63,6 +64,11 @@
 		};
 	});
 </script>
+
+<SeoHead
+	title={`${ctx.meeting.title} – Deltagarevy`}
+	description="Deltagarevy: se mötet i realtid."
+/>
 
 {#if !ctx.meeting.isOpen || !ctx.meeting.startedAt || now.current < ctx.meeting.startedAt}
 	<div class="flex min-h-[50vh] flex-col items-center justify-center gap-4">

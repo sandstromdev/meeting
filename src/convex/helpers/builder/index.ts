@@ -1,9 +1,5 @@
 // oxlint-disable typescript/no-explicit-any
 import { AppError, appErrors } from '$convex/helpers/error';
-import {
-	flushMeetingRuntimeVersionBumps,
-	resetScheduledMeetingRuntimeBumps,
-} from '$convex/helpers/meetingRuntime';
 import type { Triggers } from 'convex-helpers/server/triggers';
 import { zodToConvex } from 'convex-helpers/server/zod4';
 import {
@@ -217,19 +213,7 @@ class BuilderWithFuncType<
 
 			AppError.assertZodSuccess(parsed, (e) => appErrors.zod_error(z.treeifyError(e)));
 
-			try {
-				const result = await this.#execute(handler, mws, wrappedCtx, parsed.data);
-
-				if (functionType === 'mutation') {
-					await flushMeetingRuntimeVersionBumps(wrappedCtx as GenericMutationCtx<TDataModel>);
-				}
-
-				return result;
-			} finally {
-				if (functionType === 'mutation') {
-					resetScheduledMeetingRuntimeBumps();
-				}
-			}
+			return this.#execute(handler, mws, wrappedCtx, parsed.data);
 		};
 
 		const config = {
