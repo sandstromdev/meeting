@@ -21,3 +21,5 @@ Route group folders `(realtime)` and `(no-realtime)` do **not** appear in URLs; 
 - **`(no-realtime)`** — Surfaces that **must not rely** on realtime Convex for correctness: HTTP / remote polling patterns, simplified meeting fallback, standalone poll-by-code. Examples: `(no-realtime)/m/simplified`, `(no-realtime)/p`.
 
 **Leave at `src/routes` root** when a route is orthogonal (auth, profile, platform `/admin`, marketing home, API) or grouping would only be cosmetic. See [docs/architecture.md](docs/architecture.md) for a slightly longer rationale.
+
+When **moving or renaming** files under `src/routes`, prefer **`git mv`** (not plain `mv` then `git add`) so Git records **renames** and `git log --follow` / blame stay usable. Quote paths that contain parentheses, e.g. `git mv src/routes/p "src/routes/(no-realtime)/p"`. If you rewrite a moved file so heavily that Git no longer detects a rename, that is normal; the move itself should still start with `git mv`.
