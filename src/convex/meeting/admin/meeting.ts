@@ -1,19 +1,18 @@
-import { admin } from '$convex/helpers/auth';
 import { internal } from '$convex/_generated/api';
-import { completeReturnToMeeting, logSpeakerSlot } from '$convex/helpers/meeting';
-import { pickParticipantData } from '$convex/helpers/users';
-import { zid } from 'convex-helpers/server/zod4';
-import { z } from 'zod';
-import { MeetingCode } from '$lib/validation';
+import { c } from '$convex/helpers';
+import { admin } from '$convex/helpers/auth';
 import {
 	getAbsentCounter,
 	getBannedCounter,
 	getParticipantCounter,
 } from '$convex/helpers/counters';
 import { AppError, appErrors } from '$convex/helpers/error';
+import { completeReturnToMeeting, logSpeakerSlot } from '$convex/helpers/meeting';
 import { resetMeetingAttendanceState } from '$convex/helpers/meetingAttendanceReset';
-import { applyLobbyAttendanceAtMeetingOpen } from '$convex/helpers/lobbyPresence';
-import { c } from '$convex/helpers';
+import { pickParticipantData } from '$convex/helpers/users';
+import { MeetingCode } from '$lib/validation';
+import { zid } from 'convex-helpers/server/zod4';
+import { z } from 'zod';
 
 // --- Public queries ---
 

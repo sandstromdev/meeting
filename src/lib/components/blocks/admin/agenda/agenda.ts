@@ -1,8 +1,7 @@
 import { api } from '$convex/_generated/api';
-import type { Doc, TableNames } from '$convex/_generated/dataModel';
 import type { MeetingState } from '$lib/context.svelte';
-import { ABSTAIN_OPTION_LABEL, type MeetingPollDraft } from '$lib/polls';
-import { RefinePollDraftSchema, type PollDraft } from '$lib/validation';
+import { type MeetingPollDraft } from '$lib/polls';
+import { RefinePollDraftSchema } from '$lib/validation';
 
 export async function createAgendaItem(
 	meeting: Pick<MeetingState, 'adminMutate'>,

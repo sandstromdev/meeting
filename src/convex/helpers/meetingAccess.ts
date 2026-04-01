@@ -81,18 +81,20 @@ export async function grantMeetingAccess(
 		addedByUserId: string;
 	},
 ) {
-	const normalizedEmail = args.email ? normalizeEmail(args.email) : undefined;
+	const { userId, email, addedByUserId, meetingId } = args;
+
+	const normalizedEmail = email ? normalizeEmail(email) : undefined;
 	AppError.assert(
-		args.userId !== undefined || normalizedEmail !== undefined,
+		userId !== undefined || normalizedEmail !== undefined,
 		appErrors.bad_request({ reason: 'meeting_access_subject_required' }),
 	);
 
 	const [userMatches, emailMatches] = await Promise.all([
-		args.userId
+		userId
 			? ctx.db
 					.query('meetingAccessList')
 					.withIndex('by_meetingId_and_userId', (q) =>
-						q.eq('meetingId', args.meetingId).eq('userId', args.userId!),
+						q.eq('meetingId', meetingId).eq('userId', userId),
 					)
 					.collect()
 			: Promise.resolve([]),
@@ -100,7 +102,7 @@ export async function grantMeetingAccess(
 			? ctx.db
 					.query('meetingAccessList')
 					.withIndex('by_meetingId_and_email', (q) =>
-						q.eq('meetingId', args.meetingId).eq('email', normalizedEmail),
+						q.eq('meetingId', meetingId).eq('email', normalizedEmail),
 					)
 					.collect()
 			: Promise.resolve([]),
@@ -113,8 +115,8 @@ export async function grantMeetingAccess(
 
 	if (primary) {
 		const patch: Partial<Doc<'meetingAccessList'>> = {};
-		if (args.userId !== undefined && primary.userId !== args.userId) {
-			patch.userId = args.userId;
+		if (userId !== undefined && primary.userId !== userId) {
+			patch.userId = userId;
 		}
 		if (normalizedEmail !== undefined && primary.email !== normalizedEmail) {
 			patch.email = normalizedEmail;
@@ -129,10 +131,10 @@ export async function grantMeetingAccess(
 	}
 
 	return await ctx.db.insert('meetingAccessList', {
-		meetingId: args.meetingId,
-		...(args.userId !== undefined ? { userId: args.userId } : {}),
+		meetingId,
+		...(userId !== undefined ? { userId } : {}),
 		...(normalizedEmail !== undefined ? { email: normalizedEmail } : {}),
-		addedByUserId: args.addedByUserId,
+		addedByUserId,
 		addedAt: Date.now(),
 	});
 }
@@ -145,17 +147,19 @@ export async function revokeMeetingAccess(
 		email?: string;
 	},
 ) {
-	const normalizedEmail = args.email ? normalizeEmail(args.email) : undefined;
-	if (args.userId === undefined && normalizedEmail === undefined) {
+	const { userId, email, meetingId } = args;
+
+	const normalizedEmail = email ? normalizeEmail(email) : undefined;
+	if (userId === undefined && normalizedEmail === undefined) {
 		return 0;
 	}
 
 	const [userMatches, emailMatches] = await Promise.all([
-		args.userId
+		userId
 			? ctx.db
 					.query('meetingAccessList')
 					.withIndex('by_meetingId_and_userId', (q) =>
-						q.eq('meetingId', args.meetingId).eq('userId', args.userId!),
+						q.eq('meetingId', meetingId).eq('userId', userId),
 					)
 					.collect()
 			: Promise.resolve([]),
@@ -163,7 +167,7 @@ export async function revokeMeetingAccess(
 			? ctx.db
 					.query('meetingAccessList')
 					.withIndex('by_meetingId_and_email', (q) =>
-						q.eq('meetingId', args.meetingId).eq('email', normalizedEmail),
+						q.eq('meetingId', meetingId).eq('email', normalizedEmail),
 					)
 					.collect()
 			: Promise.resolve([]),
