@@ -4,7 +4,7 @@
 	"version": "0.0.1",
 	"type": "module",
 	"scripts": {
-		"build": "varlock load --path .env.schema && vite build",
+		"build": "varlock load && vite build",
 		"build:vercel": "convex deploy --cmd-url-env-var-name PUBLIC_CONVEX_URL --cmd 'bun run env:validate && vite build'",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
