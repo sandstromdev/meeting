@@ -2,6 +2,7 @@
 	import favicon from '$lib/assets/favicon.svg';
 	import { authClient } from '$lib/auth-client';
 	import Button from '$lib/components/ui/button/button.svelte';
+	import ConfirmDialog from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
 	import { Toaster } from '$lib/components/ui/sonner';
 	import { usePageState } from '$lib/page-state.svelte';
 	import '@fontsource-variable/nunito';
@@ -10,7 +11,7 @@
 	import SunIcon from '@lucide/svelte/icons/sun';
 	import { createSvelteAuthClient } from '@mmailaender/convex-better-auth-svelte/svelte';
 	import { useConvexClient } from '@mmailaender/convex-svelte';
-	import { subscribeConvexConnection } from '$lib/convex-connection.svelte';
+	import { initConvexStatus } from '$lib/convex-connection.svelte';
 	import { ModeWatcher, setMode, userPrefersMode } from 'mode-watcher';
 	import './layout.css';
 
@@ -18,9 +19,7 @@
 
 	createSvelteAuthClient({ authClient, getServerState: () => data.authState });
 
-	const convex = useConvexClient();
-
-	$effect(() => subscribeConvexConnection(convex));
+	initConvexStatus(useConvexClient());
 
 	const ps = usePageState();
 </script>
@@ -37,6 +36,8 @@
 {#if !ps.isProjector}
 	<Toaster />
 {/if}
+
+<ConfirmDialog />
 
 {@render children()}
 

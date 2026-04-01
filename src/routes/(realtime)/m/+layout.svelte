@@ -1,6 +1,5 @@
 <script lang="ts">
 	import PollDialog from '$lib/components/blocks/poll-dialog/poll-dialog.svelte';
-	import ConfirmDialog from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import Delayed from '$lib/components/ui/delayed.svelte';
 	import MessageLayout from '$lib/components/ui/message-layout.svelte';
@@ -19,7 +18,6 @@
 	<MeetingContext data={data.meeting.data}>
 		<AbsentDialog />
 		<PollDialog />
-		<ConfirmDialog />
 		{@render children()}
 		<UserControls />
 	</MeetingContext>

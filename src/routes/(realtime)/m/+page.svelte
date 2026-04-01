@@ -6,11 +6,7 @@
 	import RequestView from '$lib/components/blocks/request-view.svelte';
 	import SpeakerQueue from '$lib/components/blocks/speaker-queue.svelte';
 	import Timer from '$lib/components/blocks/timer.svelte';
-	import {
-		convexConnection,
-		DISCONNECT_REDIRECT_MS,
-		RETRY_REDIRECT_THRESHOLD,
-	} from '$lib/convex-connection.svelte';
+	import { getConvexStatus } from '$lib/convex-connection.svelte';
 	import { getMeetingContext } from '$lib/context.svelte';
 	import { useNow } from '$lib/now.svelte';
 	import { goto } from '$app/navigation';
@@ -20,42 +16,18 @@
 	let { data } = $props();
 
 	const ctx = getMeetingContext();
+	const convexStatus = getConvexStatus();
 	const now = useNow();
+	const role = $derived(data.meeting.data?.me.role);
 
 	$effect(() => {
-		const role = data.meeting.data?.me.role;
 		if (role !== 'participant' && role !== 'adjuster') {
 			return;
 		}
 
-		const { connectionRetries, isWebSocketConnected, hasEverConnected } = convexConnection;
-
-		let disconnectTimer: ReturnType<typeof setTimeout> | null = null;
-
-		const clearDisconnectTimer = () => {
-			if (disconnectTimer) {
-				clearTimeout(disconnectTimer);
-				disconnectTimer = null;
-			}
-		};
-
-		const goSimplified = () => {
-			clearDisconnectTimer();
-			void goto(resolve('/m/simplified'));
-		};
-
-		if (connectionRetries >= RETRY_REDIRECT_THRESHOLD) {
-			goSimplified();
-			return () => clearDisconnectTimer();
-		}
-
-		if (isWebSocketConnected || !hasEverConnected) {
-			return () => clearDisconnectTimer();
-		}
-
-		disconnectTimer = setTimeout(goSimplified, DISCONNECT_REDIRECT_MS);
-
-		return () => clearDisconnectTimer();
+		return convexStatus.watchFallback(() => {
+			goto(resolve('/m/simplified'));
+		});
 	});
 </script>
 

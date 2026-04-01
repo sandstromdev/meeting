@@ -139,7 +139,7 @@
 			</CopyButton>
 			<Button
 				variant="outline"
-				href={resolve('/(form)/m/anslut/[code]', { code: lastCreated.code })}
+				href={resolve('/(no-realtime)/m/anslut/[code]', { code: lastCreated.code })}
 			>
 				Öppna admin
 			</Button>

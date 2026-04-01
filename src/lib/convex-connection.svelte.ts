@@ -1,4 +1,5 @@
 import type { ConvexClient } from 'convex/browser';
+import { createContext, untrack } from 'svelte';
 
 /** Milliseconds the realtime participant view waits after disconnect before simplified fallback */
 export const DISCONNECT_REDIRECT_MS = 14_000;
@@ -17,29 +18,103 @@ const fallback: ConvexConnectionSnapshot = {
 	connectionRetries: 0,
 };
 
-/** Latest Convex browser connection metrics (updated from root layout subscription). */
-export const convexConnection = $state<ConvexConnectionSnapshot>({ ...fallback });
+const noop = () => {};
 
-let unsubscribe: (() => void) | null = null;
+const [getConvexStatus, setContext] = createContext<ConvexStatus>();
 
-/**
- * Subscribe once to the shared Convex client connection state.
- * Call from root `+layout.svelte` after `createSvelteAuthClient`.
- */
-export function subscribeConvexConnection(client: ConvexClient) {
-	if (unsubscribe) {
-		return unsubscribe;
+class ConvexStatus {
+	#snapshot = $state<ConvexConnectionSnapshot>({ ...fallback });
+	#unsubscribe: () => void;
+
+	constructor(client: ConvexClient) {
+		this.#unsubscribe = noop;
+
+		const state = client.connectionState();
+		this.#snapshot = {
+			isWebSocketConnected: state.isWebSocketConnected,
+			hasEverConnected: state.hasEverConnected,
+			connectionRetries: state.connectionRetries,
+		};
+
+		$effect(() => {
+			this.#unsubscribe();
+
+			this.#unsubscribe = client.subscribeToConnectionState((s) => {
+				untrack(() => {
+					this.#snapshot = {
+						isWebSocketConnected: s.isWebSocketConnected,
+						hasEverConnected: s.hasEverConnected,
+						connectionRetries: s.connectionRetries,
+					};
+				});
+			});
+
+			return () => {
+				this.#unsubscribe();
+				this.#unsubscribe = noop;
+				this.#snapshot = { ...fallback };
+			};
+		});
+
+		setContext(this);
 	}
 
-	unsubscribe = client.subscribeToConnectionState((s) => {
-		convexConnection.isWebSocketConnected = s.isWebSocketConnected;
-		convexConnection.hasEverConnected = s.hasEverConnected;
-		convexConnection.connectionRetries = s.connectionRetries;
-	});
+	get isWebSocketConnected() {
+		return this.#snapshot.isWebSocketConnected;
+	}
 
-	return () => {
-		unsubscribe?.();
-		unsubscribe = null;
-		Object.assign(convexConnection, fallback);
-	};
+	get hasEverConnected() {
+		return this.#snapshot.hasEverConnected;
+	}
+
+	get connectionRetries() {
+		return this.#snapshot.connectionRetries;
+	}
+
+	get shouldScheduleFallback() {
+		return this.#snapshot.hasEverConnected && !this.#snapshot.isWebSocketConnected;
+	}
+
+	shouldFallbackImmediately(retries = RETRY_REDIRECT_THRESHOLD) {
+		return this.#snapshot.connectionRetries >= retries;
+	}
+
+	watchFallback(
+		onFallback: () => void,
+		delayMs = DISCONNECT_REDIRECT_MS,
+		retries = RETRY_REDIRECT_THRESHOLD,
+	) {
+		let disconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
+		const clearDisconnectTimer = () => {
+			if (disconnectTimer) {
+				clearTimeout(disconnectTimer);
+				disconnectTimer = null;
+			}
+		};
+
+		const runFallback = () => {
+			clearDisconnectTimer();
+			onFallback();
+		};
+
+		if (this.shouldFallbackImmediately(retries)) {
+			runFallback();
+			return clearDisconnectTimer;
+		}
+
+		if (!this.shouldScheduleFallback) {
+			return clearDisconnectTimer;
+		}
+
+		disconnectTimer = setTimeout(runFallback, delayMs);
+
+		return clearDisconnectTimer;
+	}
 }
+
+export function initConvexStatus(client: ConvexClient) {
+	return new ConvexStatus(client);
+}
+
+export { getConvexStatus };
