@@ -20,10 +20,10 @@ export const authComponent = createClient<DataModel, typeof authSchema>(componen
 export const { onCreate, onUpdate, onDelete } = authComponent.triggersApi();
 
 export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
-	const siteUrl = process.env.PUBLIC_SITE_URL;
+	const siteUrl = process.env.PUBLIC_BETTER_AUTH_URL || process.env.PUBLIC_SITE_URL;
 
 	if (!siteUrl) {
-		// console.error('PUBLIC_SITE_URL is not set');
+		throw new Error('PUBLIC_BETTER_AUTH_URL or PUBLIC_SITE_URL is not set');
 	}
 
 	const trustedOrigins = [
