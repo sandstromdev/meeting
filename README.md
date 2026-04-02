@@ -4,6 +4,10 @@ A meeting platform primarily for **non-profit organizations**, focused on the fu
 
 **UI language (at this time):** All user-facing copy in the app is **Swedish**. Developer documentation (including this file) is in **English**.
 
+## Warning
+
+This project is under active development and may change at any time. Please use at your own risk.
+
 ## Purpose (why this exists)
 
 This platform contains a **collection of useful tools for meetings** (and related things). It’s a **full-stack meeting app** intended to make it easy to run a structured meeting with live collaboration (agenda, speaking queue, polls/voting) while building toward the full product loop (provisioning → invites/RSVP → run → follow-up).
@@ -36,11 +40,6 @@ Polls are the “vote on a question” surface: a lightweight, shareable poll ex
 - **Scope**: **Meetings** are a multi-feature session; **polls** are a focused voting flow.
 - **Client transport**: meetings primarily rely on **realtime subscriptions**; polls can be served via **plain HTTP endpoints**.
 - **Networking goals**: meetings optimize for live collaboration; polls optimize for “open link and vote anywhere”.
-
-**Non-goals (at least for now)**
-
-- This is not a generic video-conferencing tool.
-- The “simplified” HTTP fallback is intentionally **participant-focused** and does not attempt to replicate realtime admin/moderator features.
 
 ## Product snapshot (as of this repo)
 
