@@ -39,6 +39,8 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
 	return {
 		baseURL: siteUrl,
 
+		secret: process.env.BETTER_AUTH_SECRET,
+
 		database: authComponent.adapter(ctx),
 
 		trustedOrigins,
@@ -47,7 +49,7 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
 			enabled: true,
 			requireEmailVerification: false,
 			minPasswordLength: 4,
-			disableSignUp: !process.env.PUBLIC_ENABLE_SIGNUP,
+			disableSignUp: !(process.env.PUBLIC_ENABLE_SIGNUP === 'true'),
 		},
 
 		plugins: [convex({ authConfig }), admin()],

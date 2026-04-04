@@ -9,7 +9,7 @@
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"clean": "rm -rf node_modules && bun install",
-		"dev:all": "conc 'bun dev:vite' 'bun dev:convex'",
+		"dev:all": "varlock load && conc 'bun dev:vite' 'bun dev:convex'",
 		"dev:convex": "convex dev",
 		"dev:vite": "vite dev --port 4000 --host",
 		"env:validate": "varlock load",
