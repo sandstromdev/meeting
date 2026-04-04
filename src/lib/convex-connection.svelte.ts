@@ -115,7 +115,9 @@ class ConvexStatus {
 }
 
 export function initConvexStatus(client: ConvexClient) {
-	if (!browser) {return;}
+	if (!browser) {
+		return;
+	}
 	return new ConvexStatus(client);
 }
 
