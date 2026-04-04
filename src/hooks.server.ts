@@ -7,6 +7,7 @@ import { getToken } from '@mmailaender/convex-better-auth-svelte/sveltekit';
 import { withServerConvexToken } from '@mmailaender/convex-svelte/sveltekit/server';
 import { type Handle } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
+import { browser } from '$app/environment';
 
 const log = false;
 
@@ -27,19 +28,21 @@ const auth: Handle = async ({ event, resolve }) => {
 	let token = await getToken(createAuth, event.cookies);
 
 	if (!token && sessionToken && event.route.id !== '/api/auth/[...all]') {
-		const response = await event.fetch('/api/auth/get-session', {
-			method: 'GET',
-			headers: {
-				'Content-Type': 'application/json',
-				Accept: 'application/json',
-			},
-		});
+		if (browser) {
+			const response = await event.fetch('/api/auth/get-session', {
+				method: 'GET',
+				headers: {
+					'Content-Type': 'application/json',
+					Accept: 'application/json',
+				},
+			});
 
-		if (response.ok) {
-			const cookie = response.headers
-				.getSetCookie()
-				.find((c) => c.startsWith(getSecureCookieName('better-auth.convex_jwt=')));
-			token = cookie?.split('=').at(1)?.split(';').at(0);
+			if (response.ok) {
+				const cookie = response.headers
+					.getSetCookie()
+					.find((c) => c.startsWith(getSecureCookieName('better-auth.convex_jwt=')));
+				token = cookie?.split('=').at(1)?.split(';').at(0);
+			}
 		}
 	}
 

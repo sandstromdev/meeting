@@ -4,7 +4,7 @@ import {
 	getEligibleVotes,
 	ABSTAIN_OPTION_LABEL,
 	type MajorityRule,
-	MeetingPollDraft,
+	type MeetingPollDraft,
 } from '$lib/polls';
 import type { StripSystemFields } from '$lib/types';
 import type { PollDraft } from '$lib/validation';
