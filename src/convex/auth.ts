@@ -42,7 +42,8 @@ function getSiteUrl() {
 	const siteUrl = process.env.PUBLIC_BETTER_AUTH_URL || process.env.PUBLIC_SITE_URL;
 
 	if (!siteUrl) {
-		throw new Error('PUBLIC_BETTER_AUTH_URL or PUBLIC_SITE_URL is not set');
+		console.error('PUBLIC_BETTER_AUTH_URL or PUBLIC_SITE_URL is not set');
+		return undefined;
 	}
 
 	return siteUrl;
@@ -62,7 +63,8 @@ function getTrustedOrigins() {
 
 function getSecret() {
 	if (!process.env.BETTER_AUTH_SECRET) {
-		throw new Error('BETTER_AUTH_SECRET is not set');
+		console.error('BETTER_AUTH_SECRET is not set');
+		return undefined;
 	}
 
 	return process.env.BETTER_AUTH_SECRET;
