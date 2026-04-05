@@ -33,7 +33,7 @@ Polls are the “vote on a question” surface: a lightweight, shareable poll ex
 - **Client transport**: meetings primarily rely on **realtime subscriptions**; polls can be served via **plain HTTP endpoints**.
 - **Networking goals**: meetings optimize for live collaboration; polls optimize for “open link and vote anywhere”.
 
-**Non-goals (at least for now)**
+### Non-goals (at least for now)
 
 - This is not a generic video-conferencing tool.
 - The “simplified” HTTP fallback is intentionally **participant-focused** and does not attempt to replicate realtime admin/moderator features.

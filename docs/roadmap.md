@@ -6,31 +6,38 @@ This roadmap captures the next product steps for the meeting platform, based on 
 
 Use this when scoping tickets so work is additive rather than duplicated.
 
-**Meetings**
+### Meetings
 
 - Meetings store both stable config and hot runtime on the `meetings` document: `code`, `title`, `date`, `timezone`, optional `location` / `description`, `agenda`, plus live state (`currentSpeaker`, request slots, `currentPollId`, etc.).
-- **Provisioning (platform admins):** Convex `meeting/platform/meetings` — `create` (unique 6-digit code, creator as meeting admin participant), `listForCurrentUser`, `archive`, `reopen`. Dashboard UI: `(realtime)/(dash)/meetings` with create form (timezone, location, description) and meetings table (status, archive/reopen).
-- **Lifecycle:** `status` is `draft | scheduled | active | closed | archived` (schema). New meetings start as **draft**. In-meeting `toggleMeeting` opens/closes the session and sets `status` to **active** / **closed** while syncing `isOpen`. **scheduled** exists in the schema but is not yet driven by explicit product transitions or UI.
+
+#### Provisioning (platform admins)
+
+Convex `meeting/platform/meetings` — `create` (unique 6-digit code, creator as meeting admin participant), `listForCurrentUser`, `archive`, `reopen`. Dashboard UI: `(realtime)/(dash)/meetings` with create form (timezone, location, description) and meetings table (status, archive/reopen).
+
+#### Lifecycle
+
+`status` is `draft | scheduled | active | closed | archived` (schema). New meetings start as **draft**. In-meeting `toggleMeeting` opens/closes the session and sets `status` to **active** / **closed** while syncing `isOpen`. **scheduled** exists in the schema but is not yet driven by explicit product transitions or UI.
+
 - In-meeting admins can update `title`, `code`, and `date` via `meeting/admin/meeting:updateMeetingData` (code uniqueness enforced).
 
-**Join and participants**
+### Join and participants
 
 - Join-by-code flow (`meeting/public/meetings.findByCode`, connect / join routes). Participants in `meetingParticipants` with roles; absence / return-request behavior in [Absence system](ABSENCE.md).
 - Access control now supports `meetings.accessMode` plus `meetingAccessList`. `open` meetings still allow join by code; `closed` meetings require the user to already be a participant or be on the meeting access list. **Archived** meetings are still blocked separately. `invite_only` is reserved in schema/API but not yet exposed as a completed end-user flow.
 
-**Live meeting features**
+### Live meeting features
 
 - Agenda editing, polls, voting, projector / admin / moderator surfaces, snapshots / backup helpers. Simplified HTTP participant mode under `(no-realtime)/m/simplified/` per project rules.
 
-**Standalone polls**
+### Standalone polls
 
 - Admin UI under `/polls`, participant flow under `/p/[code]`.
 
-**Auth and admin shell**
+### Auth and admin shell
 
 - Better Auth; SvelteKit platform admin areas for users and meeting list.
 
-**Gaps vs desired product**
+### Gaps vs desired product
 
 - No `meetingInvites` / RSVP.
 - Profile route is still a placeholder (`profile/+page.svelte`).
@@ -51,9 +58,11 @@ Use this when scoping tickets so work is additive rather than duplicated.
 
 ### 1) Meeting creation and lifecycle — remaining work
 
-**Status:** Core provisioning is implemented; see [Implemented (reference)](#implemented-reference) for what shipped.
+#### Status
 
-**Still open (strategic)**
+Core provisioning is implemented; see [Implemented (reference)](#implemented-reference) for what shipped.
+
+#### Still open (strategic)
 
 - Decide whether **draft** or **scheduled** should eventually impose extra UX or join restrictions beyond access control. Current behavior remains: join is blocked by `archived` and access policy, not by `draft` / `scheduled` / `closed` alone.
 - Optional explicit transitions: `draft` → `scheduled` → `active` → `closed` → `archived` (beyond today’s create-as-draft + toggle + archive).
@@ -63,9 +72,11 @@ Use this when scoping tickets so work is additive rather than duplicated.
 
 ### 2) Meeting access control — remaining work
 
-**Status:** Implemented for `open` and `closed` meetings; see [Implemented (reference)](#implemented-reference) for what shipped. `invite_only` remains a reserved follow-up for invitations / RSVP.
+#### Status
 
-**Still open**
+Implemented for `open` and `closed` meetings; see [Implemented (reference)](#implemented-reference) for what shipped. `invite_only` remains a reserved follow-up for invitations / RSVP.
+
+#### Still open
 
 - Dedicated admin UI for manual allowlist add/remove independent of participant creation/import.
 - Audit log entries for denied joins and access-list mutations.
@@ -75,15 +86,17 @@ Use this when scoping tickets so work is additive rather than duplicated.
 
 ### 3) Invitations and RSVP
 
-**Problem:** Join-by-code exists, but invite and RSVP workflows are missing.
+#### Problem
 
-**Deliverables**
+Join-by-code exists, but invite and RSVP workflows are missing.
+
+#### Deliverables
 
 - Invite participants by email or secure invite link.
 - RSVP states (`accepted`, `tentative`, `declined`, `pending`).
 - Meeting participant view showing expected vs actual attendance.
 
-**Suggested backend functions**
+#### Suggested backend functions
 
 - `invites.sendBulk`
 - `invites.acceptByToken`
@@ -92,11 +105,11 @@ Use this when scoping tickets so work is additive rather than duplicated.
 - `invites.listByMeeting`
 - `rsvp.summaryByMeeting`
 
-**New table**
+#### New table
 
 - `meetingInvites`: `meetingId`, `email`, `role`, `status`, `inviteToken`, `expiresAt`, `invitedByUserId`
 
-**Indexes**
+#### Indexes
 
 - `by_meetingId`
 - `by_email_and_meetingId`
@@ -107,9 +120,11 @@ Use this when scoping tickets so work is additive rather than duplicated.
 
 ### 4) Extract hot meeting runtime state into a runtime table
 
-**Problem:** The `meetings` document currently mixes relatively stable configuration (e.g. agenda) with “hot” live-state fields that change frequently during a meeting. This increases write contention and makes it harder to fetch lightweight “what’s happening now” state without also pulling larger, mostly-static data.
+#### Problem
 
-**Deliverables**
+The `meetings` document currently mixes relatively stable configuration (e.g. agenda) with “hot” live-state fields that change frequently during a meeting. This increases write contention and makes it harder to fetch lightweight “what’s happening now” state without also pulling larger, mostly-static data.
+
+#### Deliverables
 
 - Introduce a dedicated runtime table (e.g. `meetingRuntimeStates`) keyed by `meetingId`.
 - Move hot, frequently-changing fields out of `meetings` and into the runtime table over time, starting with:
@@ -121,7 +136,7 @@ Use this when scoping tickets so work is additive rather than duplicated.
 - Add helper functions/queries that join `{ meeting, runtime }` to avoid duplicated fetch logic and to keep a single source of truth per field.
 - Keep `meetings.isOpen` for now (do not remove yet); re-evaluate once `status` is fully adopted and all call sites are migrated.
 
-**Why this is high priority**
+#### Why this is high priority
 
 - Reduces OCC contention on the `meetings` document during active sessions.
 - Enables smaller payloads for polling/fallback or projector-style views (agenda can be fetched less often than live state).
@@ -131,14 +146,16 @@ Use this when scoping tickets so work is additive rather than duplicated.
 
 ### 5) Profile completion
 
-**Problem:** Profile page exists but is currently minimal/placeholder.
+#### Problem
 
-**Deliverables**
+Profile page exists but is currently minimal/placeholder.
+
+#### Deliverables
 
 - Profile editing for basic participant details.
 - Notification preference settings.
 
-**Suggested backend functions**
+#### Suggested backend functions
 
 - `me.updateProfile`
 - `me.notificationSettings.update`
@@ -149,19 +166,19 @@ Use this when scoping tickets so work is additive rather than duplicated.
 
 ### 6) Shared notes and minutes
 
-**Deliverables**
+#### Deliverables
 
 - Shared notes per meeting and optional agenda-item scope.
 - Finalize and lock meeting minutes.
 - Include notes in snapshot/export flows.
 
-**Suggested backend functions**
+#### Suggested backend functions
 
 - `notes.upsertDraft`
 - `notes.finalizeMeetingMinutes`
 - `notes.getForMeeting`
 
-**New table**
+#### New table
 
 - `meetingNotes`: `meetingId`, `agendaItemId?`, `content`, `createdBy`, `updatedAt`, `isFinal`
 
@@ -169,12 +186,12 @@ Use this when scoping tickets so work is additive rather than duplicated.
 
 ### 7) Action items and follow-ups
 
-**Deliverables**
+#### Deliverables
 
 - Create, assign, and track action items from meeting outcomes.
 - "My tasks" view for participants.
 
-**Suggested backend functions**
+#### Suggested backend functions
 
 - `actionItems.create`
 - `actionItems.assign`
@@ -182,11 +199,11 @@ Use this when scoping tickets so work is additive rather than duplicated.
 - `actionItems.listByMeeting`
 - `actionItems.listForCurrentUser`
 
-**New table**
+#### New table
 
 - `actionItems`: `meetingId`, `agendaItemId?`, `title`, `assigneeUserId`, `dueDate`, `status`, `priority`
 
-**Indexes**
+#### Indexes
 
 - `by_meetingId`
 - `by_assigneeUserId_and_status`
@@ -196,22 +213,22 @@ Use this when scoping tickets so work is additive rather than duplicated.
 
 ### 8) In-meeting chat (lightweight)
 
-**Deliverables**
+#### Deliverables
 
 - Real-time meeting chat with optional agenda thread mode.
 - Basic moderation tools (optional in first iteration).
 
-**Suggested backend functions**
+#### Suggested backend functions
 
 - `chat.send`
 - `chat.list` (paginated)
 - `chat.deleteOwn` (optional)
 
-**New table**
+#### New table
 
 - `chatMessages`: `meetingId`, `agendaItemId?`, `senderUserId`, `message`, `createdAt`
 
-**Indexes**
+#### Indexes
 
 - `by_meetingId_and_createdAt`
 - `by_agendaItemId_and_createdAt`
@@ -222,13 +239,13 @@ Use this when scoping tickets so work is additive rather than duplicated.
 
 ### 9) Notifications and reminders
 
-**Deliverables**
+#### Deliverables
 
 - Meeting reminder jobs.
 - Follow-up reminders for overdue action items.
 - Notification logs for auditability.
 
-**Suggested backend functions**
+#### Suggested backend functions
 
 - `notifications.scheduleMeetingReminders`
 - `notifications.sendNow` (internal action)
@@ -238,12 +255,12 @@ Use this when scoping tickets so work is additive rather than duplicated.
 
 ### 10) Calendar support (ICS first)
 
-**Deliverables**
+#### Deliverables
 
 - Generate ICS files for meeting events.
 - "Add to calendar" from invite/meeting details.
 
-**Suggested backend functions**
+#### Suggested backend functions
 
 - `calendar.exportIcs`
 
@@ -251,12 +268,12 @@ Use this when scoping tickets so work is additive rather than duplicated.
 
 ### 11) Analytics dashboard
 
-**Deliverables**
+#### Deliverables
 
 - Admin dashboard for attendance, poll participation, and speaker dynamics.
 - Denormalized stats per meeting for efficient reads.
 
-**Suggested backend functions**
+#### Suggested backend functions
 
 - `analytics.getMeetingOverview`
 - `analytics.getParticipationTrends`
@@ -265,12 +282,12 @@ Use this when scoping tickets so work is additive rather than duplicated.
 
 ### 12) Integrations and webhooks
 
-**Deliverables**
+#### Deliverables
 
 - Outbound event hooks for external systems.
 - Retry and failure logging.
 
-**Suggested backend functions**
+#### Suggested backend functions
 
 - `webhooks.subscribe`
 - `webhooks.unsubscribe`
@@ -291,37 +308,37 @@ Use this when scoping tickets so work is additive rather than duplicated.
 
 ## Recommended execution order
 
-1. **P1.3** Invitations and RSVP (including `invite_only`)
-2. **P1.1** Lifecycle polish (`scheduled`, draft join policy, `status` vs `isOpen` documentation)
-3. **P1.4** Extract hot meeting runtime state
-4. **P1.5** Profile completion
-5. **P2.6** Shared notes and minutes
-6. **P2.7** Action items and follow-ups
-7. **P2.8** In-meeting chat
-8. **P3.9** Notifications and reminders
-9. **P3.10** Calendar support (ICS)
-10. **P3.11** Analytics dashboard
-11. **P3.12** Integrations and webhooks
+1. P1.3 — Invitations and RSVP (including `invite_only`)
+2. P1.1 — Lifecycle polish (`scheduled`, draft join policy, `status` vs `isOpen` documentation)
+3. P1.4 — Extract hot meeting runtime state
+4. P1.5 — Profile completion
+5. P2.6 — Shared notes and minutes
+6. P2.7 — Action items and follow-ups
+7. P2.8 — In-meeting chat
+8. P3.9 — Notifications and reminders
+9. P3.10 — Calendar support (ICS)
+10. P3.11 — Analytics dashboard
+11. P3.12 — Integrations and webhooks
 
 ---
 
 ## Implemented (reference)
 
-Historical detail for items that are no longer active roadmap priorities. See **As implemented today** above for the live snapshot.
+Historical detail for items that are no longer active roadmap priorities. See [As implemented today (repo snapshot)](#as-implemented-today-repo-snapshot) above for the live snapshot.
 
 ### Bulk user add system (MVP)
 
-**What shipped**
+#### What shipped
 
 - Meeting-scoped CSV bulk import under the participants admin UI.
-- **Platform-admin-only** execution with a hard cap of **200 rows** per import.
-- **UTF-8 CSV** parsing with `email`, `name`, `role`, and optional `password`.
-- **Preview → commit** flow with per-row outcomes and downloadable error CSV.
-- **Upsert-style** handling for existing users: imports do not fail the whole batch when a user already exists.
+- Platform-admin-only execution with a hard cap of 200 rows per import.
+- UTF-8 CSV parsing with `email`, `name`, `role`, and optional `password`.
+- Preview → commit flow with per-row outcomes and downloadable error CSV.
+- Upsert-style handling for existing users: imports do not fail the whole batch when a user already exists.
 - Single server-side pipeline per row: resolve or create auth user → write `meetingAccessList` → attach `meetingParticipants`.
 - Manual single-user add uses the same backend path, so manual add and bulk add produce the same access-list and participant side effects.
 
-**Notes**
+#### Notes
 
 - Optimized for typical room-sized imports (tens to low hundreds of rows), not very large directory sync.
 - Bulk import is currently the primary allowlist-management tool; a dedicated add/remove allowlist UI can still be added later if product wants direct closed-meeting roster management without CSV.
