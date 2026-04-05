@@ -13,6 +13,7 @@ export const authComponent = createClient<DataModel, typeof authSchema>(componen
 	local: {
 		schema: authSchema,
 	},
+	verbose: process.env.BETTER_AUTH_VERBOSE === 'true',
 	authFunctions,
 });
 
