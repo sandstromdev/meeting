@@ -1,3 +1,4 @@
+import { browser } from '$app/environment';
 import type { ConvexClient } from 'convex/browser';
 import { createContext, untrack } from 'svelte';
 
@@ -114,6 +115,9 @@ class ConvexStatus {
 }
 
 export function initConvexStatus(client: ConvexClient) {
+	if (!browser) {
+		return;
+	}
 	return new ConvexStatus(client);
 }
 

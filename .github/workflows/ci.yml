@@ -25,6 +25,7 @@ jobs:
       PUBLIC_CONVEX_SITE_URL: https://ci.convex.example
       PUBLIC_ENABLE_SIGNUP: 'true'
       ENVIRONMENT: test
+      BETTER_AUTH_SECRET: 4TZXqfOfb6AZUw2ZCDN9+n9Io8X34Ukr0OtIR13kxsw=
       TRUSTED_ORIGINS: https://ci.example
       VERCEL_URL: ci-placeholder.vercel.app
       VERCEL_PROJECT_PRODUCTION_URL: ci.example

@@ -57,7 +57,7 @@ Use `.env.local` for local development (gitignored). Variable names and semantic
 
 Check required variables against the schema: `bun run env:validate` (also runs inside `bun run build` and the Vercel `build:vercel` step before `vite build`).
 
-Set the same `PUBLIC_*` values in the [Convex dashboard](https://dashboard.convex.dev) for your deployment so `src/convex/auth.ts` sees matching `process.env`.
+Set the same environment variables in the [Convex dashboard](https://dashboard.convex.dev), so `src/convex/auth.ts` sees matching `process.env`.
 
 ### 3) Run the dev stack
 

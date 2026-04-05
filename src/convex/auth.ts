@@ -13,21 +13,45 @@ export const authComponent = createClient<DataModel, typeof authSchema>(componen
 	local: {
 		schema: authSchema,
 	},
-	// verbose: true,
+	verbose: process.env.BETTER_AUTH_VERBOSE === 'true',
 	authFunctions,
 });
 
 export const { onCreate, onUpdate, onDelete } = authComponent.triggersApi();
 
-export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
-	const siteUrl = process.env.PUBLIC_SITE_URL;
+export function createAuthOptions(ctx: GenericCtx<DataModel>) {
+	return {
+		baseURL: getSiteUrl(),
+		trustedOrigins: getTrustedOrigins(),
+		secret: getSecret(),
+
+		database: authComponent.adapter(ctx),
+
+		emailAndPassword: {
+			enabled: true,
+			requireEmailVerification: false,
+			minPasswordLength: 4,
+			disableSignUp: process.env.PUBLIC_ENABLE_SIGNUP !== 'true',
+		},
+
+		plugins: [convex({ authConfig }), admin()],
+	} satisfies BetterAuthOptions;
+}
+
+function getSiteUrl() {
+	const siteUrl = process.env.PUBLIC_BETTER_AUTH_URL || process.env.PUBLIC_SITE_URL;
 
 	if (!siteUrl) {
-		// console.error('PUBLIC_SITE_URL is not set');
+		console.error('PUBLIC_BETTER_AUTH_URL or PUBLIC_SITE_URL is not set');
+		return undefined;
 	}
 
-	const trustedOrigins = [
-		siteUrl,
+	return siteUrl;
+}
+
+function getTrustedOrigins() {
+	return [
+		getSiteUrl(),
 		process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined,
 		process.env.VERCEL_PROJECT_PRODUCTION_URL
 			? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
@@ -35,27 +59,19 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
 		process.env.PUBLIC_CONVEX_SITE_URL,
 		process.env.TRUSTED_ORIGINS?.split(';').map((origin) => origin.trim()),
 	].filter(Boolean) as string[];
+}
 
-	return {
-		baseURL: siteUrl,
+function getSecret() {
+	if (!process.env.BETTER_AUTH_SECRET) {
+		console.error('BETTER_AUTH_SECRET is not set');
+		return undefined;
+	}
 
-		database: authComponent.adapter(ctx),
+	return process.env.BETTER_AUTH_SECRET;
+}
 
-		trustedOrigins,
-
-		emailAndPassword: {
-			enabled: true,
-			requireEmailVerification: false,
-			minPasswordLength: 4,
-			disableSignUp: !process.env.PUBLIC_ENABLE_SIGNUP,
-		},
-
-		plugins: [convex({ authConfig }), admin()],
-	} satisfies BetterAuthOptions;
-};
-
-export const createAuth = (ctx: GenericCtx<DataModel>) => {
+export function createAuth(ctx: GenericCtx<DataModel>) {
 	return betterAuth(createAuthOptions(ctx));
-};
+}
 
 export const options = createAuthOptions({} as GenericCtx<DataModel>);
