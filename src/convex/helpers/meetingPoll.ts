@@ -1,6 +1,11 @@
 import type { Doc, Id } from '$convex/_generated/dataModel';
 import type { MutationCtx } from '$convex/_generated/server';
-import { getEligibleVotes, ABSTAIN_OPTION_LABEL, type MajorityRule } from '$lib/polls';
+import {
+	getEligibleVotes,
+	ABSTAIN_OPTION_LABEL,
+	type MajorityRule,
+	type MeetingPollDraft,
+} from '$lib/polls';
 import type { StripSystemFields } from '$lib/types';
 import type { PollDraft } from '$lib/validation';
 import { stripSystemFields } from '.';
@@ -9,7 +14,6 @@ import { PollBaseSchema, PollTypeSchema, refinePollRowTypeConfig } from '$lib/va
 import { findAgendaItemById, setPollIdsForItem } from './agenda';
 import type { Db } from './types';
 import { z } from 'zod';
-import type { MeetingPollDraft } from '$lib/polls';
 import type { PollOptionTotal } from './poll';
 
 export type OptionTotal = PollOptionTotal;
