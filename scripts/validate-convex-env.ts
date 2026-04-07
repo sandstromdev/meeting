@@ -19,6 +19,8 @@ const { values } = parseArgs({
 	allowPositionals: true,
 });
 
+const noOutput = values['no-output'];
+
 async function runCommand<T extends 'inherit' | 'pipe' | Bun.BunFile>(options: {
 	command: string[];
 	stdout: T;
@@ -51,7 +53,15 @@ async function runCommand<T extends 'inherit' | 'pipe' | Bun.BunFile>(options: {
 
 const repoRoot = join(dirname(Bun.fileURLToPath(import.meta.url)), '..');
 
-const spinner = ora('Creating temporary directory…').start();
+const noop = () => {};
+
+const spinner = noOutput
+	? {
+			succeed: noop,
+			fail: noop,
+			text: '',
+		}
+	: ora('Creating temporary directory…').start();
 
 const tempDir = await mkdtemp(join(tmpdir(), 'meeting-tools-convex-env-')).catch(() => undefined);
 
@@ -99,10 +109,12 @@ try {
 	}
 } catch {
 	spinner.fail('Failed to validate Convex environment variables');
+	process.exit(1);
 } finally {
 	try {
 		await rm(tempDir, { recursive: true });
 	} catch (e) {
 		console.error('Failed to delete temp directory', e);
+		process.exit(1);
 	}
 }
