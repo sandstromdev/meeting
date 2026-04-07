@@ -23,14 +23,7 @@ export function createAuthOptions(ctx: GenericCtx<DataModel>) {
 	return {
 		baseURL: process.env.PUBLIC_BETTER_AUTH_URL || process.env.PUBLIC_SITE_URL,
 
-		trustedOrigins: [
-			process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined,
-			process.env.VERCEL_PROJECT_PRODUCTION_URL
-				? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-				: undefined,
-			process.env.PUBLIC_CONVEX_SITE_URL,
-			process.env.TRUSTED_ORIGINS?.split(';').map((origin) => origin.trim()),
-		].filter(Boolean) as string[],
+		trustedOrigins: getTrustedOrigins(),
 
 		secret: process.env.BETTER_AUTH_SECRET,
 
@@ -45,6 +38,28 @@ export function createAuthOptions(ctx: GenericCtx<DataModel>) {
 
 		plugins: [convex({ authConfig }), admin()],
 	} satisfies BetterAuthOptions;
+}
+
+const UNSAFE_ORIGIN_REGEX = /localhost|127\.0\.0\.1/;
+
+export function getTrustedOrigins() {
+	const origins = [
+		process.env.PUBLIC_BETTER_AUTH_URL || process.env.PUBLIC_SITE_URL,
+		process.env.PUBLIC_CONVEX_SITE_URL,
+		...(process.env.TRUSTED_ORIGINS?.split(';').map((origin) => origin.trim()) || []),
+	].filter(Boolean) as string[];
+
+	const set = new Set<string>();
+
+	for (const origin of origins) {
+		set.add(origin);
+		if (process.env.ENVIRONMENT !== 'development' && UNSAFE_ORIGIN_REGEX.test(origin)) {
+			console.warn('Found localhost in trusted origins:', origin);
+			console.warn('This is not recommended for production environments.');
+		}
+	}
+
+	return [...set];
 }
 
 export function createAuth(ctx: GenericCtx<DataModel>) {
