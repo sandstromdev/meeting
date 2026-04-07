@@ -21,9 +21,18 @@ export const { onCreate, onUpdate, onDelete } = authComponent.triggersApi();
 
 export function createAuthOptions(ctx: GenericCtx<DataModel>) {
 	return {
-		baseURL: getSiteUrl(),
-		trustedOrigins: getTrustedOrigins(),
-		secret: getSecret(),
+		baseURL: process.env.PUBLIC_BETTER_AUTH_URL || process.env.PUBLIC_SITE_URL,
+
+		trustedOrigins: [
+			process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined,
+			process.env.VERCEL_PROJECT_PRODUCTION_URL
+				? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+				: undefined,
+			process.env.PUBLIC_CONVEX_SITE_URL,
+			process.env.TRUSTED_ORIGINS?.split(';').map((origin) => origin.trim()),
+		].filter(Boolean) as string[],
+
+		secret: process.env.BETTER_AUTH_SECRET,
 
 		database: authComponent.adapter(ctx),
 
@@ -38,40 +47,18 @@ export function createAuthOptions(ctx: GenericCtx<DataModel>) {
 	} satisfies BetterAuthOptions;
 }
 
-function getSiteUrl() {
-	const siteUrl = process.env.PUBLIC_BETTER_AUTH_URL || process.env.PUBLIC_SITE_URL;
-
-	if (!siteUrl) {
-		console.error('PUBLIC_BETTER_AUTH_URL or PUBLIC_SITE_URL is not set');
-		return undefined;
-	}
-
-	return siteUrl;
-}
-
-function getTrustedOrigins() {
-	return [
-		getSiteUrl(),
-		process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined,
-		process.env.VERCEL_PROJECT_PRODUCTION_URL
-			? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-			: undefined,
-		process.env.PUBLIC_CONVEX_SITE_URL,
-		process.env.TRUSTED_ORIGINS?.split(';').map((origin) => origin.trim()),
-	].filter(Boolean) as string[];
-}
-
-function getSecret() {
-	if (!process.env.BETTER_AUTH_SECRET) {
-		console.error('BETTER_AUTH_SECRET is not set');
-		return undefined;
-	}
-
-	return process.env.BETTER_AUTH_SECRET;
-}
-
 export function createAuth(ctx: GenericCtx<DataModel>) {
-	return betterAuth(createAuthOptions(ctx));
+	const opts = createAuthOptions(ctx);
+
+	if (!opts.secret) {
+		console.error('BETTER_AUTH_SECRET is not set');
+	}
+
+	if (!opts.baseURL) {
+		console.error('PUBLIC_BETTER_AUTH_URL or PUBLIC_SITE_URL is not set');
+	}
+
+	return betterAuth(opts);
 }
 
 export const options = createAuthOptions({} as GenericCtx<DataModel>);
