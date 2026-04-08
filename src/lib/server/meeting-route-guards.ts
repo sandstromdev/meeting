@@ -1,12 +1,16 @@
 import { api } from '$convex/_generated/api';
+import type { Id } from '$convex/_generated/dataModel';
 import { getAppError } from '$convex/helpers/error';
 import { deleteMeetingCookie } from '$lib/server/meeting-cookie';
 import { getAuthState } from '@mmailaender/convex-better-auth-svelte/sveltekit';
 import { convexLoad } from '@mmailaender/convex-svelte/sveltekit';
+import type { Cookies } from '@sveltejs/kit';
 import { error, redirect } from '@sveltejs/kit';
-import type { LayoutServerLoad } from './$types';
 
-export const load = (async ({ locals, cookies, url }) => {
+/**
+ * Shared meeting-route auth: Convex Better Auth session + meeting cookie.
+ */
+export function requireMeetingRouteAuth(locals: App.Locals) {
 	const authState = getAuthState();
 
 	if (!authState.isAuthenticated) {
@@ -16,14 +20,24 @@ export const load = (async ({ locals, cookies, url }) => {
 	if (!locals.meetingId) {
 		redirect(307, '/m/anslut');
 	}
+}
 
-	let meeting;
+type MeetingLoadLocals = App.Locals;
+
+/**
+ * Loads meeting data via SvelteKit convexLoad (realtime route tree).
+ */
+export async function loadMeetingWithConvexLoad(event: {
+	locals: MeetingLoadLocals;
+	cookies: Cookies;
+}) {
+	requireMeetingRouteAuth(event.locals);
 
 	try {
-		meeting = await convexLoad(
+		return await convexLoad(
 			api.meeting.users.meeting.getData,
-			{ meetingId: locals.meetingId },
-			{ token: locals.token },
+			{ meetingId: event.locals.meetingId as Id<'meetings'> },
+			{ token: event.locals.token },
 		);
 	} catch (e) {
 		const err = getAppError(e);
@@ -34,7 +48,7 @@ export const load = (async ({ locals, cookies, url }) => {
 			err?.is('participant_banned') ||
 			err?.is('meeting_archived')
 		) {
-			deleteMeetingCookie(cookies);
+			deleteMeetingCookie(event.cookies);
 
 			const message = err?.is('participant_banned') || err?.is('meeting_archived');
 
@@ -45,10 +59,23 @@ export const load = (async ({ locals, cookies, url }) => {
 
 		error(500);
 	}
+}
 
-	if (url.pathname === '/m' && meeting.data) {
-		const role = meeting.data.me.role;
+/**
+ * Sends admins/moderators away from participant-only paths.
+ * `me` is the current meeting participant row from `getData` (or `convexLoad` → `meeting.data.me`).
+ */
+export function redirectNonParticipantsFromPaths(
+	url: URL,
+	me: { role: string } | null | undefined,
+) {
+	if (!me) {
+		return;
+	}
 
+	const role = me.role;
+
+	if (url.pathname === '/m') {
 		if (role === 'admin') {
 			redirect(307, '/m/admin');
 		}
@@ -57,9 +84,4 @@ export const load = (async ({ locals, cookies, url }) => {
 			redirect(307, '/m/moderator');
 		}
 	}
-
-	return {
-		meeting,
-		meetingId: locals.meetingId,
-	};
-}) satisfies LayoutServerLoad;
+}
