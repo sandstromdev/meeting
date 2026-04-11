@@ -33,7 +33,7 @@
 			hasBeenCompleted(currentIndex, index) && 'bg-muted/50 text-muted-foreground',
 			currentAgendaItemId != null &&
 				item.id === currentAgendaItemId &&
-				'bg-primary/10 text-primary',
+				'[&:not(:has([data-agenda-item-editor]))]:bg-primary/10 [&:not(:has([data-agenda-item-editor]))]:text-primary',
 		)}
 	>
 		{#if itemLeading}
