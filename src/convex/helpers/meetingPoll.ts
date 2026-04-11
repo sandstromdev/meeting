@@ -1,11 +1,7 @@
 import type { Doc, Id } from '$convex/_generated/dataModel';
 import type { MutationCtx } from '$convex/_generated/server';
-import {
-	ABSTAIN_OPTION_LABEL,
-	getEligibleVotes,
-	type MajorityRule,
-	type MeetingPollDraft,
-} from '$lib/polls';
+import { optionsWithAbstainLastRows, type PollOptionRow } from '$lib/pollOptions';
+import { getEligibleVotes, type MajorityRule, type MeetingPollDraft } from '$lib/polls';
 import type { StripSystemFields } from '$lib/types';
 import type { PollDraft } from '$lib/validation';
 import { PollBaseSchema, PollTypeSchema, refinePollRowTypeConfig } from '$lib/validation';
@@ -82,9 +78,12 @@ export function assertMeetingPollEditable(poll: Pick<Doc<'meetingPolls'>, 'isOpe
 export function stripAbstain(optionTotals: OptionTotal[], allowsAbstain: boolean) {
 	return getEligibleVotes(optionTotals, allowsAbstain);
 }
-export function optionsWithAbstainLast(options: string[], allowsAbstain: boolean): string[] {
-	const withoutAbstain = options.filter((o) => o !== ABSTAIN_OPTION_LABEL);
-	return allowsAbstain ? [...withoutAbstain, ABSTAIN_OPTION_LABEL] : withoutAbstain;
+/** @deprecated Prefer `optionsWithAbstainLastRows` from `$lib/pollOptions`. */
+export function optionsWithAbstainLast(
+	options: PollOptionRow[],
+	allowsAbstain: boolean,
+): PollOptionRow[] {
+	return optionsWithAbstainLastRows(options, allowsAbstain);
 }
 
 export async function createMeetingPollHelper(
@@ -113,7 +112,7 @@ export async function createMeetingPollHelper(
 		closedAt: null,
 	};
 
-	draft.options = optionsWithAbstainLast(draft.options, draft.allowsAbstain);
+	draft.options = optionsWithAbstainLastRows(draft.options, draft.allowsAbstain);
 
 	const validated = PollBaseSchema.omit({ _id: true, _creationTime: true })
 		.and(PollTypeSchema)
@@ -159,11 +158,22 @@ export function meetingPollDraftChanged(
 		orig.maxVotesPerVoter !== draft.maxVotesPerVoter
 	);
 }
-function normalizeOptions(options: string[]): string[] {
-	return options.map((x) => x.trim()).filter(Boolean);
+function normalizeOptionRows(rows: PollOptionRow[]): PollOptionRow[] {
+	return rows
+		.map((x) => ({
+			title: x.title.trim(),
+			description:
+				x.description == null || x.description.trim() === '' ? null : x.description.trim(),
+		}))
+		.filter((x) => x.title.length > 0);
 }
-function optionsEqual(a: string[], b: string[]) {
-	const na = normalizeOptions(a);
-	const nb = normalizeOptions(b);
-	return na.length === nb.length && na.every((x, i) => x === nb[i]);
+function optionsEqual(a: PollOptionRow[], b: PollOptionRow[]) {
+	const na = normalizeOptionRows(a);
+	const nb = normalizeOptionRows(b);
+	return (
+		na.length === nb.length &&
+		na.every(
+			(x, i) => x.title === nb[i].title && (x.description ?? null) === (nb[i].description ?? null),
+		)
+	);
 }

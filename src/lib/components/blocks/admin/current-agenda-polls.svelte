@@ -3,8 +3,7 @@
 	import type { Doc } from '$convex/_generated/dataModel';
 	import { Button } from '$lib/components/ui/button';
 	import { confirm } from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
-	import * as AlertDialog from '$lib/components/ui/alert-dialog';
-	import EditPoll from '$lib/components/ui/edit-poll.svelte';
+	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
 	import { notifyMutation } from '$lib/admin-toast';
 	import { getMeetingContext } from '$lib/context.svelte';
 	import {
@@ -13,7 +12,8 @@
 		hydratePollRowToDraft,
 		type MeetingPollDraft,
 	} from '$lib/polls';
-	import type { PollDraft } from '$lib/validation';
+	import CopyPlusIcon from '@lucide/svelte/icons/copy-plus';
+	import MoreVerticalIcon from '@lucide/svelte/icons/more-vertical';
 	import PencilIcon from '@lucide/svelte/icons/pencil';
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
 	import EditPollDialog from '$lib/components/ui/edit-poll-dialog.svelte';
@@ -102,22 +102,60 @@
 									Stäng
 								</Button>
 							{:else}
-								<Button size="sm" variant="outline" onclick={() => openEditPollDialog(poll)}>
-									<PencilIcon class="size-4" />
-									Redigera
-								</Button>
-								<Button
-									size="sm"
-									variant="outline"
-									onClickPromise={() =>
-										notifyMutation('Omröstning duplicerad.', () =>
-											meeting.adminMutate(api.meeting.admin.meetingPoll.duplicatePoll, {
-												pollId: poll._id,
-											}),
-										)}
-								>
-									Duplicera
-								</Button>
+								<DropdownMenu.Root>
+									<DropdownMenu.Trigger>
+										{#snippet child({ props })}
+											<Button
+												{...props}
+												size="icon-sm"
+												variant="outline"
+												class="shrink-0"
+												aria-label="Fler åtgärder för omröstning"
+											>
+												<MoreVerticalIcon class="size-4" />
+											</Button>
+										{/snippet}
+									</DropdownMenu.Trigger>
+									<DropdownMenu.Content align="end" class="w-52">
+										<DropdownMenu.Item onclick={() => openEditPollDialog(poll)}>
+											<PencilIcon class="size-4" />
+											Redigera
+										</DropdownMenu.Item>
+										<DropdownMenu.Item
+											onclick={() =>
+												void notifyMutation('Omröstning duplicerad.', () =>
+													meeting.adminMutate(api.meeting.admin.meetingPoll.duplicatePoll, {
+														pollId: poll._id,
+													}),
+												)}
+										>
+											<CopyPlusIcon class="size-4" />
+											Duplicera
+										</DropdownMenu.Item>
+										<DropdownMenu.Separator />
+										<DropdownMenu.Item
+											variant="destructive"
+											onclick={() =>
+												confirm({
+													title: 'Ta bort omröstning?',
+													description:
+														'Är du säker på att du vill ta bort denna omröstning? Den tas också bort från agendapunkten.',
+													onConfirm: () =>
+														notifyMutation(
+															'Omröstning borttagen.',
+															() =>
+																meeting.adminMutate(api.meeting.admin.meetingPoll.removePoll, {
+																	pollId: poll._id,
+																}),
+															{ rethrow: true },
+														),
+												})}
+										>
+											<Trash2Icon class="size-4" />
+											Ta bort
+										</DropdownMenu.Item>
+									</DropdownMenu.Content>
+								</DropdownMenu.Root>
 							{/if}
 							{#if poll.closedAt != null}
 								<Button
@@ -129,26 +167,6 @@
 											}),
 										)}>Visa resultat</Button
 								>
-								<Button
-									size="icon-sm"
-									variant="destructive"
-									onclick={() =>
-										confirm({
-											title: 'Ta bort omröstning?',
-											description: 'Är du säker på att du vill ta bort denna omröstning?',
-											onConfirm: () =>
-												notifyMutation(
-													'Omröstning borttagen.',
-													() =>
-														meeting.adminMutate(api.meeting.admin.meetingPoll.removePoll, {
-															pollId: poll._id,
-														}),
-													{ rethrow: true },
-												),
-										})}
-								>
-									<Trash2Icon class="size-4" />
-								</Button>
 							{:else}
 								<Button
 									size="sm"
@@ -186,6 +204,9 @@
 										<div class="flex items-start justify-between gap-3">
 											<div class="min-w-0">
 												<p class="text-sm font-medium">{option.option}</p>
+												{#if option.description}
+													<p class="text-xs text-muted-foreground">{option.description}</p>
+												{/if}
 												<p class="text-xs text-muted-foreground">
 													{option.votes} röster •
 													{getVoteShare(

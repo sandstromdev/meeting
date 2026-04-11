@@ -203,7 +203,10 @@
 									<Field.Label for="option-{optionIndex.toString()}">
 										<Field.Field orientation="horizontal">
 											<Field.Content>
-												<Field.Title>{option}</Field.Title>
+												<Field.Title>{option.title}</Field.Title>
+												{#if option.description}
+													<Field.Description>{option.description}</Field.Description>
+												{/if}
 											</Field.Content>
 											<RadioGroup.Item
 												value={optionIndex.toString()}
@@ -221,7 +224,10 @@
 								<Field.Label for="option-{optionIndex.toString()}">
 									<Field.Field orientation="horizontal">
 										<Field.Content>
-											<Field.Title>{option}</Field.Title>
+											<Field.Title>{option.title}</Field.Title>
+											{#if option.description}
+												<Field.Description>{option.description}</Field.Description>
+											{/if}
 										</Field.Content>
 										<Checkbox
 											checked={selectedSet.has(optionIndex)}

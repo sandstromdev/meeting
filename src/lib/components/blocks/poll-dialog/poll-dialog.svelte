@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { api } from '$convex/_generated/api';
-	import PollDialogProjector from '$lib/components/blocks/poll-dialog/poll-dialog-projector.svelte';
 	import Requests from '$lib/components/blocks/poll-dialog/requests.svelte';
 	import PollResultsDisplay from '$lib/components/poll-results-display.svelte';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
@@ -169,20 +168,21 @@
 	function isOptionDisabled(optionIndex: number) {
 		return (
 			(poll?.hasVoted && !isChangingVote) ||
-			(isMultiWinner && !canSelectMoreOptions && !selectedOptionIndexes.has(optionIndex))
+			(isMultiWinner &&
+				poll?.maxVotesPerVoter !== 1 &&
+				!canSelectMoreOptions &&
+				!selectedOptionIndexes.has(optionIndex))
 		);
 	}
 </script>
 
 {#if poll}
-	{#if ps.isProjector}
-		<PollDialogProjector {poll} {counters} />
-	{:else if !meeting.isAbsent}
+	{#if !ps.isProjector && !meeting.isAbsent}
 		<AlertDialog.Root open={isDialogOpen}>
 			<AlertDialog.Content
-				class="!inset-0 !grid !h-[100dvh] !w-screen !max-w-none !translate-x-0 !translate-y-0 !rounded-none !border-0 !p-4 sm:!top-[50%] sm:!left-[50%] sm:!h-max sm:!w-full sm:!max-w-lg sm:!translate-x-[-50%] sm:!translate-y-[-50%] sm:!rounded-lg sm:!border sm:!p-6"
+				class="inset-0 grid max-h-[100dvh] w-screen max-w-none translate-x-0 translate-y-0 rounded-none border-0 p-4 sm:top-[50%] sm:left-[50%] sm:w-full sm:max-w-lg sm:translate-x-[-50%] sm:translate-y-[-50%] sm:rounded-lg sm:border sm:p-6"
 			>
-				<div class="flex max-h-[100dvh] flex-col gap-4 overflow-y-auto">
+				<div class="flex flex-col gap-4 overflow-y-auto">
 					<AlertDialog.Header>
 						<AlertDialog.Title>{poll.title}</AlertDialog.Title>
 						<AlertDialog.Description>
@@ -200,97 +200,107 @@
 						<Requests />
 					{/if}
 
-					{#if poll.isOpen}
-						{#if poll.hasVoted && !isChangingVote}
-							<p class="text-sm text-muted-foreground">
-								Du har röstat ({poll.myVoteOptionIndexes.length}/{poll.maxVotesPerVoter}).
-							</p>
-							<p class="text-xs text-muted-foreground">
-								Dina röster: {poll.myVoteOptionIndexes.map((i) => poll.options[i]).join(', ')}
-							</p>
-							<div class="mt-auto">
-								<Button
-									variant="outline"
-									onclick={enterChangeMode}
-									loading={isRetracting}
-									disabled={isRetracting}
-								>
-									Ändra röst
-								</Button>
-							</div>
-						{:else}
-							<Field.Set>
-								<Field.Legend>Välj alternativ</Field.Legend>
-								<Field.Description
-									>{isMultiWinner
-										? 'Välj upp till ' + poll.maxVotesPerVoter + ' alternativ.'
-										: 'Välj ett alternativ.'}</Field.Description
-								>
-								<Field.Content>
-									<ScrollArea class="h-[30vh]">
-										{#if isMultiWinner}
-											<div class="flex flex-col gap-2">
-												{#each poll.options as option, optionIndex (optionIndex)}
-													<Field.Label for={optionIndex.toString()}>
-														<Field.Field orientation="horizontal">
-															<Field.Content>
-																<Field.Title>{option}</Field.Title>
-															</Field.Content>
-															<Checkbox
-																checked={selectedOptionIndexes.has(optionIndex)}
-																onCheckedChange={(checked) => toggleOption(optionIndex, checked)}
-																disabled={isOptionDisabled(optionIndex)}
-																id={optionIndex.toString()}
-															/>
-														</Field.Field>
-													</Field.Label>
-												{/each}
-											</div>
-										{:else}
-											<RadioGroup.Root
-												class="gap-2"
-												value={effectiveSelection[0]?.toString()}
-												onValueChange={(value) => toggleOption(Number(value), true)}
-											>
-												{#each poll.options as option, optionIndex (optionIndex)}
-													<Field.Label for={optionIndex.toString()}>
-														<Field.Field orientation="horizontal">
-															<Field.Content>
-																<Field.Title>{option}</Field.Title>
-															</Field.Content>
-															<RadioGroup.Item
-																value={optionIndex.toString()}
-																id={optionIndex.toString()}
-																disabled={isOptionDisabled(optionIndex)}
-															/>
-														</Field.Field>
-													</Field.Label>
-												{/each}
-											</RadioGroup.Root>
+					<ScrollArea class="">
+						<div class="space-y-2">
+							{#if poll.isOpen}
+								{#if poll.hasVoted && !isChangingVote}
+									<p class="text-sm text-muted-foreground">
+										Du har röstat ({poll.myVoteOptionIndexes.length}/{poll.maxVotesPerVoter}).
+									</p>
+									<p class="text-xs text-muted-foreground">
+										Dina röster: {poll.myVoteOptionIndexes
+											.map((i) => poll.options[i].title)
+											.join(', ')}
+									</p>
+									<div class="mt-auto">
+										<Button
+											variant="outline"
+											onclick={enterChangeMode}
+											loading={isRetracting}
+											disabled={isRetracting}
+										>
+											Ändra röst
+										</Button>
+									</div>
+								{:else}
+									<Field.Set>
+										<Field.Legend>Välj alternativ</Field.Legend>
+										<Field.Description
+											>{isMultiWinner
+												? 'Välj upp till ' + poll.maxVotesPerVoter + ' alternativ.'
+												: 'Välj ett alternativ.'}</Field.Description
+										>
+										<Field.Content>
+											{#if isMultiWinner && poll.maxVotesPerVoter > 1}
+												<div class="flex flex-col gap-2">
+													{#each poll.options as option, optionIndex (optionIndex)}
+														<Field.Label for={optionIndex.toString()}>
+															<Field.Field orientation="horizontal">
+																<Field.Content>
+																	<Field.Title>{option.title}</Field.Title>
+																	{#if option.description}
+																		<Field.Description>{option.description}</Field.Description>
+																	{/if}
+																</Field.Content>
+																<Checkbox
+																	checked={selectedOptionIndexes.has(optionIndex)}
+																	onCheckedChange={(checked) => toggleOption(optionIndex, checked)}
+																	disabled={isOptionDisabled(optionIndex)}
+																	id={optionIndex.toString()}
+																/>
+															</Field.Field>
+														</Field.Label>
+													{/each}
+												</div>
+											{:else}
+												<RadioGroup.Root
+													class="gap-2"
+													value={effectiveSelection[0]?.toString()}
+													onValueChange={(value) => toggleOption(Number(value), true)}
+												>
+													{#each poll.options as option, optionIndex (optionIndex)}
+														<Field.Label for={optionIndex.toString()}>
+															<Field.Field orientation="horizontal">
+																<Field.Content>
+																	<Field.Title>{option.title}</Field.Title>
+																	{#if option.description}
+																		<Field.Description>{option.description}</Field.Description>
+																	{/if}
+																</Field.Content>
+																<RadioGroup.Item
+																	value={optionIndex.toString()}
+																	id={optionIndex.toString()}
+																	disabled={isOptionDisabled(optionIndex)}
+																/>
+															</Field.Field>
+														</Field.Label>
+													{/each}
+												</RadioGroup.Root>
+											{/if}
+										</Field.Content>
+									</Field.Set>
+									<div class="mt-auto flex items-center gap-2">
+										<Button onclick={submitVote} loading={isSubmitting} disabled={!canVote}>
+											{isChangingVote ? 'Ändra röst' : 'Rösta'}
+										</Button>
+										{#if isChangingVote}
+											<Button variant="ghost" onclick={cancelChangeMode} disabled={isSubmitting}>
+												Avbryt
+											</Button>
 										{/if}
-									</ScrollArea>
-								</Field.Content>
-							</Field.Set>
-							<div class="mt-auto flex items-center gap-2">
-								<Button onclick={submitVote} loading={isSubmitting} disabled={!canVote}>
-									{isChangingVote ? 'Ändra röst' : 'Rösta'}
-								</Button>
-								{#if isChangingVote}
-									<Button variant="ghost" onclick={cancelChangeMode} disabled={isSubmitting}>
-										Avbryt
-									</Button>
+										<span class="text-xs text-muted-foreground">
+											Valt {effectiveSelection.length} av {poll.maxVotesPerVoter}
+										</span>
+									</div>
 								{/if}
-								<span class="text-xs text-muted-foreground">
-									Valt {effectiveSelection.length} av {poll.maxVotesPerVoter}
-								</span>
-							</div>
-						{/if}
-					{:else}
-						<PollResultsDisplay
-							data={pollResults.data ?? null}
-							showDetailedResults={showPollDetailedResults}
-						/>
-					{/if}
+							{:else}
+								<PollResultsDisplay
+									data={pollResults.data ?? null}
+									showDetailedResults={showPollDetailedResults}
+								/>
+							{/if}
+						</div>
+					</ScrollArea>
 
 					{#if meeting.isAdmin}
 						<div class="mt-auto flex items-center gap-2">

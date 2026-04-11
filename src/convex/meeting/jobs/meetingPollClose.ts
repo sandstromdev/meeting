@@ -14,6 +14,7 @@ import {
 	shouldSkipPollSnapshotAction,
 	usableVotesFromRanked,
 } from '$convex/helpers/poll';
+import { normalizeStoredPollOptions } from '$lib/pollOptions';
 import {
 	FullPollSchema,
 	pollSnapshotCountsMeetingZod,
@@ -41,7 +42,10 @@ export const getPollResults = c
 
 		const eligibleVoters = Math.max(0, participants - absentees);
 
-		const optionTotals = buildOptionTotalsFromVotes(poll.options, votes);
+		const optionTotals = buildOptionTotalsFromVotes(
+			normalizeStoredPollOptions(poll.options),
+			votes,
+		);
 
 		const uniqueVoters = new Set<Id<'meetingParticipants'>>();
 		for (const vote of votes) {

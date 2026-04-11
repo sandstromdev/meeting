@@ -1,16 +1,23 @@
 import type { MajorityRule } from '$lib/polls';
 import { getEligibleVotes, minimumVotesForMajority } from '$lib/polls';
+import { normalizeStoredPollOptions, type StoredPollOptions } from '$lib/pollOptions';
 import { AppError, appErrors } from './error';
 
-export type PollOptionTotal = { optionIndex: number; option: string; votes: number };
+export type PollOptionTotal = {
+	optionIndex: number;
+	option: string;
+	description?: string | null;
+	votes: number;
+};
 
 export function buildOptionTotalsFromVotes(
-	pollOptions: readonly string[],
+	pollOptions: readonly { title: string; description: string | null }[],
 	votes: Iterable<{ optionIndex: number }>,
 ): PollOptionTotal[] {
-	const optionTotals = pollOptions.map((option, optionIndex) => ({
+	const optionTotals = pollOptions.map((opt, optionIndex) => ({
 		optionIndex,
-		option,
+		option: opt.title,
+		description: opt.description,
 		votes: 0,
 	}));
 	for (const vote of votes) {
@@ -80,7 +87,7 @@ export function computePollOutcome(
 
 export function assertValidPollVoteOptionIndexes(
 	poll: {
-		options: readonly string[];
+		options: StoredPollOptions;
 		type: 'multi_winner' | 'single_winner';
 		winningCount?: number | undefined;
 		maxVotesPerVoter: number;
@@ -88,6 +95,7 @@ export function assertValidPollVoteOptionIndexes(
 	optionIndexes: number[],
 	domain: 'meeting' | 'user',
 ): number[] {
+	const optionCount = normalizeStoredPollOptions(poll.options).length;
 	const uniqueOptionIndexes = [...new Set(optionIndexes)];
 	const illegal = (code: 'duplicate_vote_option' | 'too_many_votes') =>
 		domain === 'meeting'
@@ -108,7 +116,7 @@ export function assertValidPollVoteOptionIndexes(
 
 	for (const optionIndex of uniqueOptionIndexes) {
 		AppError.assert(
-			optionIndex >= 0 && optionIndex < poll.options.length,
+			optionIndex >= 0 && optionIndex < optionCount,
 			appErrors.invalid_poll_option(optionIndex),
 		);
 	}

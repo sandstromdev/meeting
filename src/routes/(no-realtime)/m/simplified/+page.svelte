@@ -27,8 +27,6 @@
 	import { createSimplifiedPolling } from './simplified-polling.svelte';
 
 	/*
-	TODO: Leave queue does not work in simplified mode.
-	TODO: Agenda is not updated in realtime.
 	TODO: Poll does not open as dialog
 	*/
 
@@ -48,6 +46,7 @@
 			(p.coldSnapshot?.agenda ?? []).map((a) => ({
 				id: a.id,
 				title: a.title,
+				description: a.description,
 				depth: a.depth,
 				pollIds: [],
 			})),
@@ -304,7 +303,6 @@
 			<Separator />
 
 			<div class="space-y-3 rounded-lg border p-4">
-				<h2 class="text-lg font-semibold">Talare</h2>
 				{#if p.me?.absentSince}
 					<p class="text-sm text-muted-foreground">Du är markerad som frånvarande.</p>
 				{:else}
@@ -405,7 +403,10 @@
 												<Field.Label for="poll-{optionIndex}">
 													<Field.Field orientation="horizontal">
 														<Field.Content>
-															<Field.Title>{option}</Field.Title>
+															<Field.Title>{option.title}</Field.Title>
+															{#if option.description}
+																<Field.Description>{option.description}</Field.Description>
+															{/if}
 														</Field.Content>
 														<Checkbox
 															checked={selectedOptionIndexes.has(optionIndex)}
@@ -432,7 +433,10 @@
 												<Field.Label for="poll-r-{optionIndex}">
 													<Field.Field orientation="horizontal">
 														<Field.Content>
-															<Field.Title>{option}</Field.Title>
+															<Field.Title>{option.title}</Field.Title>
+															{#if option.description}
+																<Field.Description>{option.description}</Field.Description>
+															{/if}
 														</Field.Content>
 														<RadioGroup.Item
 															value={optionIndex.toString()}

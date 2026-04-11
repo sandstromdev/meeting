@@ -1,6 +1,7 @@
 import { withMe } from '$convex/helpers/auth';
 import { getMeetingRuntimeVersions } from '$convex/helpers/meetingRuntime';
 import type { Id } from '$convex/_generated/dataModel';
+import { normalizeStoredPollOptions, type PollOptionRow } from '$lib/pollOptions';
 
 export type SimplifiedVersions = {
 	simplifiedColdVersion: number;
@@ -29,6 +30,7 @@ export type SimplifiedColdSnapshot = {
 	agenda: Array<{
 		id: string;
 		title: string;
+		description: string | null;
 		depth: number;
 	}>;
 	/** Resolved like `getData`: valid meeting pointer or first item. */
@@ -66,7 +68,7 @@ export type SimplifiedHotSnapshot = {
 	poll: {
 		id: Id<'meetingPolls'>;
 		title: string;
-		options: string[];
+		options: PollOptionRow[];
 		type: 'single_winner' | 'multi_winner';
 		isOpen: boolean;
 		isResultPublic: boolean;
@@ -111,6 +113,7 @@ export const getColdSnapshot = withMe
 			agenda: ctx.meeting.agenda.map((item) => ({
 				id: item.id,
 				title: item.title,
+				description: item.description ?? null,
 				depth: item.depth,
 			})),
 			currentAgendaItemId: resolveSimplifiedCurrentAgendaItemId(
@@ -139,7 +142,7 @@ export const getHotSnapshot = withMe
 			return {
 				id: poll._id,
 				title: poll.title,
-				options: poll.options,
+				options: normalizeStoredPollOptions(poll.options),
 				type: poll.type,
 				isOpen: poll.isOpen,
 				isResultPublic: poll.isResultPublic,

@@ -24,7 +24,7 @@
 			<ChevronDownIcon class="size-4 shrink-0 transition-transform" />
 		</CollapsibleTrigger>
 		<CollapsibleContent>
-			<ScrollArea class="h-[100px] border-t p-2">
+			<ScrollArea class="border-t p-2">
 				{#each returnRequests as request (request.userId)}
 					<Request
 						text={request.name}

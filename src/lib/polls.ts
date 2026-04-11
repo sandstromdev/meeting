@@ -1,14 +1,16 @@
 import type { Doc, Id } from '$convex/_generated/dataModel';
 import type { PollOptionTotal } from '$convex/helpers/poll';
+import { draftOptionsFromStored } from './pollOptions';
+import { ABSTAIN_OPTION_LABEL } from './pollConstants';
 import type { PollDraft } from './validation';
+
+export { ABSTAIN_OPTION_LABEL } from './pollConstants';
 
 export const POLL_TYPES = ['multi_winner', 'single_winner'] as const;
 export type PollType = (typeof POLL_TYPES)[number];
 
 export const MAJORITY_RULES = ['simple', 'two_thirds', 'three_quarters', 'unanimous'] as const;
 export type MajorityRule = (typeof MAJORITY_RULES)[number];
-
-export const ABSTAIN_OPTION_LABEL = 'Avstår';
 
 export const MAJORITY_LABELS = {
 	simple: 'Enkel majoritet (>50 %)',
@@ -45,7 +47,10 @@ export function minimumVotesForMajority(rule: MajorityRule, maxVotes: number) {
 export function newPollDraft(): PollDraft {
 	return {
 		title: '',
-		options: ['', ''],
+		options: [
+			{ title: '', description: null },
+			{ title: '', description: null },
+		],
 		type: 'single_winner',
 		winningCount: 1,
 		majorityRule: 'simple',
@@ -62,7 +67,10 @@ export const POLL_PRESETS = [
 		preset: () =>
 			({
 				...newPollDraft(),
-				options: ['Ja', 'Nej'],
+				options: [
+					{ title: 'Ja', description: null },
+					{ title: 'Nej', description: null },
+				],
 				type: 'single_winner',
 				majorityRule: 'simple',
 				allowsAbstain: true,
@@ -81,8 +89,13 @@ export const POLL_PRESETS = [
 	},
 ];
 
+export function trimmedPollOptionTitles(draft: Pick<PollDraft, 'options'>): string[] {
+	return draft.options.map((o) => o.title.trim()).filter(Boolean);
+}
+
+/** @deprecated Use `trimmedPollOptionTitles` */
 export function trimmedPollOptions(draft: Pick<PollDraft, 'options'>): string[] {
-	return draft.options.map((o) => o.trim()).filter(Boolean);
+	return trimmedPollOptionTitles(draft);
 }
 
 export function getEligibleVotes(optionTotals: PollOptionTotal[], allowsAbstain: boolean) {
@@ -113,9 +126,7 @@ export type EditablePollDraft = UserPollDraft | MeetingPollDraft;
 export function hydratePollRowToDraft(p: Doc<'userPolls'>): UserPollDraft;
 export function hydratePollRowToDraft(p: Doc<'meetingPolls'>): MeetingPollDraft;
 export function hydratePollRowToDraft(p: Doc<PollTableNames>): UserPollDraft | MeetingPollDraft {
-	const opts = [...p.options];
-	const options =
-		p.allowsAbstain && opts[opts.length - 1] === ABSTAIN_OPTION_LABEL ? opts.slice(0, -1) : opts;
+	const options = draftOptionsFromStored(p.options, p.allowsAbstain);
 
 	const base: Record<string, unknown> = {
 		id: p._id,

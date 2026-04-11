@@ -8,25 +8,23 @@
 	import { getVoteShare } from '$lib/polls';
 	import type { FunctionReturnType } from 'convex/server';
 
-	type Poll = NonNullable<FunctionReturnType<typeof api.meeting.users.meetingPoll.getCurrentPoll>>;
-
-	type PollCounters = {
-		votersCount: number;
-		votesCount: number;
-		eligibleVoters: number;
-	};
-
-	let { poll, counters }: { poll: Poll; counters: PollCounters } = $props();
-
 	const meeting = getMeetingContext();
 	const ps = usePageState();
 
+	const currentPoll = meeting.query(api.meeting.users.meetingPoll.getCurrentPoll);
+	const currentPollCounters = meeting.query(api.meeting.users.meetingPoll.getCurrentPollCounters);
+
+	const poll = $derived(currentPoll.data ?? null);
+	const counters = $derived(
+		currentPollCounters.data ?? { votersCount: 0, eligibleVoters: 0, votesCount: 0 },
+	);
+
 	const pollResults = meeting.query(api.meeting.users.meetingPoll.getPollResultsById, () =>
-		!poll.isOpen ? { pollId: poll.id } : 'skip',
+		poll && !poll.isOpen ? { pollId: poll.id } : 'skip',
 	);
 
 	const showPollDetailedResults = $derived(
-		poll.isResultPublic ||
+		poll?.isResultPublic ||
 			(!ps.isProjector &&
 				meeting.isAdmin &&
 				(pollResults.data?.results.optionTotals?.length ?? 0) > 0),
@@ -35,18 +33,14 @@
 	let open = $derived(!!poll && !meeting.isAbsent);
 </script>
 
-<AlertDialog.Root open>
-	<AlertDialog.Content class="">
-		<AlertDialog.Header>
-			<AlertDialog.Title class="block  tracking-tight">
-				<div class="text-xl font-medium text-muted-foreground">
-					{poll.isOpen ? 'Omröstning pågår' : 'Omröstning stängd'}
-				</div>
-				<div class="text-3xl font-semibold">
-					{poll.title}
-				</div>
-			</AlertDialog.Title>
-		</AlertDialog.Header>
+{#if poll}
+	<div>
+		<div class="text-lg font-medium text-muted-foreground">
+			{poll.isOpen ? 'Omröstning pågår' : 'Omröstning stängd'}
+		</div>
+		<div class="text-2xl font-semibold">
+			{poll.title}
+		</div>
 		<div class="space-y-4">
 			<div class="space-y-2">
 				<Progress class="h-4" value={counters.votersCount} max={counters.eligibleVoters} />
@@ -60,7 +54,10 @@
 			<PollResultsDisplay
 				data={pollResults.data ?? null}
 				showDetailedResults={showPollDetailedResults}
+				size="lg"
 			/>
 		</div>
-	</AlertDialog.Content>
-</AlertDialog.Root>
+	</div>
+{:else}
+	<div class="text-lg font-medium text-muted-foreground">Ingen omröstning pågår</div>
+{/if}

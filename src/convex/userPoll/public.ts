@@ -8,6 +8,7 @@ import {
 	getUserPollOrThrow,
 	getVoterKey,
 } from '$convex/helpers/userPoll';
+import { normalizeStoredPollOptions } from '$lib/pollOptions';
 import { zid } from 'convex-helpers/server/zod4';
 import { z } from 'zod';
 
@@ -56,7 +57,7 @@ export const getByCode = c
 			id: poll._id,
 			code: poll.code,
 			title: poll.title,
-			options: poll.options,
+			options: normalizeStoredPollOptions(poll.options),
 			type: poll.type,
 			isOpen: poll.isOpen,
 			isResultPublic: poll.isResultPublic,

@@ -57,6 +57,7 @@ import type * as meeting_users_queue from "../meeting/users/queue.js";
 import type * as meeting_users_simplified from "../meeting/users/simplified.js";
 import type * as migrations_backfillMeetingLifecycle from "../migrations/backfillMeetingLifecycle.js";
 import type * as migrations_movePollsToMeetingPolls from "../migrations/movePollsToMeetingPolls.js";
+import type * as migrations_pollOptionsMigration from "../migrations/pollOptionsMigration.js";
 import type * as migrations_verifyPollFlatSchema from "../migrations/verifyPollFlatSchema.js";
 import type * as schema_meetingPolls from "../schema/meetingPolls.js";
 import type * as schema_meetings from "../schema/meetings.js";
@@ -125,6 +126,7 @@ declare const fullApi: ApiFromModules<{
   "meeting/users/simplified": typeof meeting_users_simplified;
   "migrations/backfillMeetingLifecycle": typeof migrations_backfillMeetingLifecycle;
   "migrations/movePollsToMeetingPolls": typeof migrations_movePollsToMeetingPolls;
+  "migrations/pollOptionsMigration": typeof migrations_pollOptionsMigration;
   "migrations/verifyPollFlatSchema": typeof migrations_verifyPollFlatSchema;
   "schema/meetingPolls": typeof schema_meetingPolls;
   "schema/meetings": typeof schema_meetings;
@@ -167,4 +169,5 @@ export declare const internal: FilterApi<
 export declare const components: {
   betterAuth: import("../betterAuth/_generated/component.js").ComponentApi<"betterAuth">;
   counters: import("../counter/_generated/component.js").ComponentApi<"counters">;
+  migrations: import("@convex-dev/migrations/_generated/component.js").ComponentApi<"migrations">;
 };
