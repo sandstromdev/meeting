@@ -59,7 +59,6 @@
 
 	let selectedOptionIndexes = new SvelteSet<number>();
 	let isChangingVote = $state(false);
-	/** When in change mode, option indexes before retract (for cancel: re-vote; submit always calls onVote). */
 	let previousVoteOptionIndexes = $state<number[]>([]);
 
 	const isMultiWinner = $derived(poll?.type === 'multi_winner');
