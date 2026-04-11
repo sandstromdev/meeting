@@ -2,7 +2,7 @@
 	import { api } from '$convex/_generated/api';
 	import type { Id } from '$convex/_generated/dataModel';
 	import { confirm } from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
-	import * as NativeSelect from '$lib/components/ui/native-select';
+	import * as Select from '$lib/components/ui/select';
 	import { getMeetingContext } from '$lib/context.svelte';
 	import { isValidRole, ROLE_LABELS, type Role } from '$lib/roles';
 
@@ -42,14 +42,20 @@
 		{ROLE_LABELS[role as Role]}
 	</span>
 {:else}
-	<NativeSelect.Root
-		bind:value={selectedRole}
-		onchange={(e) => handleRoleChange(userId, e.currentTarget.value)}
-		class="h-8 text-xs"
+	<Select.Root
+		type="single"
+		value={selectedRole}
+		onValueChange={(value) => handleRoleChange(userId, value)}
 	>
-		<NativeSelect.Option value="admin">Admin</NativeSelect.Option>
-		<NativeSelect.Option value="moderator">Moderator</NativeSelect.Option>
-		<NativeSelect.Option value="participant">Deltagare</NativeSelect.Option>
-		<NativeSelect.Option value="adjuster">Justerare</NativeSelect.Option>
-	</NativeSelect.Root>
+		<Select.Trigger class="h-8 w-[140px] rounded border bg-background px-2 text-xs text-foreground">
+			{selectedRole ? ROLE_LABELS[selectedRole as Role] : 'Välj roll'}
+		</Select.Trigger>
+
+		<Select.Content>
+			<Select.Item value="admin">Admin</Select.Item>
+			<Select.Item value="moderator">Moderator</Select.Item>
+			<Select.Item value="participant">Deltagare</Select.Item>
+			<Select.Item value="adjuster">Justerare</Select.Item>
+		</Select.Content>
+	</Select.Root>
 {/if}
