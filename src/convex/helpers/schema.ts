@@ -3,6 +3,7 @@ import { v } from 'convex/values';
 export const pollType = v.union(v.literal('multi_winner'), v.literal('single_winner'));
 export const majorityRule = v.union(
 	v.literal('simple'),
+	v.literal('relative'),
 	v.literal('two_thirds'),
 	v.literal('three_quarters'),
 	v.literal('unanimous'),

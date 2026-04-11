@@ -368,7 +368,7 @@
 		<Tabs.Root bind:value={$draft.type}>
 			<Tabs.List>
 				<Tabs.Trigger value="multi_winner">Top X vinnare</Tabs.Trigger>
-				<Tabs.Trigger value="single_winner">En vinnare (majoritet)</Tabs.Trigger>
+				<Tabs.Trigger value="single_winner">En vinnare</Tabs.Trigger>
 			</Tabs.List>
 			<Tabs.Content value="multi_winner" class="rounded-md border p-3">
 				<Field.Group class="flex flex-row flex-wrap gap-x-4 gap-y-2">
