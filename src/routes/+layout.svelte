@@ -12,6 +12,7 @@
 	import { createSvelteAuthClient } from '@mmailaender/convex-better-auth-svelte/svelte';
 	import { useConvexClient } from '@mmailaender/convex-svelte';
 	import { initConvexStatus } from '$lib/convex-connection.svelte';
+	import { initAppHttpClient } from '$lib/app-http/app-http-client.svelte';
 	import { ModeWatcher, setMode, userPrefersMode } from 'mode-watcher';
 	import './layout.css';
 
@@ -19,7 +20,11 @@
 
 	createSvelteAuthClient({ authClient, getServerState: () => data.authState });
 
-	initConvexStatus(useConvexClient());
+	initAppHttpClient();
+
+	const client = useConvexClient();
+
+	initConvexStatus(() => client);
 
 	const ps = usePageState();
 </script>

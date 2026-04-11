@@ -9,7 +9,7 @@
 	import QueueAdminControls from '$lib/components/blocks/admin/queue-admin-controls.svelte';
 	import Requests from '$lib/components/blocks/admin/requests.svelte';
 	import SpeakerLog from '$lib/components/blocks/admin/speaker-log.svelte';
-	import Agenda from '$lib/components/blocks/agenda.svelte';
+	import { DetailedAgenda } from '$lib/components/blocks/agenda';
 	import CurrentAgendaItem from '$lib/components/blocks/current-agenda-item.svelte';
 	import MeetingInfo from '$lib/components/blocks/meeting-info.svelte';
 	import QueueControls from '$lib/components/blocks/queue-controls.svelte';
@@ -45,7 +45,7 @@
 		<Timer />
 		<CurrentAgendaItem />
 		<CurrentAgendaPolls />
-		<Agenda />
+		<DetailedAgenda />
 		<RequestView />
 	</main>
 

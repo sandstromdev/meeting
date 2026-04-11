@@ -7,6 +7,14 @@ export type SimplifiedVersions = {
 	simplifiedHotVersion: number;
 };
 
+function resolveSimplifiedCurrentAgendaItemId(
+	agenda: Array<{ id: string }>,
+	storedId: string | null,
+): string | null {
+	const hasValid = agenda.some((item) => item.id === storedId);
+	return hasValid ? storedId : (agenda[0]?.id ?? null);
+}
+
 export type SimplifiedColdSnapshot = {
 	simplifiedColdVersion: number;
 	meeting: {
@@ -23,6 +31,8 @@ export type SimplifiedColdSnapshot = {
 		title: string;
 		depth: number;
 	}>;
+	/** Resolved like `getData`: valid meeting pointer or first item. */
+	currentAgendaItemId: string | null;
 };
 
 type SimplifiedRequest = {
@@ -36,6 +46,8 @@ type SimplifiedRequest = {
 
 export type SimplifiedHotSnapshot = {
 	simplifiedHotVersion: number;
+	/** Same resolution as cold snapshot: valid meeting pointer or first item. */
+	currentAgendaItemId: string | null;
 	requests: {
 		break: SimplifiedRequest;
 		reply: SimplifiedRequest;
@@ -91,6 +103,10 @@ export const getColdSnapshot = withMe
 				title: item.title,
 				depth: item.depth,
 			})),
+			currentAgendaItemId: resolveSimplifiedCurrentAgendaItemId(
+				ctx.meeting.agenda,
+				ctx.meeting.currentAgendaItemId,
+			),
 		};
 	});
 
@@ -126,6 +142,10 @@ export const getHotSnapshot = withMe
 
 		return {
 			simplifiedHotVersion: versions.simplifiedHotVersion,
+			currentAgendaItemId: resolveSimplifiedCurrentAgendaItemId(
+				ctx.meeting.agenda,
+				ctx.meeting.currentAgendaItemId,
+			),
 			requests: {
 				break: ctx.meeting.break,
 				reply: ctx.meeting.reply,

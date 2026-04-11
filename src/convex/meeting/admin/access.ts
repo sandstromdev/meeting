@@ -23,13 +23,11 @@ function generateRandomPassword() {
 	return crypto.randomUUID().replaceAll('-', '');
 }
 
-type ImportMutationCtx = MutationCtx & {
-	user: { subject: string; role: string };
-	meeting: Doc<'meetings'>;
-};
-
 async function upsertMeetingUserFromImport(
-	ctx: ImportMutationCtx,
+	ctx: MutationCtx & {
+		user: { subject: string; role: string };
+		meeting: Doc<'meetings'>;
+	},
 	args: {
 		email: string;
 		name: string;

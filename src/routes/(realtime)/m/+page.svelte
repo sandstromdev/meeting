@@ -1,5 +1,5 @@
 <script lang="ts">
-	import Agenda from '$lib/components/blocks/agenda.svelte';
+	import Agenda from '$lib/components/blocks/agenda';
 	import CurrentAgendaItem from '$lib/components/blocks/current-agenda-item.svelte';
 	import MeetingInfo from '$lib/components/blocks/meeting-info.svelte';
 	import QueueControls from '$lib/components/blocks/queue-controls.svelte';
@@ -12,19 +12,13 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import SeoHead from '$lib/components/ui/seo-head.svelte';
-
-	let { data } = $props();
+	import { onMount } from 'svelte';
 
 	const ctx = getMeetingContext();
 	const convexStatus = getConvexStatus();
 	const now = useNow();
-	const role = $derived(data.meeting.data?.me.role);
 
-	$effect(() => {
-		if (role !== 'participant' && role !== 'adjuster') {
-			return;
-		}
-
+	onMount(() => {
 		return convexStatus.watchFallback(() => {
 			goto(resolve('/m/simplified'));
 		});
@@ -45,7 +39,7 @@
 		<MeetingInfo />
 		<CurrentAgendaItem />
 		<Timer />
-		<Agenda />
+		<Agenda flat={ctx.agenda.flat} currentAgendaItemId={ctx.agenda.currentAgendaItemId ?? null} />
 		<RequestView />
 		<QueueControls />
 		<SpeakerQueue />

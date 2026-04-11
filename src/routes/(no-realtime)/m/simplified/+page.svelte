@@ -1,12 +1,14 @@
 <script lang="ts">
+	import { computeAgendaNumbers } from '$convex/helpers/agenda';
+	import Agenda from '$lib/components/blocks/agenda';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
 	import { Button } from '$lib/components/ui/button';
 	import Checkbox from '$lib/components/ui/checkbox/checkbox.svelte';
 	import { confirm } from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
 	import * as Field from '$lib/components/ui/field';
 	import * as RadioGroup from '$lib/components/ui/radio-group';
+	import SeoHead from '$lib/components/ui/seo-head.svelte';
 	import Separator from '$lib/components/ui/separator/separator.svelte';
-	import { cn } from '$lib/utils';
 	import InfoIcon from '@lucide/svelte/icons/info';
 	import ListOrderedIcon from '@lucide/svelte/icons/list-ordered';
 	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
@@ -18,16 +20,39 @@
 	import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
 	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
 	import WifiOffIcon from '@lucide/svelte/icons/wifi-off';
+	import { page } from '$app/state';
+	import { useAppHttpClient } from '$lib/app-http/app-http-client.svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 	import { createSimplifiedPolling } from './simplified-polling.svelte';
-	import SeoHead from '$lib/components/ui/seo-head.svelte';
 
-	const p = createSimplifiedPolling();
+	/*
+	TODO: Leave queue does not work in simplified mode.
+	TODO: Agenda is not updated in realtime.
+	TODO: Poll does not open as dialog
+	*/
+
+	const app = useAppHttpClient();
+	const p = createSimplifiedPolling({
+		app,
+		getMeetingId: () => page.data.meetingId,
+	});
 
 	let selectedOptionIndexes = new SvelteSet<number>();
 
 	const poll = $derived(p.poll);
 	const meeting = $derived(p.meeting);
+
+	const simplifiedAgendaFlat = $derived(
+		computeAgendaNumbers(
+			(p.coldSnapshot?.agenda ?? []).map((a) => ({
+				id: a.id,
+				title: a.title,
+				depth: a.depth,
+				pollIds: [],
+			})),
+		),
+	);
+	const simplifiedCurrentAgendaItemId = $derived(p.currentAgendaItemId);
 
 	const isMultiWinner = $derived(poll?.type === 'multi_winner');
 
@@ -164,9 +189,10 @@
 		<WifiOffIcon />
 		<AlertTitle>Förenklat läge</AlertTitle>
 		<AlertDescription>
-			Anslutningen till realtidsuppdateringar är begränsad. Den här sidan uppdateras via enklare
-			omfrågning. Funktioner som talarlista i realtid kan vara ofullständiga jämfört med det vanliga
-			mötesläget.
+			<p>
+				Anslutningen till realtidstjänsten är begränsad, men mötet kan användas ändå. Sidan
+				uppdateras med jämna mellanrum, inte live.
+			</p>
 		</AlertDescription>
 	</Alert>
 
@@ -212,24 +238,15 @@
 			<p class="text-center text-lg font-medium">Mötet har inte börjat ännu</p>
 		{:else}
 			<div class="space-y-2">
-				<h2 class="text-lg font-semibold">Dagordning</h2>
 				{#if (p.coldSnapshot?.agenda.length ?? 0) === 0}
+					<h2 class="text-lg font-semibold">Dagordning</h2>
 					<p class="text-sm text-muted-foreground">Ingen dagordning publicerad ännu.</p>
 				{:else}
-					<ul class="space-y-1 border-l-2 border-muted pl-3">
-						{#each p.coldSnapshot?.agenda ?? [] as item (item.id)}
-							<li
-								class={cn(
-									'text-sm',
-									item.depth === 0 && 'font-medium',
-									item.depth === 1 && 'pl-3',
-									item.depth >= 2 && 'pl-6 text-muted-foreground',
-								)}
-							>
-								{item.title}
-							</li>
-						{/each}
-					</ul>
+					<Agenda
+						flat={simplifiedAgendaFlat}
+						currentAgendaItemId={simplifiedCurrentAgendaItemId}
+						initialOpen
+					/>
 				{/if}
 			</div>
 

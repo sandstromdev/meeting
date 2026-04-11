@@ -1,70 +1,77 @@
 import { browser } from '$app/environment';
 import { goto } from '$app/navigation';
 import { resolve } from '$app/paths';
+import { api } from '$convex/_generated/api';
 import type { Id } from '$convex/_generated/dataModel';
+import type {
+	SimplifiedColdSnapshot,
+	SimplifiedHotSnapshot,
+	SimplifiedMeSnapshot,
+	SimplifiedVersions,
+} from '../../../../convex/meeting/users/simplified';
+import type { AppHttpClient } from '$lib/app-http/app-http-client.svelte';
+import { MeetingHttpClient } from '$lib/app-http/meeting-http-client';
+import { messageFromSimplifiedConvexError } from '$lib/simplified/simplified-convex-errors';
 import { onDestroy, onMount } from 'svelte';
-import {
-	getColdSnapshot,
-	getConvexTimeOffset,
-	getHotSnapshot,
-	getMeSnapshot,
-	joinSpeakerList,
-	leaveSpeakerList,
-	markAbsent,
-	recallReturn,
-	recallSlotRequest,
-	requestReturn,
-	requestSlot,
-	retractPollVote,
-	voteOnPoll,
-} from './data.remote';
-
-type ColdSnapshot = Extract<
-	Awaited<ReturnType<typeof getColdSnapshot>>,
-	{ changed: true }
->['snapshot'];
-
-type HotSnapshot = Extract<
-	Awaited<ReturnType<typeof getHotSnapshot>>,
-	{ changed: true }
->['snapshot'];
-
-type MeSnapshot = Awaited<ReturnType<typeof getMeSnapshot>>['snapshot'];
+import type { Getter } from 'runed';
 
 export type RequestSlotType = 'pointOfOrder' | 'reply' | 'break';
+
+export type SimplifiedPollingDeps = {
+	app: AppHttpClient;
+	getMeetingId: Getter<Id<'meetings'> | undefined>;
+};
+
+const simplifiedApi = api.meeting.users.simplified;
 
 const INTERVAL_MS_OPEN_POLL = 3_200;
 const INTERVAL_MS_NORMAL = 8_000;
 const INTERVAL_MS_HIDDEN = 28_000;
 
-export function createSimplifiedPolling() {
-	let knownColdVersion = $state<number | null>(null);
-	let knownHotVersion = $state<number | null>(null);
+export class SimplifiedPolling {
+	loading = $state(true);
+	fetchError = $state<string | null>(null);
+	actionError = $state<string | null>(null);
+	actionBusy = $state(false);
 
-	let coldSnapshot = $state<ColdSnapshot | null>(null);
-	let hotSnapshot = $state<HotSnapshot | null>(null);
-	let meSnapshot = $state<MeSnapshot | null>(null);
+	#pollTimer: ReturnType<typeof setTimeout> | null = null;
+	#disposed = false;
+	readonly #mx: MeetingHttpClient;
 
-	let convexOffsetMs = $state<number | null>(null);
-	let loading = $state(true);
-	let fetchError = $state<string | null>(null);
-	let actionError = $state<string | null>(null);
-	let actionBusy = $state(false);
+	coldPoll = $state<{
+		version: number;
+		fetchedAtMs: number;
+		snapshot: SimplifiedColdSnapshot | null;
+	} | null>(null);
 
-	let pollTimer: ReturnType<typeof setTimeout> | null = null;
+	hotPoll = $state<{
+		version: number;
+		fetchedAtMs: number;
+		snapshot: SimplifiedHotSnapshot | null;
+	} | null>(null);
 
-	const meeting = $derived(coldSnapshot?.meeting ?? null);
-	const requests = $derived(hotSnapshot?.requests ?? null);
-	const poll = $derived(hotSnapshot?.poll ?? null);
+	mePoll = $state<{ fetchedAtMs: number; snapshot: SimplifiedMeSnapshot } | null>(null);
 
-	const me = $derived(meSnapshot?.me ?? null);
+	coldSnapshot = $derived(this.coldPoll?.snapshot ?? null);
+	hotSnapshot = $derived(this.hotPoll?.snapshot ?? null);
+	meSnapshot = $derived(this.mePoll?.snapshot ?? null);
 
-	const myPollVoteOptionIndexes = $derived(meSnapshot?.currentPollVoteOptionIndexes ?? []);
+	meeting = $derived(this.coldSnapshot?.meeting ?? null);
+	requests = $derived(this.hotSnapshot?.requests ?? null);
+	poll = $derived(this.hotSnapshot?.poll ?? null);
+	/** Hot includes this when cold strips agenda after meeting start; otherwise matches cold. */
+	currentAgendaItemId = $derived(
+		this.hotSnapshot?.currentAgendaItemId ?? this.coldSnapshot?.currentAgendaItemId ?? null,
+	);
 
-	const canJoinQueue = $derived.by(() => {
-		const m = meeting;
-		const u = me;
-		const r = requests;
+	me = $derived(this.meSnapshot?.me ?? null);
+
+	myPollVoteOptionIndexes = $derived(this.meSnapshot?.currentPollVoteOptionIndexes ?? []);
+
+	canJoinQueue = $derived.by(() => {
+		const m = this.meeting;
+		const u = this.me;
+		const r = this.requests;
 		if (!m?.isOpen || !u) {
 			return false;
 		}
@@ -86,296 +93,294 @@ export function createSimplifiedPolling() {
 		return true;
 	});
 
-	const canRequestReply = $derived.by(() => {
-		if (!requests || !me) {
-			return false;
-		}
-		return !requests.reply;
-	});
+	canRequestReply = $derived(!!this.requests && !!this.me && !this.requests.reply);
 
-	const canRecallReply = $derived(
-		requests?.reply?.type === 'requested' && requests.reply.by.userId === me?._id,
+	canRecallReply = $derived(
+		this.requests?.reply?.type === 'requested' && this.requests.reply.by.userId === this.me?._id,
 	);
 
-	const canRequestPointOfOrder = $derived.by(() => {
-		if (!requests || !me) {
-			return false;
-		}
-		return !requests.pointOfOrder;
-	});
+	canRequestPointOfOrder = $derived(!!this.requests && !!this.me && !this.requests.pointOfOrder);
 
-	const canRecallPointOfOrder = $derived(
-		requests?.pointOfOrder?.type === 'requested' && requests.pointOfOrder.by.userId === me?._id,
+	canRecallPointOfOrder = $derived(
+		this.requests?.pointOfOrder?.type === 'requested' &&
+			this.requests.pointOfOrder.by.userId === this.me?._id,
 	);
 
-	const hasRequestedBreak = $derived(
-		requests?.break?.type === 'requested' && requests.break.by.userId === me?._id,
+	hasRequestedBreak = $derived(
+		this.requests?.break?.type === 'requested' && this.requests.break.by.userId === this.me?._id,
 	);
 
-	const canRequestBreak = $derived(!requests?.break);
+	canRequestBreak = $derived(!this.requests?.break);
+
+	canMarkAbsent = $derived(!!this.me && !this.me.absentSince);
 
 	/** True when our streck-förslag is pending (show recall). */
-	const shouldRecallBreak = $derived(hasRequestedBreak);
+	shouldRecallBreak = $derived(this.hasRequestedBreak);
 
-	const isInSpeakerQueue = $derived(!!me?.isInSpeakerQueue);
+	isInSpeakerQueue = $derived(!!this.me?.isInSpeakerQueue);
 
-	const hasPendingReturnRequest = $derived(!!meSnapshot?.hasPendingReturnRequest);
+	hasPendingReturnRequest = $derived(!!this.meSnapshot?.hasPendingReturnRequest);
 
-	const canMarkAbsent = $derived(!!me && !me.absentSince);
+	constructor(deps: SimplifiedPollingDeps) {
+		this.#mx = new MeetingHttpClient(deps);
 
-	function pollIntervalMs(): number {
+		if (!browser) {
+			return;
+		}
+
+		onMount(() => {
+			document.addEventListener('visibilitychange', this.#onVisibilityChange);
+			void this.bootstrap();
+		});
+
+		onDestroy(() => {
+			this.#disposed = true;
+			document.removeEventListener('visibilitychange', this.#onVisibilityChange);
+			this.#clearPollTimer();
+		});
+	}
+
+	async #refreshCold(versions: SimplifiedVersions) {
+		const fetchedAtMs = Date.now();
+		const serverV = versions.simplifiedColdVersion;
+		const cachedV = this.coldPoll?.version ?? -1;
+
+		const { version, result } = await wrapRefresh(
+			() => this.#mx.query(simplifiedApi.getColdSnapshot, {}),
+			cachedV,
+			serverV,
+		);
+
+		if (this.#disposed) {
+			return;
+		}
+
+		this.coldPoll = {
+			version,
+			fetchedAtMs,
+			snapshot: result ?? this.coldPoll?.snapshot ?? null,
+		};
+	}
+
+	async #refreshHot(versions: SimplifiedVersions) {
+		const fetchedAtMs = Date.now();
+		const serverV = versions.simplifiedHotVersion;
+		const cachedV = this.hotPoll?.version ?? -1;
+
+		const { version, result } = await wrapRefresh(
+			() => this.#mx.query(simplifiedApi.getHotSnapshot, {}),
+			cachedV,
+			serverV,
+		);
+
+		if (this.#disposed) {
+			return;
+		}
+
+		this.hotPoll = {
+			version,
+			fetchedAtMs,
+			snapshot: result ?? this.hotPoll?.snapshot ?? null,
+		};
+	}
+
+	async #refreshMe() {
+		const fetchedAtMs = Date.now();
+		const snapshot = await this.#mx.query(simplifiedApi.getMeSnapshot, {});
+		if (this.#disposed) {
+			return;
+		}
+		this.mePoll = { fetchedAtMs, snapshot };
+	}
+
+	#onVisibilityChange = () => {
+		this.#clearPollTimer();
+		this.#scheduleNextPoll();
+	};
+
+	#pollIntervalMs(): number {
 		if (typeof document !== 'undefined' && document.hidden) {
 			return INTERVAL_MS_HIDDEN;
 		}
-		if (poll?.isOpen) {
+		if (this.poll?.isOpen) {
 			return INTERVAL_MS_OPEN_POLL;
 		}
 		return INTERVAL_MS_NORMAL;
 	}
 
-	function clearPollTimer() {
-		if (pollTimer) {
-			clearTimeout(pollTimer);
-			pollTimer = null;
+	#clearPollTimer() {
+		if (this.#pollTimer) {
+			clearTimeout(this.#pollTimer);
+			this.#pollTimer = null;
 		}
 	}
 
-	function scheduleNextPoll() {
-		clearPollTimer();
-		pollTimer = setTimeout(() => {
-			void runHotCycle().finally(() => {
-				scheduleNextPoll();
+	#scheduleNextPoll() {
+		if (this.#disposed) {
+			return;
+		}
+		this.#clearPollTimer();
+		this.#pollTimer = setTimeout(() => {
+			if (this.#disposed) {
+				return;
+			}
+			void this.#runHotCycle().finally(() => {
+				if (!this.#disposed) {
+					this.#scheduleNextPoll();
+				}
 			});
-		}, pollIntervalMs());
+		}, this.#pollIntervalMs());
 	}
 
-	async function fetchConvexOffsetOnce() {
-		const q = getConvexTimeOffset();
-		const result = await q;
-		convexOffsetMs = result.offsetMs;
-	}
-
-	async function fetchColdOnce() {
-		const q = getColdSnapshot({ knownVersion: knownColdVersion ?? undefined });
-		const result = await q;
-
-		knownColdVersion = result.version;
-
-		if (result.changed && 'snapshot' in result && result.snapshot) {
-			coldSnapshot = result.snapshot;
-		}
-	}
-
-	async function fetchHotOnce() {
-		const q = getHotSnapshot({ knownVersion: knownHotVersion ?? undefined });
-		const result = await q;
-
-		knownHotVersion = result.version;
-
-		if (result.changed && 'snapshot' in result && result.snapshot) {
-			hotSnapshot = result.snapshot;
-		}
-	}
-
-	async function fetchMeOnce() {
-		const q = getMeSnapshot();
-		const result = await q;
-		meSnapshot = result.snapshot;
-	}
-
-	async function runHotCycle() {
+	async #runHotCycle() {
 		try {
-			await Promise.all([fetchHotOnce(), fetchMeOnce()]);
-			fetchError = null;
+			await this.#mx.ensureAuth();
+			if (this.#disposed) {
+				return;
+			}
+			const versions = await this.#mx.query(simplifiedApi.getVersions, {});
+			await Promise.all([this.#refreshHot(versions), this.#refreshMe()]);
+			if (this.#disposed) {
+				return;
+			}
+			this.fetchError = null;
 		} catch (e) {
-			fetchError = e instanceof Error ? e.message : 'Kunde inte uppdatera läget.';
+			console.error(e);
+			if (this.#disposed) {
+				return;
+			}
+			this.fetchError = messageFromSimplifiedConvexError(e);
 		}
 	}
 
-	async function bootstrap() {
-		loading = true;
-		fetchError = null;
+	async bootstrap() {
+		this.loading = true;
+		this.fetchError = null;
 		try {
-			await fetchConvexOffsetOnce();
-			await fetchColdOnce();
-			await Promise.all([fetchHotOnce(), fetchMeOnce()]);
+			await this.#mx.ensureAuth();
+			if (this.#disposed) {
+				return;
+			}
+			const versions = await this.#mx.query(simplifiedApi.getVersions, {});
+			await Promise.all([
+				this.#refreshCold(versions),
+				this.#refreshHot(versions),
+				this.#refreshMe(),
+			]);
 		} catch (e) {
-			fetchError = e instanceof Error ? e.message : 'Kunde inte ladda mötet.';
+			console.error(e);
+			if (this.#disposed) {
+				return;
+			}
+			this.fetchError = messageFromSimplifiedConvexError(e);
 		} finally {
-			loading = false;
+			if (!this.#disposed) {
+				this.loading = false;
+			}
 		}
-		scheduleNextPoll();
+		if (!this.#disposed) {
+			this.#scheduleNextPoll();
+		}
 	}
 
-	function onVisibilityChange() {
-		clearPollTimer();
-		scheduleNextPoll();
-	}
-
-	async function withAction<T>(fn: () => Promise<T>): Promise<T | undefined> {
-		actionBusy = true;
-		actionError = null;
+	async #withAction<T>(fn: () => Promise<T>): Promise<T | undefined> {
+		this.actionBusy = true;
+		this.actionError = null;
 		try {
+			await this.#mx.ensureAuth();
 			return await fn();
 		} catch (e) {
-			actionError = e instanceof Error ? e.message : 'Åtgärden misslyckades.';
+			console.error(e);
+			this.actionError = messageFromSimplifiedConvexError(e);
 			return undefined;
 		} finally {
-			actionBusy = false;
+			this.actionBusy = false;
 		}
 	}
 
-	async function joinQueue() {
-		await withAction(() => joinSpeakerList());
-		await fetchMeOnce();
+	async joinQueue() {
+		await this.#withAction(() =>
+			this.#mx.mutation(api.meeting.users.queue.placeInSpeakerQueue, {}),
+		);
+		await this.#refreshMe();
 	}
 
-	async function leaveQueue() {
-		await withAction(() => leaveSpeakerList());
-		await fetchMeOnce();
+	async leaveQueue() {
+		await this.#withAction(() =>
+			this.#mx.mutation(api.meeting.users.queue.recallSpeakerQueueRequest, {}),
+		);
+		await this.#refreshMe();
 	}
 
-	async function requestSlotAction(type: RequestSlotType) {
-		await withAction(() => requestSlot({ type }));
-		await runHotCycle();
+	async requestSlotAction(type: RequestSlotType) {
+		await this.#withAction(() => this.#mx.mutation(api.meeting.users.queue.request, { type }));
+		await this.#runHotCycle();
 	}
 
-	async function recallSlotRequestAction(type: RequestSlotType) {
-		await withAction(() => recallSlotRequest({ type }));
-		await runHotCycle();
+	async recallSlotRequestAction(type: RequestSlotType) {
+		await this.#withAction(() =>
+			this.#mx.mutation(api.meeting.users.queue.recallRequest, { type }),
+		);
+		await this.#runHotCycle();
 	}
 
-	async function leaveMeeting() {
-		await withAction(() => markAbsent());
-		await runHotCycle();
+	async leaveMeeting() {
+		await this.#withAction(() => this.#mx.mutation(api.meeting.users.attendance.leaveMeeting, {}));
+		await this.#runHotCycle();
 	}
 
-	async function requestReturnAction() {
-		await withAction(() => requestReturn());
-		await runHotCycle();
+	async requestReturnAction() {
+		await this.#withAction(() =>
+			this.#mx.mutation(api.meeting.users.attendance.requestReturnToMeeting, {}),
+		);
+		await this.#runHotCycle();
 	}
 
-	async function recallReturnAction() {
-		await withAction(() => recallReturn());
-		await runHotCycle();
+	async recallReturnAction() {
+		await this.#withAction(() =>
+			this.#mx.mutation(api.meeting.users.attendance.recallReturnRequest, {}),
+		);
+		await this.#runHotCycle();
 	}
 
-	async function vote(pollId: Id<'meetingPolls'>, optionIndexes: number[]) {
-		await withAction(() => voteOnPoll({ pollId, optionIndexes }));
-		await runHotCycle();
+	async vote(pollId: Id<'meetingPolls'>, optionIndexes: number[]) {
+		await this.#withAction(() =>
+			this.#mx.mutation(api.meeting.users.meetingPoll.vote, { pollId, optionIndexes }),
+		);
+		await this.#runHotCycle();
 	}
 
-	async function retractVote(pollId: Id<'meetingPolls'>) {
-		await withAction(() => retractPollVote({ pollId }));
-		await runHotCycle();
+	async retractVote(pollId: Id<'meetingPolls'>) {
+		await this.#withAction(() =>
+			this.#mx.mutation(api.meeting.users.meetingPoll.retractVote, { pollId }),
+		);
+		await this.#runHotCycle();
 	}
 
-	function retryRealtimeNow() {
+	retryRealtimeNow() {
 		void goto(resolve('/m'));
 	}
 
-	function retryFetch() {
-		void bootstrap();
+	retryFetch() {
+		void this.bootstrap();
 	}
+}
 
-	if (browser) {
-		onMount(() => {
-			document.addEventListener('visibilitychange', onVisibilityChange);
-			void bootstrap();
-		});
+export function createSimplifiedPolling(deps: SimplifiedPollingDeps) {
+	return new SimplifiedPolling(deps);
+}
 
-		onDestroy(() => {
-			document.removeEventListener('visibilitychange', onVisibilityChange);
-			clearPollTimer();
-		});
+/** Refetch when cached snapshot version does not match server (behind, ahead, or first load with sentinel). */
+async function wrapRefresh<T>(fn: () => Promise<T>, cachedVersion: number, serverVersion: number) {
+	if (cachedVersion !== serverVersion) {
+		return {
+			version: serverVersion,
+			result: await fn(),
+		};
 	}
 
 	return {
-		get knownColdVersion() {
-			return knownColdVersion;
-		},
-		get knownHotVersion() {
-			return knownHotVersion;
-		},
-		get coldSnapshot() {
-			return coldSnapshot;
-		},
-		get hotSnapshot() {
-			return hotSnapshot;
-		},
-		get meSnapshot() {
-			return meSnapshot;
-		},
-		get convexOffsetMs() {
-			return convexOffsetMs;
-		},
-		get loading() {
-			return loading;
-		},
-		get fetchError() {
-			return fetchError;
-		},
-		get actionError() {
-			return actionError;
-		},
-		get actionBusy() {
-			return actionBusy;
-		},
-		get meeting() {
-			return meeting;
-		},
-		get requests() {
-			return requests;
-		},
-		get poll() {
-			return poll;
-		},
-		get me() {
-			return me;
-		},
-		get canJoinQueue() {
-			return canJoinQueue;
-		},
-		get canRequestReply() {
-			return canRequestReply;
-		},
-		get canRecallReply() {
-			return canRecallReply;
-		},
-		get canRequestPointOfOrder() {
-			return canRequestPointOfOrder;
-		},
-		get canRecallPointOfOrder() {
-			return canRecallPointOfOrder;
-		},
-		get canRequestBreak() {
-			return canRequestBreak;
-		},
-		get shouldRecallBreak() {
-			return shouldRecallBreak;
-		},
-		get myPollVoteOptionIndexes() {
-			return myPollVoteOptionIndexes;
-		},
-		get isInSpeakerQueue() {
-			return isInSpeakerQueue;
-		},
-		get hasPendingReturnRequest() {
-			return hasPendingReturnRequest;
-		},
-		get canMarkAbsent() {
-			return canMarkAbsent;
-		},
-		joinQueue,
-		leaveQueue,
-		requestSlotAction,
-		recallSlotRequestAction,
-		leaveMeeting,
-		requestReturnAction,
-		recallReturnAction,
-		vote,
-		retractVote,
-		retryRealtimeNow,
-		retryFetch,
+		version: serverVersion,
+		result: null,
 	};
 }

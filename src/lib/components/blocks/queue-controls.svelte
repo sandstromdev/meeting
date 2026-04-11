@@ -1,16 +1,10 @@
 <script lang="ts">
 	import { api } from '$convex/_generated/api';
 	import { Button } from '$lib/components/ui/button';
-	import {
-		Collapsible,
-		CollapsibleContent,
-		CollapsibleTrigger,
-	} from '$lib/components/ui/collapsible';
 	import { confirm } from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
 	import Separator from '$lib/components/ui/separator/separator.svelte';
 	import { getMeetingContext } from '$lib/context.svelte';
 	import { cn } from '$lib/utils';
-	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
 	import LogOutIcon from '@lucide/svelte/icons/log-out';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 
@@ -89,8 +83,9 @@
 					onClickPromise={() =>
 						meeting.mutate(api.meeting.users.queue.request, { type: 'pointOfOrder' })}
 					type="button"
+					class="truncate"
 				>
-					Ordningsfråga
+					Ordningsf.
 				</Button>
 			{:else if queue.canRecallPointOfOrder}
 				<Button

@@ -67,6 +67,7 @@ const meetingHotFieldKeys = [
 	'reply',
 	'pointOfOrder',
 	'currentPollId',
+	'currentAgendaItemId',
 ] as const satisfies readonly (keyof Doc<'meetings'>)[];
 
 function serializedMeetingSlice(doc: Doc<'meetings'>, keys: readonly (keyof Doc<'meetings'>)[]) {
