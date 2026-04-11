@@ -8,20 +8,16 @@ import {
 	getLatestUserPollResultSnapshot,
 	getUserPollOrThrow,
 } from '$convex/helpers/userPoll';
-import { ABSTAIN_OPTION_LABEL } from '$lib/polls';
+import { draftOptionsFromStored, optionsWithAbstainLastRows } from '$lib/pollOptions';
 import {
 	FullUserPollSchema,
 	PollDraftSchema,
 	PollTypeSchema,
+	RefinePollDraftSchema,
 	refinePollRowTypeConfig,
 	UserPollBaseSchema,
 } from '$lib/validation';
 import { zid } from 'convex-helpers/server/zod4';
-
-function optionsWithAbstainLast(options: string[], allowsAbstain: boolean): string[] {
-	const withoutAbstain = options.filter((o) => o !== ABSTAIN_OPTION_LABEL);
-	return allowsAbstain ? [...withoutAbstain, ABSTAIN_OPTION_LABEL] : withoutAbstain;
-}
 
 function createCode() {
 	const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -102,7 +98,7 @@ export const getMyPollResultsSnapshot = userPollAdmin
 export const createPoll = userPollAdmin
 	.mutation()
 	.input({
-		draft: PollDraftSchema,
+		draft: RefinePollDraftSchema,
 	})
 	.public(async ({ ctx, args }) => {
 		const draft = {
@@ -113,7 +109,7 @@ export const createPoll = userPollAdmin
 			updatedAt: Date.now(),
 			openedAt: null,
 			closedAt: null,
-			options: optionsWithAbstainLast(args.draft.options, args.draft.allowsAbstain),
+			options: optionsWithAbstainLastRows(args.draft.options, args.draft.allowsAbstain),
 		};
 
 		const validated = UserPollBaseSchema.omit({ _id: true, _creationTime: true })
@@ -133,7 +129,7 @@ export const duplicatePoll = userPollAdmin
 		const source = await getUserPollOrThrow(ctx.db, args.pollId);
 		assertUserPollOwner(source, ctx.user.subject);
 
-		const draftOptions = source.options.filter((o) => o !== ABSTAIN_OPTION_LABEL);
+		const draftOptions = draftOptionsFromStored(source.options, source.allowsAbstain);
 		const draft = {
 			title: `${source.title} (kopia)`,
 			type: source.type,
@@ -149,7 +145,7 @@ export const duplicatePoll = userPollAdmin
 			updatedAt: Date.now(),
 			openedAt: null,
 			closedAt: null,
-			options: optionsWithAbstainLast(draftOptions, source.allowsAbstain),
+			options: optionsWithAbstainLastRows(draftOptions, source.allowsAbstain),
 		};
 
 		const validated = UserPollBaseSchema.omit({ _id: true, _creationTime: true })
@@ -172,11 +168,41 @@ export const editPoll = userPollAdmin
 		assertUserPollOwner(poll, ctx.user.subject);
 		assertUserPollEditable(poll);
 
-		console.log(args.edits);
-
 		const nextAllowsAbstain = args.edits.allowsAbstain ?? poll.allowsAbstain;
-		const rawOptions = args.edits.options ?? poll.options;
-		const options = optionsWithAbstainLast(rawOptions, nextAllowsAbstain);
+		const draftOptions =
+			args.edits.options ?? draftOptionsFromStored(poll.options, poll.allowsAbstain);
+		const mergedType = args.edits.type ?? poll.type;
+
+		const draftForRefine =
+			mergedType === 'multi_winner'
+				? {
+						title: args.edits.title ?? poll.title,
+						options: draftOptions,
+						type: 'multi_winner' as const,
+						winningCount:
+							args.edits.winningCount ??
+							(poll.type === 'multi_winner' ? poll.winningCount : undefined),
+						isResultPublic: args.edits.isResultPublic ?? poll.isResultPublic,
+						allowsAbstain: nextAllowsAbstain,
+						maxVotesPerVoter: args.edits.maxVotesPerVoter ?? poll.maxVotesPerVoter,
+					}
+				: {
+						title: args.edits.title ?? poll.title,
+						options: draftOptions,
+						type: 'single_winner' as const,
+						winningCount: args.edits.winningCount ?? 1,
+						majorityRule:
+							args.edits.majorityRule ??
+							(poll.type === 'single_winner' ? poll.majorityRule : undefined),
+						isResultPublic: args.edits.isResultPublic ?? poll.isResultPublic,
+						allowsAbstain: nextAllowsAbstain,
+						maxVotesPerVoter: args.edits.maxVotesPerVoter ?? poll.maxVotesPerVoter,
+					};
+
+		const refinedDraft = RefinePollDraftSchema.safeParse(draftForRefine);
+		AppError.assertZodSuccess(refinedDraft, appErrors.invalid_poll_draft);
+
+		const options = optionsWithAbstainLastRows(refinedDraft.data.options, nextAllowsAbstain);
 		const updatedFields = {
 			...poll,
 			...args.edits,

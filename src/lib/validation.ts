@@ -1,5 +1,6 @@
 import { zid } from 'convex-helpers/server/zod4';
 import * as z from 'zod';
+import { type StoredPollOptions } from './pollOptions';
 import { ABSTAIN_OPTION_LABEL, MAJORITY_RULES, POLL_TYPES } from './polls';
 import { ROLES } from './roles';
 import { sv } from 'zod/v4/locales';
@@ -35,16 +36,28 @@ export const AdminNotificationSchema = z.object({
 export const UserPollVisibilitySchema = z.enum(['public', 'account_required']);
 export type UserPollVisibility = z.infer<typeof UserPollVisibilitySchema>;
 
+export const PollDraftOptionSchema = z
+	.object({
+		title: z.string(),
+		description: z.union([z.string(), z.null()]).optional(),
+	})
+	.superRefine((o, ctx) => {
+		if (o.title.trim() === ABSTAIN_OPTION_LABEL) {
+			ctx.addIssue({
+				code: 'custom',
+				path: ['title'],
+				message: `Alternativ får inte ha samma namn som avstår-alternativet (${ABSTAIN_OPTION_LABEL})`,
+			});
+		}
+	})
+	.transform((o) => ({
+		title: o.title,
+		description: o.description == null || o.description.trim() === '' ? null : o.description,
+	}));
+
 export const PollDraftSchema = z.object({
 	title: z.string().min(1),
-	options: z
-		.array(
-			z
-				.string()
-				.min(1)
-				.refine((o) => o !== ABSTAIN_OPTION_LABEL),
-		)
-		.min(1),
+	options: z.array(PollDraftOptionSchema).min(1),
 	type: z.enum(POLL_TYPES),
 	winningCount: z.number().min(1).optional(),
 	majorityRule: z.enum(MAJORITY_RULES).optional(),
@@ -65,11 +78,14 @@ export type PollTypeConfig = z.infer<typeof pollTypeConfigZod>;
 
 /** Shared `single_winner` / `multi_winner` checks for drafts vs stored rows (winningCount strictness differs). */
 function refinePollTypeConfigCore(
-	data: PollTypeConfig & { options: readonly string[] },
+	data: PollTypeConfig & { options: readonly { title: string }[] | StoredPollOptions },
 	ctx: z.RefinementCtx,
 	mode: 'draftStrict' | 'rowLegacy',
 ) {
-	const { options } = data;
+	const optionsCount =
+		mode === 'draftStrict'
+			? (data.options as readonly { title: string }[]).length
+			: (data.options as StoredPollOptions).length;
 
 	if (data.type === 'single_winner') {
 		if (mode === 'draftStrict') {
@@ -104,7 +120,7 @@ function refinePollTypeConfigCore(
 				path: ['winningCount'],
 				message: 'Antal vinnare är obligatoriskt för omröstningar med flera vinnare',
 			});
-		} else if (data.winningCount < 1 || data.winningCount > options.length) {
+		} else if (data.winningCount < 1 || data.winningCount > optionsCount) {
 			ctx.addIssue({
 				code: 'custom',
 				path: ['winningCount'],
@@ -136,9 +152,20 @@ export const RefinePollDraftSchema = PollDraftSchema.superRefine((data, ctx) => 
 		});
 	}
 
-	const set = new Set(options.map((o) => o.trim().toLocaleLowerCase()));
+	for (const [i, o] of options.entries()) {
+		if (o.title.trim().length < 1) {
+			ctx.addIssue({
+				code: 'custom',
+				path: ['options', i, 'title'],
+				message: 'Alternativtext krävs',
+			});
+		}
+	}
 
-	if (set.size !== options.length) {
+	const titles = options.map((o) => o.title.trim());
+	const set = new Set(titles.map((t) => t.toLocaleLowerCase()));
+
+	if (set.size !== titles.length) {
 		ctx.addIssue({
 			code: 'custom',
 			path: ['options'],
@@ -151,7 +178,7 @@ export type PollDraft = z.infer<typeof PollDraftSchema>;
 
 /** Enforces branch invariants given `options` (same rules as draft refine; allows legacy single_winner without winningCount). */
 export function refinePollRowTypeConfig(
-	data: PollTypeConfig & { options: readonly string[] },
+	data: PollTypeConfig & { options: StoredPollOptions },
 	ctx: z.RefinementCtx,
 ) {
 	refinePollTypeConfigCore(data, ctx, 'rowLegacy');
@@ -160,10 +187,20 @@ export function refinePollRowTypeConfig(
 /** Alias for `pollTypeConfigZod` (use with `refinePollRowTypeConfig` when building insert/row parsers). */
 export const PollTypeSchema = pollTypeConfigZod;
 
+const pollOptionRowZod = z
+	.object({
+		title: z.string().trim().min(1),
+		description: z.union([z.string(), z.null()]).optional(),
+	})
+	.transform((o) => ({
+		title: o.title,
+		description: o.description == null || o.description.trim() === '' ? null : o.description,
+	}));
+
 /** Shared tail of meeting vs user poll rows (matches `pollRowSharedFields` in Convex). */
 export const pollRowSharedZod = z.object({
 	title: z.string().trim().min(1),
-	options: z.array(z.string().trim().min(1)).min(1),
+	options: z.union([z.array(z.string().trim().min(1)).min(1), z.array(pollOptionRowZod).min(1)]),
 	isResultPublic: z.boolean(),
 	allowsAbstain: z.boolean(),
 	maxVotesPerVoter: z.number().min(1),
@@ -177,7 +214,7 @@ function andPollTypeConfigWithRowRefine<O extends z.ZodRawShape>(base: z.ZodObje
 	return base
 		.and(pollTypeConfigZod)
 		.superRefine((data, ctx) =>
-			refinePollRowTypeConfig(data as PollTypeConfig & { options: readonly string[] }, ctx),
+			refinePollRowTypeConfig(data as PollTypeConfig & { options: StoredPollOptions }, ctx),
 		);
 }
 
@@ -221,6 +258,7 @@ export const UserPollEmbeddedSnapshotSchema = andPollTypeConfigWithRowRefine(
 export const pollSnapshotOptionVotesRowZod = z.object({
 	optionIndex: z.number(),
 	option: z.string(),
+	description: z.string().nullable().optional(),
 	votes: z.number(),
 });
 

@@ -7,6 +7,7 @@ export async function createAgendaItem(
 	meeting: Pick<MeetingState, 'adminMutate'>,
 	args: {
 		title: string;
+		description?: string;
 		parentId?: string;
 		polls: MeetingPollDraft[];
 	},
@@ -15,6 +16,7 @@ export async function createAgendaItem(
 
 	const data = await meeting.adminMutate(api.meeting.admin.agenda.createAgendaItem, {
 		title: args.title,
+		description: args.description,
 		parentId: args.parentId,
 		polls,
 	});
@@ -30,12 +32,14 @@ export async function updateAgendaItem(
 	args: {
 		agendaItemId: string;
 		title: string;
+		description?: string;
 		polls: MeetingPollDraft[];
 	},
 ) {
 	const data = await meeting.adminMutate(api.meeting.admin.agenda.updateAgendaItem, {
 		agendaItemId: args.agendaItemId,
 		title: args.title,
+		description: args.description,
 		polls: args.polls,
 	});
 

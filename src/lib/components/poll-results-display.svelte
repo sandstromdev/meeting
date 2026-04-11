@@ -9,7 +9,12 @@
 	export type PollResultsDisplayData = {
 		complete?: boolean;
 		results: {
-			winners: Array<{ optionIndex: number; option: string; votes?: number }>;
+			winners: Array<{
+				optionIndex: number;
+				option: string;
+				description?: string | null;
+				votes?: number;
+			}>;
 			optionTotals?: PollOptionTotal[] | undefined;
 			counts: { totalVotes: number; usableVotes: number; abstain: number };
 		};
@@ -18,9 +23,11 @@
 	let {
 		data = null,
 		showDetailedResults = false,
+		size = 'sm',
 	}: {
 		data: PollResultsDisplayData | null;
 		showDetailedResults?: boolean;
+		size?: 'sm' | 'lg';
 	} = $props();
 
 	const winners = $derived(data?.results.winners ?? []);
@@ -49,11 +56,21 @@
 			{#if winners.length === 0}
 				Ingen nådde majoriteten.
 			{:else if winners.length === 1}
-				{winners[0].option}
+				<div>{winners[0].option}</div>
+				{#if winners[0].description}
+					<div class="mt-1 text-base font-normal text-muted-foreground">
+						{winners[0].description}
+					</div>
+				{/if}
 			{:else}
 				<ul>
 					{#each winners as winner (winner.optionIndex)}
-						<li>{winner.option}</li>
+						<li>
+							{winner.option}
+							{#if winner.description}
+								<div class="text-base font-normal text-muted-foreground">{winner.description}</div>
+							{/if}
+						</li>
 					{/each}
 				</ul>
 			{/if}
@@ -61,7 +78,12 @@
 	</div>
 	{#if showDetailedResults}
 		<div class="space-y-4">
-			<div class="grid w-max grid-cols-2 gap-x-4 text-sm text-muted-foreground">
+			<div
+				class={cn(
+					'grid w-max grid-cols-2 gap-x-4 text-sm text-muted-foreground',
+					size === 'lg' && 'text-base',
+				)}
+			>
 				<span>Total mängd röster</span>
 				<span>{totalVotes} st</span>
 
@@ -95,7 +117,12 @@
 	{/if}
 {/if}
 
-{#snippet resultRow(option: { optionIndex: number; option: string; votes?: number })}
+{#snippet resultRow(option: {
+	optionIndex: number;
+	option: string;
+	description?: string | null;
+	votes?: number;
+})}
 	<li
 		class={cn(
 			'flex flex-col rounded-md border px-4 py-3',
@@ -103,10 +130,13 @@
 				'border-green-800/20 bg-green-50 text-green-800  dark:bg-green-700/10 dark:text-green-600',
 		)}
 	>
-		<div class="flex items-center justify-between gap-2">
-			<span class="font-bold">{option.option}</span>
+		<div class={cn('flex items-center justify-between gap-2', size === 'lg' && 'text-xl')}>
+			<span class="truncate font-bold">{option.option}</span>
 			<span>{option.votes ?? 0} röster</span>
 		</div>
+		{#if option.description}
+			<p class="text-sm text-muted-foreground">{option.description}</p>
+		{/if}
 		<Progress value={option.votes ?? 0} max={usableVotes} class="text-current" />
 		<div class="ml-auto text-xs text-current/70">
 			{getVoteShare(option.votes ?? 0, usableVotes)}%

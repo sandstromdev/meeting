@@ -10,6 +10,7 @@
 		Label as FormLabel,
 	} from '$lib/components/ui/form';
 	import { Input } from '$lib/components/ui/input';
+	import Textarea from '$lib/components/ui/textarea/textarea.svelte';
 	import * as InputGroup from '$lib/components/ui/input-group';
 	import { NativeSelectOption } from '$lib/components/ui/native-select';
 	import NativeSelect from '$lib/components/ui/native-select/native-select.svelte';
@@ -51,7 +52,10 @@
 	let {
 		poll = {
 			title: '',
-			options: ['', ''],
+			options: [
+				{ title: '', description: null },
+				{ title: '', description: null },
+			],
 			type: 'single_winner',
 			winningCount: 1,
 			majorityRule: 'simple',
@@ -78,6 +82,7 @@
 		SPA: true,
 		validators: zod4(RefinePollDraftSchema),
 		resetForm: false,
+		dataType: 'json',
 		onSubmit: () => submit(),
 	});
 
@@ -114,7 +119,9 @@
 	});
 
 	function addPollOption() {
-		draft.update((d) => ({ ...d, options: [...d.options, ''] }), { taint: true });
+		draft.update((d) => ({ ...d, options: [...d.options, { title: '', description: null }] }), {
+			taint: true,
+		});
 	}
 
 	async function handlePollOptionKeydown(e: KeyboardEvent, i: number) {
@@ -126,7 +133,7 @@
 				addPollOption();
 				await tick();
 			}
-			document.getElementById(`option-${i + 1}`)?.focus();
+			document.getElementById(`option-title-${i + 1}`)?.focus();
 		}
 
 		if (e.key === 'Tab') {
@@ -146,7 +153,7 @@
 				idx = optionsLen - 1;
 			}
 
-			document.getElementById(`option-${idx}`)?.focus();
+			document.getElementById(`option-title-${idx}`)?.focus();
 		}
 	}
 
@@ -169,7 +176,8 @@
 			(d) => ({
 				...d,
 				allowsAbstain: false,
-				options: d.options.length === 1 ? [...d.options, ''] : d.options,
+				options:
+					d.options.length === 1 ? [...d.options, { title: '', description: null }] : d.options,
 			}),
 			{ taint: true },
 		);
@@ -246,27 +254,66 @@
 			</FormField>
 
 			<div>
-				<ul class="space-y-2">
+				<ul class="space-y-4">
 					{#each $draft.options as _, i (i)}
-						<li class="flex gap-2">
-							<FormField form={pollForm} name="options[{i}]" class="w-full gap-2">
-								<FormControl id={`option-${i}`}>
-									{#snippet children({ props })}
-										<InputGroup.Root>
-											<InputGroup.Input
+						<li class="flex flex-col gap-2 sm:flex-row sm:items-start">
+							<div class="min-w-0 flex-1 space-y-2">
+								<!-- Dynamic index paths for superforms -->
+								<FormField
+									form={pollForm}
+									name={`options.${i}.title` as never}
+									class="w-full gap-2"
+								>
+									<FormControl id={`option-title-${i}`}>
+										{#snippet children({ props })}
+											<InputGroup.Root>
+												<InputGroup.Input
+													{...props}
+													bind:value={$draft.options[i].title}
+													placeholder="Alternativ {i + 1}"
+													onkeydown={(e) => void handlePollOptionKeydown(e, i)}
+												/>
+												<InputGroup.Addon align="inline-start">
+													{i + 1}.
+												</InputGroup.Addon>
+											</InputGroup.Root>
+										{/snippet}
+									</FormControl>
+									<FormFieldErrors />
+								</FormField>
+								<FormField
+									form={pollForm}
+									name={`options.${i}.description` as never}
+									class="w-full gap-1"
+								>
+									<FormControl>
+										{#snippet children({ props })}
+											<Textarea
 												{...props}
-												bind:value={$draft.options[i]}
-												placeholder="Alternativ {i + 1}"
-												onkeydown={(e) => void handlePollOptionKeydown(e, i)}
+												value={$draft.options[i].description ?? ''}
+												placeholder="Kort förklaring som visas vid röstning"
+												rows={2}
+												class="min-h-0 resize-y"
+												oninput={(e) => {
+													const raw = e.currentTarget.value;
+													draft.update(
+														(d) => {
+															const next = [...d.options];
+															next[i] = {
+																...next[i],
+																description: raw.trim() === '' ? null : raw,
+															};
+															return { ...d, options: next };
+														},
+														{ taint: true },
+													);
+												}}
 											/>
-											<InputGroup.Addon align="inline-start">
-												{i + 1}.
-											</InputGroup.Addon>
-										</InputGroup.Root>
-									{/snippet}
-								</FormControl>
-								<FormFieldErrors />
-							</FormField>
+										{/snippet}
+									</FormControl>
+									<FormFieldErrors />
+								</FormField>
+							</div>
 							<Button
 								type="button"
 								variant="outline"

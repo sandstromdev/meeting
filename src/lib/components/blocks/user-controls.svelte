@@ -18,6 +18,7 @@
 	import UserIcon from '@lucide/svelte/icons/user';
 	import { useQuery } from '@mmailaender/convex-svelte';
 	import { setMode, userPrefersMode } from 'mode-watcher';
+	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
 
 	const meeting = getMeetingContext();
 	const ps = usePageState();
@@ -141,6 +142,15 @@
 			</DropdownMenu.Content>
 		</DropdownMenu.Root>
 
+		<Button
+			type="button"
+			variant="outline"
+			size="sm"
+			onclick={() => goto(resolve('/m/simplified'))}
+		>
+			<ArrowLeftIcon class="size-4" />
+			Problem? Gå till förenklad vy
+		</Button>
 		<Button
 			type="button"
 			variant="outline"

@@ -22,8 +22,8 @@ import {
 	assertMeetingPollInMeeting,
 	createMeetingPollHelper,
 	getMeetingPollOrThrow,
-	optionsWithAbstainLast,
 } from '$convex/helpers/meetingPoll';
+import { optionsWithAbstainLastRows } from '$lib/pollOptions';
 import { FullPollSchema, PollDraftSchema, RefinePollDraftSchema } from '$lib/validation';
 import { zid } from 'convex-helpers/server/zod4';
 import { z } from 'zod';
@@ -31,10 +31,19 @@ import type { Id } from '$convex/_generated/dataModel';
 
 // --- Public mutations ---
 
+function normalizeAgendaItemDescription(raw: string | undefined): string | null | undefined {
+	if (raw === undefined) {
+		return undefined;
+	}
+	const t = raw.trim();
+	return t === '' ? null : t;
+}
+
 export const createAgendaItem = admin
 	.mutation()
 	.input({
 		title: z.string().trim().nonempty(),
+		description: z.string().optional(),
 		parentId: z.string().nonempty().optional(),
 		polls: z.array(RefinePollDraftSchema),
 	})
@@ -57,9 +66,11 @@ export const createAgendaItem = admin
 			}),
 		);
 
+		const desc = normalizeAgendaItemDescription(args.description);
 		const newItem = {
 			id: agendaItemId,
 			title: args.title,
+			...(desc !== undefined ? { description: desc } : {}),
 			pollIds,
 			depth: 0,
 		} satisfies AgendaItem;
@@ -90,6 +101,7 @@ export const updateAgendaItem = admin
 	.input({
 		agendaItemId: z.string().min(1),
 		title: z.string().trim().min(1).optional(),
+		description: z.string().optional(),
 		polls: z.array(PollDraftSchema.extend({ id: zid('meetingPolls').optional() })),
 	})
 	.public(async ({ ctx, args }) => {
@@ -126,7 +138,7 @@ export const updateAgendaItem = admin
 				assertMeetingPollEditable(existing);
 
 				const nextAllowsAbstain = poll.allowsAbstain;
-				const options = optionsWithAbstainLast(poll.options, nextAllowsAbstain);
+				const options = optionsWithAbstainLastRows(poll.options, nextAllowsAbstain);
 
 				const base = {
 					...existing,
@@ -193,6 +205,9 @@ export const updateAgendaItem = admin
 		const agenda = updateAgendaItemById(agendaNow, args.agendaItemId, (agendaItem) => ({
 			...agendaItem,
 			title: args.title ?? agendaItem.title,
+			...(args.description !== undefined
+				? { description: normalizeAgendaItemDescription(args.description) ?? null }
+				: {}),
 			pollIds: Array.from(newPollIds),
 		}));
 

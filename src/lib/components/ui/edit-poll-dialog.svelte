@@ -9,17 +9,17 @@
 	};
 
 	let { dialogTitle, dialogDescription, poll = $bindable(), ...props }: Props = $props();
+
+	function closeDialog() {
+		poll = null;
+	}
 </script>
 
 <AlertDialog.Root
 	open={poll != null}
 	onOpenChange={(open) => {
 		if (!open) {
-			if (props.onDiscard) {
-				props.onDiscard();
-			} else {
-				poll = null;
-			}
+			closeDialog();
 		}
 	}}
 >
@@ -32,7 +32,14 @@
 		</AlertDialog.Header>
 		{#if poll}
 			{#key poll?.id}
-				<EditPoll {poll} {...props} />
+				<EditPoll
+					{poll}
+					{...props}
+					onDiscard={() => {
+						props.onDiscard?.();
+						closeDialog();
+					}}
+				/>
 			{/key}
 		{/if}
 	</AlertDialog.Content>

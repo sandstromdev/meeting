@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { api } from '$convex/_generated/api';
-	import PollDialogProjector from '$lib/components/blocks/poll-dialog/poll-dialog-projector.svelte';
-	import Requests from '$lib/components/blocks/poll-dialog/requests.svelte';
-	import PollResultsDisplay from '$lib/components/poll-results-display.svelte';
+	import type { Id } from '$convex/_generated/dataModel';
+	import PollResultsDisplay, {
+		type PollResultsDisplayData,
+	} from '$lib/components/poll-results-display.svelte';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
 	import { Button } from '$lib/components/ui/button';
 	import Checkbox from '$lib/components/ui/checkbox/checkbox.svelte';
@@ -10,18 +11,48 @@
 	import * as Field from '$lib/components/ui/field';
 	import * as RadioGroup from '$lib/components/ui/radio-group';
 	import ScrollArea from '$lib/components/ui/scroll-area/scroll-area.svelte';
-	import { getMeetingContext } from '$lib/context.svelte';
-	import { usePageState } from '$lib/page-state.svelte';
+	import type { Snippet } from 'svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 
-	const meeting = getMeetingContext();
-	const ps = usePageState();
-	const currentPoll = meeting.query(api.meeting.users.meetingPoll.getCurrentPoll);
-	const currentPollCounters = meeting.query(api.meeting.users.meetingPoll.getCurrentPollCounters);
+	type CurrentPoll = NonNullable<typeof api.meeting.users.meetingPoll.getCurrentPoll._returnType>;
+	type PollCounters = NonNullable<
+		typeof api.meeting.users.meetingPoll.getCurrentPollCounters._returnType
+	>;
 
-	const counters = $derived(
-		currentPollCounters.data ?? { votersCount: 0, eligibleVoters: 0, votesCount: 0 },
-	);
+	let {
+		poll,
+		counters,
+		pollResults,
+		showDetailedResults,
+		isProjector,
+		isAbsent,
+		isAdmin,
+		currentMeetingPollId,
+		onVote,
+		onRetractVote,
+		onClosePollAndShowResults,
+		onCancelPoll,
+		onClearCurrentPollId,
+		onOpenPoll,
+		adminExtras,
+	}: {
+		poll: CurrentPoll | null;
+		counters: PollCounters;
+		pollResults: PollResultsDisplayData | null;
+		showDetailedResults: boolean;
+		isProjector: boolean;
+		isAbsent: boolean;
+		isAdmin: boolean;
+		currentMeetingPollId: Id<'meetingPolls'> | null | undefined;
+		onVote: (optionIndexes: number[]) => Promise<void>;
+		onRetractVote: () => Promise<void>;
+		/** Admin-only; omit when `isAdmin` is false. */
+		onClosePollAndShowResults?: () => Promise<void>;
+		onCancelPoll?: () => Promise<void>;
+		onClearCurrentPollId?: () => Promise<void>;
+		onOpenPoll?: () => Promise<void>;
+		adminExtras?: Snippet;
+	} = $props();
 
 	let isSubmitting = $state(false);
 	let isRetracting = $state(false);
@@ -30,21 +61,6 @@
 	let isChangingVote = $state(false);
 	/** When in change mode, the option indexes the user had before retracting (for cancel and hasSelectionChanged). */
 	let previousVoteOptionIndexes = $state<number[]>([]);
-
-	const poll = $derived(currentPoll.data ?? null);
-
-	const pollResults = meeting.query(api.meeting.users.meetingPoll.getPollResultsById, () =>
-		poll && !poll.isOpen ? { pollId: poll.id } : 'skip',
-	);
-
-	const showPollDetailedResults = $derived(
-		poll
-			? poll.isResultPublic ||
-					(!ps.isProjector &&
-						meeting.isAdmin &&
-						(pollResults.data?.results.optionTotals?.length ?? 0) > 0)
-			: false,
-	);
 
 	$effect(() => {
 		if (poll?.hasVoted && poll.isOpen && isChangingVote) {
@@ -66,7 +82,7 @@
 					.toArray()
 			: [],
 	);
-	const isDialogOpen = $derived(!ps.isProjector && !!poll);
+	const isDialogOpen = $derived(!isProjector && !!poll);
 
 	const hasSelectionChanged = $derived(
 		(() => {
@@ -122,7 +138,7 @@
 		}
 		isRetracting = true;
 		try {
-			await meeting.mutate(api.meeting.users.meetingPoll.retractVote, { pollId: poll.id });
+			await onRetractVote();
 			isChangingVote = true;
 		} finally {
 			isRetracting = false;
@@ -136,10 +152,7 @@
 
 		isSubmitting = true;
 		try {
-			await meeting.mutate(api.meeting.users.meetingPoll.vote, {
-				pollId: poll.id,
-				optionIndexes: effectiveSelection,
-			});
+			await onVote(effectiveSelection);
 			selectedOptionIndexes.clear();
 			previousVoteOptionIndexes = [];
 			isChangingVote = false;
@@ -154,10 +167,7 @@
 		}
 		isSubmitting = true;
 		try {
-			await meeting.mutate(api.meeting.users.meetingPoll.vote, {
-				pollId: poll.id,
-				optionIndexes: previousVoteOptionIndexes,
-			});
+			await onVote(previousVoteOptionIndexes);
 			selectedOptionIndexes.clear();
 			previousVoteOptionIndexes = [];
 			isChangingVote = false;
@@ -169,20 +179,21 @@
 	function isOptionDisabled(optionIndex: number) {
 		return (
 			(poll?.hasVoted && !isChangingVote) ||
-			(isMultiWinner && !canSelectMoreOptions && !selectedOptionIndexes.has(optionIndex))
+			(isMultiWinner &&
+				poll?.maxVotesPerVoter !== 1 &&
+				!canSelectMoreOptions &&
+				!selectedOptionIndexes.has(optionIndex))
 		);
 	}
 </script>
 
 {#if poll}
-	{#if ps.isProjector}
-		<PollDialogProjector {poll} {counters} />
-	{:else if !meeting.isAbsent}
+	{#if !isProjector && !isAbsent}
 		<AlertDialog.Root open={isDialogOpen}>
 			<AlertDialog.Content
-				class="!inset-0 !grid !h-[100dvh] !w-screen !max-w-none !translate-x-0 !translate-y-0 !rounded-none !border-0 !p-4 sm:!top-[50%] sm:!left-[50%] sm:!h-max sm:!w-full sm:!max-w-lg sm:!translate-x-[-50%] sm:!translate-y-[-50%] sm:!rounded-lg sm:!border sm:!p-6"
+				class="inset-0 grid max-h-[100dvh] w-screen max-w-none translate-x-0 translate-y-0 rounded-none border-0 p-4 sm:top-[50%] sm:left-[50%] sm:w-full sm:max-w-lg sm:translate-x-[-50%] sm:translate-y-[-50%] sm:rounded-lg sm:border sm:p-6"
 			>
-				<div class="flex max-h-[100dvh] flex-col gap-4 overflow-y-auto">
+				<div class="flex flex-col gap-4 overflow-y-auto">
 					<AlertDialog.Header>
 						<AlertDialog.Title>{poll.title}</AlertDialog.Title>
 						<AlertDialog.Description>
@@ -196,103 +207,110 @@
 						</AlertDialog.Description>
 					</AlertDialog.Header>
 
-					{#if meeting.isAdmin && poll.isOpen}
-						<Requests />
+					{#if isAdmin && poll.isOpen && adminExtras}
+						{@render adminExtras()}
 					{/if}
 
-					{#if poll.isOpen}
-						{#if poll.hasVoted && !isChangingVote}
-							<p class="text-sm text-muted-foreground">
-								Du har röstat ({poll.myVoteOptionIndexes.length}/{poll.maxVotesPerVoter}).
-							</p>
-							<p class="text-xs text-muted-foreground">
-								Dina röster: {poll.myVoteOptionIndexes.map((i) => poll.options[i]).join(', ')}
-							</p>
-							<div class="mt-auto">
-								<Button
-									variant="outline"
-									onclick={enterChangeMode}
-									loading={isRetracting}
-									disabled={isRetracting}
-								>
-									Ändra röst
-								</Button>
-							</div>
-						{:else}
-							<Field.Set>
-								<Field.Legend>Välj alternativ</Field.Legend>
-								<Field.Description
-									>{isMultiWinner
-										? 'Välj upp till ' + poll.maxVotesPerVoter + ' alternativ.'
-										: 'Välj ett alternativ.'}</Field.Description
-								>
-								<Field.Content>
-									<ScrollArea class="h-[30vh]">
-										{#if isMultiWinner}
-											<div class="flex flex-col gap-2">
-												{#each poll.options as option, optionIndex (optionIndex)}
-													<Field.Label for={optionIndex.toString()}>
-														<Field.Field orientation="horizontal">
-															<Field.Content>
-																<Field.Title>{option}</Field.Title>
-															</Field.Content>
-															<Checkbox
-																checked={selectedOptionIndexes.has(optionIndex)}
-																onCheckedChange={(checked) => toggleOption(optionIndex, checked)}
-																disabled={isOptionDisabled(optionIndex)}
-																id={optionIndex.toString()}
-															/>
-														</Field.Field>
-													</Field.Label>
-												{/each}
-											</div>
-										{:else}
-											<RadioGroup.Root
-												class="gap-2"
-												value={effectiveSelection[0]?.toString()}
-												onValueChange={(value) => toggleOption(Number(value), true)}
-											>
-												{#each poll.options as option, optionIndex (optionIndex)}
-													<Field.Label for={optionIndex.toString()}>
-														<Field.Field orientation="horizontal">
-															<Field.Content>
-																<Field.Title>{option}</Field.Title>
-															</Field.Content>
-															<RadioGroup.Item
-																value={optionIndex.toString()}
-																id={optionIndex.toString()}
-																disabled={isOptionDisabled(optionIndex)}
-															/>
-														</Field.Field>
-													</Field.Label>
-												{/each}
-											</RadioGroup.Root>
+					<ScrollArea class="">
+						<div class="space-y-2">
+							{#if poll.isOpen}
+								{#if poll.hasVoted && !isChangingVote}
+									<p class="text-sm text-muted-foreground">
+										Du har röstat ({poll.myVoteOptionIndexes.length}/{poll.maxVotesPerVoter}).
+									</p>
+									<p class="text-xs text-muted-foreground">
+										Dina röster: {poll.myVoteOptionIndexes
+											.map((i) => poll.options[i].title)
+											.join(', ')}
+									</p>
+									<div class="mt-auto">
+										<Button
+											variant="outline"
+											onclick={enterChangeMode}
+											loading={isRetracting}
+											disabled={isRetracting}
+										>
+											Ändra röst
+										</Button>
+									</div>
+								{:else}
+									<Field.Set>
+										<Field.Legend>Välj alternativ</Field.Legend>
+										<Field.Description
+											>{isMultiWinner
+												? 'Välj upp till ' + poll.maxVotesPerVoter + ' alternativ.'
+												: 'Välj ett alternativ.'}</Field.Description
+										>
+										<Field.Content>
+											{#if isMultiWinner && poll.maxVotesPerVoter > 1}
+												<div class="flex flex-col gap-2">
+													{#each poll.options as option, optionIndex (optionIndex)}
+														<Field.Label for={optionIndex.toString()}>
+															<Field.Field orientation="horizontal">
+																<Field.Content>
+																	<Field.Title>{option.title}</Field.Title>
+																	{#if option.description}
+																		<Field.Description>{option.description}</Field.Description>
+																	{/if}
+																</Field.Content>
+																<Checkbox
+																	checked={selectedOptionIndexes.has(optionIndex)}
+																	onCheckedChange={(checked) => toggleOption(optionIndex, checked)}
+																	disabled={isOptionDisabled(optionIndex)}
+																	id={optionIndex.toString()}
+																/>
+															</Field.Field>
+														</Field.Label>
+													{/each}
+												</div>
+											{:else}
+												<RadioGroup.Root
+													class="gap-2"
+													value={effectiveSelection[0]?.toString()}
+													onValueChange={(value) => toggleOption(Number(value), true)}
+												>
+													{#each poll.options as option, optionIndex (optionIndex)}
+														<Field.Label for={optionIndex.toString()}>
+															<Field.Field orientation="horizontal">
+																<Field.Content>
+																	<Field.Title>{option.title}</Field.Title>
+																	{#if option.description}
+																		<Field.Description>{option.description}</Field.Description>
+																	{/if}
+																</Field.Content>
+																<RadioGroup.Item
+																	value={optionIndex.toString()}
+																	id={optionIndex.toString()}
+																	disabled={isOptionDisabled(optionIndex)}
+																/>
+															</Field.Field>
+														</Field.Label>
+													{/each}
+												</RadioGroup.Root>
+											{/if}
+										</Field.Content>
+									</Field.Set>
+									<div class="mt-auto flex items-center gap-2">
+										<Button onclick={submitVote} loading={isSubmitting} disabled={!canVote}>
+											{isChangingVote ? 'Ändra röst' : 'Rösta'}
+										</Button>
+										{#if isChangingVote}
+											<Button variant="ghost" onclick={cancelChangeMode} disabled={isSubmitting}>
+												Avbryt
+											</Button>
 										{/if}
-									</ScrollArea>
-								</Field.Content>
-							</Field.Set>
-							<div class="mt-auto flex items-center gap-2">
-								<Button onclick={submitVote} loading={isSubmitting} disabled={!canVote}>
-									{isChangingVote ? 'Ändra röst' : 'Rösta'}
-								</Button>
-								{#if isChangingVote}
-									<Button variant="ghost" onclick={cancelChangeMode} disabled={isSubmitting}>
-										Avbryt
-									</Button>
+										<span class="text-xs text-muted-foreground">
+											Valt {effectiveSelection.length} av {poll.maxVotesPerVoter}
+										</span>
+									</div>
 								{/if}
-								<span class="text-xs text-muted-foreground">
-									Valt {effectiveSelection.length} av {poll.maxVotesPerVoter}
-								</span>
-							</div>
-						{/if}
-					{:else}
-						<PollResultsDisplay
-							data={pollResults.data ?? null}
-							showDetailedResults={showPollDetailedResults}
-						/>
-					{/if}
+							{:else}
+								<PollResultsDisplay data={pollResults} {showDetailedResults} />
+							{/if}
+						</div>
+					</ScrollArea>
 
-					{#if meeting.isAdmin}
+					{#if isAdmin}
 						<div class="mt-auto flex items-center gap-2">
 							{#if poll.isOpen}
 								<Button
@@ -304,31 +322,28 @@
 												' av ' +
 												counters.eligibleVoters +
 												' har röstat. Är du säker på att du vill stänga omröstningen och visa resultatet?',
-											onConfirm: () =>
-												meeting.adminMutate(api.meeting.admin.meetingPoll.closePollAndShowResults, {
-													pollId: poll.id,
-												}),
+											onConfirm: async () => {
+												await onClosePollAndShowResults?.();
+											},
 										})}>Stäng och visa resultat</Button
 								>
 								<Button
 									variant="destructive"
-									onclick={() =>
-										meeting.adminMutate(api.meeting.admin.meetingPoll.cancelPoll, {
-											pollId: poll.id,
-										})}>Avbryt</Button
+									onclick={async () => {
+										await onCancelPoll?.();
+									}}>Avbryt</Button
 								>
-							{:else if meeting.meeting.currentPollId === poll.id}
+							{:else if currentMeetingPollId === poll.id}
 								<Button
-									onclick={() =>
-										meeting.adminMutate(api.meeting.admin.meetingPoll.clearCurrentPollId)}
-									>Stäng</Button
+									onclick={async () => {
+										await onClearCurrentPollId?.();
+									}}>Stäng</Button
 								>
 							{:else}
 								<Button
-									onclick={() =>
-										meeting.adminMutate(api.meeting.admin.meetingPoll.openPoll, {
-											pollId: poll.id,
-										})}>Öppna</Button
+									onclick={async () => {
+										await onOpenPoll?.();
+									}}>Öppna</Button
 								>
 							{/if}
 						</div>

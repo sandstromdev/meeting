@@ -73,7 +73,7 @@
 							<ChevronDownIcon class="size-4 shrink-0 transition-transform" />
 						</CollapsibleTrigger>
 						<CollapsibleContent>
-							<ol class="border-t">
+							<ol>
 								{#each parts.previous as item, i (item.id)}
 									<AgendaItemRow
 										{item}

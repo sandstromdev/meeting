@@ -12,6 +12,7 @@ import {
 	getLatestMeetingPollResultSnapshot,
 	getMeetingPollOrThrow,
 } from '$convex/helpers/meetingPoll';
+import { normalizeStoredPollOptions } from '$lib/pollOptions';
 import { zid } from 'convex-helpers/server/zod4';
 import { z } from 'zod';
 
@@ -58,7 +59,7 @@ export const getPollsByAgendaItemId = withMe
 				return {
 					id: poll._id,
 					title: poll.title,
-					options: poll.options,
+					options: normalizeStoredPollOptions(poll.options),
 					isOpen: poll.isOpen,
 					maxVotesPerVoter: poll.maxVotesPerVoter,
 					votesCount,
@@ -98,7 +99,7 @@ export const getCurrentPoll = withMe.query().public(async ({ ctx }) => {
 	return {
 		id: poll._id,
 		title: poll.title,
-		options: poll.options,
+		options: normalizeStoredPollOptions(poll.options),
 		isOpen: poll.isOpen,
 		maxVotesPerVoter: poll.maxVotesPerVoter,
 		isResultPublic: poll.isResultPublic,
@@ -157,6 +158,7 @@ export const getPollResultsById = withMe
 			: result.results.winners.map((winner) => ({
 					optionIndex: winner.optionIndex,
 					option: winner.option,
+					description: winner.description,
 					votes: undefined,
 				}));
 

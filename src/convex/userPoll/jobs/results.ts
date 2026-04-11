@@ -5,6 +5,7 @@ import {
 	rankOptionsForScoring,
 	usableVotesFromRanked,
 } from '$convex/helpers/poll';
+import { normalizeStoredPollOptions } from '$lib/pollOptions';
 import { getUserPollOrThrow } from '$convex/helpers/userPoll';
 import { zid } from 'convex-helpers/server/zod4';
 
@@ -18,7 +19,10 @@ export const getPollResults = c
 			.withIndex('by_poll', (q) => q.eq('pollId', poll._id))
 			.collect();
 
-		const optionTotals = buildOptionTotalsFromVotes(poll.options, votes);
+		const optionTotals = buildOptionTotalsFromVotes(
+			normalizeStoredPollOptions(poll.options),
+			votes,
+		);
 		const ranked = rankOptionsForScoring(optionTotals, poll.allowsAbstain);
 		const usableVotes = usableVotesFromRanked(ranked);
 

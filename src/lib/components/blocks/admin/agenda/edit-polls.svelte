@@ -26,7 +26,9 @@
 						<Card.Header>
 							<Card.Title>Poll: {pollDraft.title}</Card.Title>
 							<Card.Description>
-								Alternativ: {pollDraft.options.join(', ')} ({pollDraft.options.length} st)
+								Alternativ: {pollDraft.options.map((o) => o.title).join(', ')} ({pollDraft.options
+									.length}
+								st)
 							</Card.Description>
 						</Card.Header>
 						{#if drafts.isEditing(i)}

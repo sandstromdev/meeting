@@ -1,5 +1,5 @@
 <script lang="ts">
-	import PollDialog from '$lib/components/blocks/poll-dialog/poll-dialog.svelte';
+	import MeetingPollDialog from '$lib/components/blocks/poll-dialog/meeting-poll-dialog.svelte';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import Delayed from '$lib/components/ui/delayed.svelte';
 	import MessageLayout from '$lib/components/ui/message-layout.svelte';
@@ -17,7 +17,7 @@
 {#if data.meeting.data && data.attendance.data}
 	<MeetingContext data={data.meeting.data} attendance={data.attendance.data}>
 		<AbsentDialog />
-		<PollDialog />
+		<MeetingPollDialog />
 		{@render children()}
 		<UserControls />
 	</MeetingContext>

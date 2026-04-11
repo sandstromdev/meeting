@@ -1,6 +1,20 @@
-import { withMe } from '$convex/helpers/auth';
-import { getMeetingRuntimeVersions } from '$convex/helpers/meetingRuntime';
 import type { Id } from '$convex/_generated/dataModel';
+import { api } from '$convex/_generated/api';
+import {
+	getAbsentCounter,
+	getParticipantCounter,
+	getVotesCounter,
+	getVotersCounter,
+} from '$convex/helpers/counters';
+import { withMe } from '$convex/helpers/auth';
+import { getLatestMeetingPollResultSnapshot } from '$convex/helpers/meetingPoll';
+import { getMeetingRuntimeVersions } from '$convex/helpers/meetingRuntime';
+import { normalizeStoredPollOptions, type PollOptionRow } from '$lib/pollOptions';
+
+export type SimplifiedPollResultsPayload = Omit<
+	NonNullable<typeof api.meeting.users.meetingPoll.getPollResultsById._returnType>,
+	'pollId'
+>;
 
 export type SimplifiedVersions = {
 	simplifiedColdVersion: number;
@@ -29,6 +43,7 @@ export type SimplifiedColdSnapshot = {
 	agenda: Array<{
 		id: string;
 		title: string;
+		description: string | null;
 		depth: number;
 	}>;
 	/** Resolved like `getData`: valid meeting pointer or first item. */
@@ -66,13 +81,21 @@ export type SimplifiedHotSnapshot = {
 	poll: {
 		id: Id<'meetingPolls'>;
 		title: string;
-		options: string[];
+		options: PollOptionRow[];
 		type: 'single_winner' | 'multi_winner';
 		isOpen: boolean;
 		isResultPublic: boolean;
 		maxVotesPerVoter: number;
 		allowsAbstain: boolean;
 	} | null;
+	/** Present when `poll` is non-null; same semantics as `getCurrentPollCounters`. */
+	pollCounters: {
+		votersCount: number;
+		eligibleVoters: number;
+		votesCount: number;
+	} | null;
+	/** Present when `poll` is closed with a stored result snapshot; mirrors `getPollResultsById` without `pollId`. */
+	pollResults: SimplifiedPollResultsPayload | null;
 };
 
 export type SimplifiedMeSnapshot = {
@@ -111,6 +134,7 @@ export const getColdSnapshot = withMe
 			agenda: ctx.meeting.agenda.map((item) => ({
 				id: item.id,
 				title: item.title,
+				description: item.description ?? null,
 				depth: item.depth,
 			})),
 			currentAgendaItemId: resolveSimplifiedCurrentAgendaItemId(
@@ -125,30 +149,75 @@ export const getHotSnapshot = withMe
 	.public(async ({ ctx }): Promise<SimplifiedHotSnapshot> => {
 		const versionsPromise = getMeetingRuntimeVersions(ctx.db, ctx.meeting._id);
 
-		const pollPromise = (async () => {
+		const pollDataPromise = (async () => {
+			let poll: SimplifiedHotSnapshot['poll'] = null;
+			let pollCounters: SimplifiedHotSnapshot['pollCounters'] = null;
+			let pollResults: SimplifiedHotSnapshot['pollResults'] = null;
+
 			if (!ctx.meeting.currentPollId) {
-				return null;
+				return { poll, pollCounters, pollResults };
 			}
 
-			const poll = await ctx.db.get('meetingPolls', ctx.meeting.currentPollId);
+			const pollDoc = await ctx.db.get('meetingPolls', ctx.meeting.currentPollId);
 
-			if (!poll || poll.meetingId !== ctx.meeting._id) {
-				return null;
+			if (!pollDoc || pollDoc.meetingId !== ctx.meeting._id) {
+				return { poll, pollCounters, pollResults };
 			}
 
-			return {
-				id: poll._id,
-				title: poll.title,
-				options: poll.options,
-				type: poll.type,
-				isOpen: poll.isOpen,
-				isResultPublic: poll.isResultPublic,
-				maxVotesPerVoter: poll.maxVotesPerVoter,
-				allowsAbstain: poll.allowsAbstain,
+			poll = {
+				id: pollDoc._id,
+				title: pollDoc.title,
+				options: normalizeStoredPollOptions(pollDoc.options),
+				type: pollDoc.type,
+				isOpen: pollDoc.isOpen,
+				isResultPublic: pollDoc.isResultPublic,
+				maxVotesPerVoter: pollDoc.maxVotesPerVoter,
+				allowsAbstain: pollDoc.allowsAbstain,
 			};
+
+			const [participants, absentees, votersCount, votesCount] = await Promise.all([
+				getParticipantCounter(ctx.meeting._id).count(ctx),
+				getAbsentCounter(ctx.meeting._id).count(ctx),
+				getVotersCounter(ctx.meeting._id, pollDoc._id).count(ctx),
+				getVotesCounter(ctx.meeting._id, pollDoc._id).count(ctx),
+			]);
+
+			pollCounters = {
+				votersCount,
+				eligibleVoters: Math.max(0, participants - absentees),
+				votesCount,
+			};
+
+			if (!pollDoc.isOpen && pollDoc.closedAt != null) {
+				const result = await getLatestMeetingPollResultSnapshot(ctx.db, pollDoc._id);
+				if (result) {
+					const canSeeOptionTotals = pollDoc.isResultPublic || ctx.me.role === 'admin';
+					const winners = canSeeOptionTotals
+						? result.results.winners
+						: result.results.winners.map((winner) => ({
+								optionIndex: winner.optionIndex,
+								option: winner.option,
+								description: winner.description,
+								votes: undefined,
+							}));
+					pollResults = {
+						complete: result.complete,
+						results: {
+							optionTotals: canSeeOptionTotals ? result.results.optionTotals : undefined,
+							winners,
+							isTie: result.results.isTie,
+							majorityRule: result.results.majorityRule,
+							counts: result.results.counts,
+						},
+					};
+				}
+			}
+
+			return { poll, pollCounters, pollResults };
 		})();
 
-		const [versions, poll] = await Promise.all([versionsPromise, pollPromise]);
+		const [versions, pollData] = await Promise.all([versionsPromise, pollDataPromise]);
+		const { poll, pollCounters, pollResults } = pollData;
 
 		const currentSpeaker = ctx.meeting.currentSpeaker
 			? { userId: ctx.meeting.currentSpeaker.userId }
@@ -183,6 +252,8 @@ export const getHotSnapshot = withMe
 				pointOfOrder: ctx.meeting.pointOfOrder,
 			},
 			poll,
+			pollCounters,
+			pollResults,
 		};
 	});
 

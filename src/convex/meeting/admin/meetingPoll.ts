@@ -14,9 +14,8 @@ import {
 	createMeetingPollHelper,
 	getLatestMeetingPollResultSnapshot,
 	getMeetingPollOrThrow,
-	optionsWithAbstainLast,
 } from '$convex/helpers/meetingPoll';
-import { ABSTAIN_OPTION_LABEL } from '$lib/polls';
+import { draftOptionsFromStored, optionsWithAbstainLastRows } from '$lib/pollOptions';
 import { FullPollSchema, PollDraftSchema, RefinePollDraftSchema } from '$lib/validation';
 import { zid } from 'convex-helpers/server/zod4';
 import { z } from 'zod';
@@ -136,9 +135,8 @@ export const editPoll = admin
 		assertMeetingPollEditable(poll);
 
 		const nextAllowsAbstain = args.edits.allowsAbstain ?? poll.allowsAbstain;
-		const rawOptions = args.edits.options ?? poll.options;
-		/** Draft-shaped options (no stored `Avstår` row) for `PollDraftSchema` / refine. */
-		const draftOptions = rawOptions.filter((o) => o !== ABSTAIN_OPTION_LABEL);
+		const draftOptions =
+			args.edits.options ?? draftOptionsFromStored(poll.options, poll.allowsAbstain);
 		const mergedType = args.edits.type ?? poll.type;
 
 		const draftForRefine =
@@ -170,7 +168,7 @@ export const editPoll = admin
 		const refinedDraft = RefinePollDraftSchema.safeParse(draftForRefine);
 		AppError.assertZodSuccess(refinedDraft, appErrors.invalid_poll_draft);
 
-		const options = optionsWithAbstainLast(rawOptions, nextAllowsAbstain);
+		const options = optionsWithAbstainLastRows(refinedDraft.data.options, nextAllowsAbstain);
 
 		let updatedFields = {
 			...poll,

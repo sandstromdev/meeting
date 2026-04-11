@@ -6,6 +6,8 @@
 	import { useNow } from '$lib/now.svelte';
 	import { usePageState } from '$lib/page-state.svelte';
 
+	let { noBorder = false }: { noBorder?: boolean } = $props();
+
 	const meeting = getMeetingContext();
 	const queue = meeting.speakerQueue;
 	const cs = $derived(queue.current);
@@ -21,7 +23,8 @@
 
 <section
 	class={cn(
-		'flex justify-between gap-4 rounded-lg border px-4 py-3 text-foreground',
+		'flex justify-between gap-4 rounded-lg px-4 py-3 text-foreground',
+		!noBorder && 'border',
 
 		ps.isProjector && 'flex-col items-stretch',
 
