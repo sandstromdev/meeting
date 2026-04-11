@@ -14,8 +14,8 @@
 	let { data, children }: LayoutProps = $props();
 </script>
 
-{#if data.meeting.data}
-	<MeetingContext data={data.meeting.data}>
+{#if data.meeting.data && data.attendance.data}
+	<MeetingContext data={data.meeting.data} attendance={data.attendance.data}>
 		<AbsentDialog />
 		<PollDialog />
 		{@render children()}
