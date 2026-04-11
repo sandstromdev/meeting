@@ -11,7 +11,7 @@ import type { UseQueryOptions, UseQueryReturn } from '$lib/types';
 import { PUBLIC_SITE_URL } from '$env/static/public';
 
 export type MeetingData = typeof api.meeting.users.meeting.getData._returnType;
-export type AttendanceState = typeof api.meeting.admin.meeting.getAttendance._returnType;
+export type AttendanceState = typeof api.meeting.users.meeting.getAttendance._returnType;
 
 const [getContext, setContext] = createContext<MeetingState>();
 

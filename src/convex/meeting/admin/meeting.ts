@@ -1,11 +1,7 @@
 import { internal } from '$convex/_generated/api';
 import { c } from '$convex/helpers';
 import { admin } from '$convex/helpers/auth';
-import {
-	getAbsentCounter,
-	getBannedCounter,
-	getParticipantCounter,
-} from '$convex/helpers/counters';
+import { getAbsentCounter, getParticipantCounter } from '$convex/helpers/counters';
 import { AppError, appErrors } from '$convex/helpers/error';
 import { completeReturnToMeeting, logSpeakerSlot } from '$convex/helpers/meeting';
 import { resetMeetingAttendanceState } from '$convex/helpers/meetingAttendanceReset';
@@ -43,16 +39,6 @@ export const getSpeakerLogEntries = admin.query().public(async ({ ctx }) => {
 		startTime: e.startTime,
 		endTime: e.endTime,
 	}));
-});
-
-export const getAttendance = admin.query().public(async ({ ctx }) => {
-	const [participants, absentees, banned] = await Promise.all([
-		getParticipantCounter(ctx.meeting._id).count(ctx),
-		getAbsentCounter(ctx.meeting._id).count(ctx),
-		getBannedCounter(ctx.meeting._id).count(ctx),
-	]);
-
-	return { participants, absentees, banned };
 });
 
 export const getAbsentees = admin.query().public(async ({ ctx }) => {

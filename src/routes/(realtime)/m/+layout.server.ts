@@ -17,7 +17,7 @@ export const load = (async ({ locals, cookies, url }) => {
 	}
 
 	const attendance = await convexLoad(
-		api.meeting.admin.meeting.getAttendance,
+		api.meeting.users.meeting.getAttendance,
 		{ meetingId: locals.meetingId },
 		{ token: locals.token },
 	);
