@@ -78,21 +78,7 @@ async function upsertMeetingUserFromImport(
 			}
 			userId = recoveredUser._id;
 		}
-	} /* else if (args.password?.trim()) {
-		try {
-			await auth.api.setUserPassword({
-				body: {
-					userId,
-					newPassword: password,
-				},
-				headers,
-			});
-			passwordUpdated = true;
-		} catch (error) {
-			console.error(error);
-			throw appErrors.internal_error();
-		}
-	} */
+	}
 
 	AppError.assertNotNull(userId, appErrors.internal_error());
 
