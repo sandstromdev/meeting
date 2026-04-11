@@ -1,8 +1,8 @@
 import { api } from '$convex/_generated/api';
-import { getAppError } from '$convex/helpers/error';
 import { authed } from '$convex/helpers/auth';
 import {
 	BULK_MEETING_USER_IMPORT_LIMIT,
+	COMMIT_IMPORT_MUTATION_MAX_ROWS,
 	bulkImportRawRowSchema,
 	serverValidateBulkImportRows,
 	type BulkMeetingUserImportValidationRow,
@@ -232,59 +232,103 @@ export const commitImport = authed
 		});
 
 		const parsedRows = serverValidateBulkImportRows(args.rows);
-		const rows = await mapInBatches(
-			parsedRows,
-			ACTION_BATCH_SIZE,
-			async (row): Promise<CommitRowResult> => {
-				if (!row.data) {
-					const invalidRow = buildInvalidRowResult(row);
-					return {
-						...invalidRow,
-						outcome: invalidRow.outcome,
-					};
-				}
 
-				try {
-					const result = await ctx.runMutation(api.meeting.admin.access.commitImportRow, {
-						meetingId: args.meetingId,
-						email: row.data.email,
-						name: row.data.name,
-						role: row.data.role,
-						...(row.data.password ? { password: row.data.password } : {}),
-					});
+		const batchPayload = parsedRows.flatMap((row) => {
+			if (!row.data) {
+				return [];
+			}
+			const item = {
+				rowNumber: row.rowNumber,
+				email: row.data.email,
+				name: row.data.name,
+				role: row.data.role,
+			};
+			if (row.data.password !== undefined) {
+				return [Object.assign(item, { password: row.data.password })];
+			}
+			return [item];
+		});
 
-					return {
-						rowNumber: row.rowNumber,
-						email: result.email,
-						name: result.name,
-						role: result.role,
-						passwordMode: row.data.passwordMode,
-						ok: result.ok,
-						outcome: result.outcome,
-						message: result.message,
-						errors: result.ok ? [] : [result.message],
-						createdUser: result.createdUser,
-						passwordUpdated: result.passwordUpdated,
-						participantCreated: result.participantCreated,
-						accessGranted: result.accessGranted,
-						userId: result.userId,
-					};
-				} catch (error) {
-					const appError = getAppError(error);
-					return {
-						rowNumber: row.rowNumber,
-						email: row.data.email,
-						name: row.data.name,
-						role: row.data.role,
-						passwordMode: row.data.passwordMode,
-						ok: false,
-						outcome: appError?.code ?? 'failed',
-						message: appError?.message ?? 'Raden kunde inte importeras.',
-						errors: [appError?.message ?? 'Raden kunde inte importeras.'],
-					};
-				}
-			},
-		);
+		const batchByRowNumber = new Map<
+			number,
+			{
+				rowNumber: number;
+				email: string;
+				name: string;
+				role: string;
+				ok: boolean;
+				outcome: string;
+				message: string;
+				createdUser?: boolean;
+				passwordUpdated?: boolean;
+				participantCreated?: boolean;
+				accessGranted?: boolean;
+				userId?: string;
+			}
+		>();
+
+		for (let offset = 0; offset < batchPayload.length; offset += COMMIT_IMPORT_MUTATION_MAX_ROWS) {
+			const chunk = batchPayload.slice(offset, offset + COMMIT_IMPORT_MUTATION_MAX_ROWS);
+			const { rows: batchRows } = await ctx.runMutation(
+				api.meeting.admin.access.commitImportBatch,
+				{
+					meetingId: args.meetingId,
+					rows: chunk,
+				},
+			);
+			for (const batchRow of batchRows) {
+				batchByRowNumber.set(batchRow.rowNumber, batchRow);
+			}
+		}
+
+		const rows: CommitRowResult[] = parsedRows.map((row) => {
+			if (!row.data) {
+				const invalidRow = buildInvalidRowResult(row);
+				return {
+					rowNumber: invalidRow.rowNumber,
+					email: invalidRow.email,
+					name: invalidRow.name,
+					role: invalidRow.role,
+					passwordMode: invalidRow.passwordMode,
+					ok: invalidRow.ok,
+					outcome: invalidRow.outcome,
+					message: invalidRow.message,
+					errors: invalidRow.errors,
+				};
+			}
+
+			const result = batchByRowNumber.get(row.rowNumber);
+			if (!result) {
+				return {
+					rowNumber: row.rowNumber,
+					email: row.data.email,
+					name: row.data.name,
+					role: row.data.role,
+					passwordMode: row.data.passwordMode,
+					ok: false,
+					outcome: 'failed',
+					message: 'Raden kunde inte importeras.',
+					errors: ['Raden kunde inte importeras.'],
+				};
+			}
+
+			return {
+				rowNumber: row.rowNumber,
+				email: result.email,
+				name: result.name,
+				role: result.role,
+				passwordMode: row.data.passwordMode,
+				ok: result.ok,
+				outcome: result.outcome,
+				message: result.message,
+				errors: result.ok ? [] : [result.message],
+				createdUser: result.createdUser,
+				passwordUpdated: result.passwordUpdated,
+				participantCreated: result.participantCreated,
+				accessGranted: result.accessGranted,
+				userId: result.userId,
+			};
+		});
 
 		return {
 			limit: BULK_MEETING_USER_IMPORT_LIMIT,

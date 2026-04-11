@@ -2,7 +2,8 @@ import { authComponent, createAuth } from '$convex/auth';
 import type { Doc } from '$convex/_generated/dataModel';
 import type { MutationCtx } from '$convex/_generated/server';
 import { admin } from '$convex/helpers/auth';
-import { AppError, appErrors } from '$convex/helpers/error';
+import { COMMIT_IMPORT_MUTATION_MAX_ROWS } from '$convex/helpers/bulkMeetingUsers';
+import { AppError, appErrors, getAppError } from '$convex/helpers/error';
 import {
 	assertPlatformAdmin,
 	findAuthUserByEmail,
@@ -18,6 +19,19 @@ import { z } from 'zod';
 
 const accessModeSchema = z.enum(['open', 'closed', 'invite_only']);
 const roleSchema = z.enum(ROLES);
+
+const commitImportBatchRowSchema = z.object({
+	rowNumber: z.number().int().positive(),
+	email: z.email(),
+	name: z.string().trim().min(1),
+	role: roleSchema,
+	password: z.string().min(4).optional(),
+});
+
+const commitImportBatchRowsSchema = z
+	.array(commitImportBatchRowSchema)
+	.min(1)
+	.max(COMMIT_IMPORT_MUTATION_MAX_ROWS);
 
 function generateRandomPassword() {
 	return crypto.randomUUID().replaceAll('-', '');
@@ -63,20 +77,6 @@ async function upsertMeetingUserFromImport(
 				throw appErrors.internal_error();
 			}
 			userId = recoveredUser._id;
-		}
-	} else if (args.password?.trim()) {
-		try {
-			await auth.api.setUserPassword({
-				body: {
-					userId,
-					newPassword: password,
-				},
-				headers,
-			});
-			passwordUpdated = true;
-		} catch (error) {
-			console.error(error);
-			throw appErrors.internal_error();
 		}
 	}
 
@@ -223,17 +223,67 @@ export const removeAllowedUser = admin
 		});
 	});
 
-export const commitImportRow = admin
+export const commitImportBatch = admin
 	.mutation()
 	.input({
-		email: z.string().email(),
-		name: z.string().trim().min(1),
-		role: roleSchema,
-		password: z.string().min(4).optional(),
+		rows: commitImportBatchRowsSchema,
 	})
 	.public(async ({ ctx, args }) => {
 		assertPlatformAdmin(ctx.user);
-		return await upsertMeetingUserFromImport(ctx, args);
+
+		const results: {
+			rowNumber: number;
+			email: string;
+			name: string;
+			role: string;
+			ok: boolean;
+			outcome: string;
+			message: string;
+			createdUser?: boolean;
+			passwordUpdated?: boolean;
+			participantCreated?: boolean;
+			accessGranted?: boolean;
+			userId?: string;
+		}[] = [];
+
+		for (const row of args.rows) {
+			try {
+				const result = await upsertMeetingUserFromImport(ctx, {
+					email: row.email,
+					name: row.name,
+					role: row.role,
+					...(row.password ? { password: row.password } : {}),
+				});
+
+				results.push({
+					rowNumber: row.rowNumber,
+					email: result.email,
+					name: result.name,
+					role: result.role,
+					ok: result.ok,
+					outcome: result.outcome,
+					message: result.message,
+					createdUser: result.createdUser,
+					passwordUpdated: result.passwordUpdated,
+					participantCreated: result.participantCreated,
+					accessGranted: result.accessGranted,
+					userId: result.userId,
+				});
+			} catch (error) {
+				const appError = getAppError(error);
+				results.push({
+					rowNumber: row.rowNumber,
+					email: row.email,
+					name: row.name,
+					role: row.role,
+					ok: false,
+					outcome: appError?.code ?? 'failed',
+					message: appError?.message ?? 'Raden kunde inte importeras.',
+				});
+			}
+		}
+
+		return { rows: results };
 	});
 
 export const createAndAddUser = admin
