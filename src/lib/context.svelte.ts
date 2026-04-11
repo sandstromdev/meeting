@@ -45,6 +45,7 @@ export class MeetingState {
 	readonly convex: ConvexClient;
 	readonly agenda: AgendaState;
 	readonly speakerQueue: SpeakerQueue;
+	readonly code: string;
 
 	constructor(data: Getter<MeetingData>, attendance: Getter<AttendanceState>) {
 		this.#data = $state(data());
@@ -59,6 +60,7 @@ export class MeetingState {
 
 		this.agenda = new AgendaState(this);
 		this.speakerQueue = new SpeakerQueue(this);
+		this.code = this.#data.meeting.code;
 
 		this.#attendance = $state(attendance());
 
@@ -364,6 +366,10 @@ export class MeetingState {
 
 	get isPollOpen() {
 		return this.meeting.currentPollId !== undefined;
+	}
+
+	get meetingCode() {
+		return this.code;
 	}
 }
 
