@@ -4,10 +4,7 @@
 	import QueueControlsView from '$lib/components/blocks/queue-controls-view.svelte';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
 	import { Button } from '$lib/components/ui/button';
-	import Checkbox from '$lib/components/ui/checkbox/checkbox.svelte';
 	import { confirm } from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
-	import * as Field from '$lib/components/ui/field';
-	import * as RadioGroup from '$lib/components/ui/radio-group';
 	import SeoHead from '$lib/components/ui/seo-head.svelte';
 	import Separator from '$lib/components/ui/separator/separator.svelte';
 	import InfoIcon from '@lucide/svelte/icons/info';
@@ -23,12 +20,8 @@
 	import WifiOffIcon from '@lucide/svelte/icons/wifi-off';
 	import { page } from '$app/state';
 	import { useAppHttpClient } from '$lib/app-http/app-http-client.svelte';
-	import { SvelteSet } from 'svelte/reactivity';
 	import { createSimplifiedPolling } from './simplified-polling.svelte';
-
-	/*
-	TODO: Poll does not open as dialog
-	*/
+	import SimplifiedPollDialog from './simplified-poll-dialog.svelte';
 
 	const app = useAppHttpClient();
 	const p = createSimplifiedPolling({
@@ -36,9 +29,6 @@
 		getMeetingId: () => page.data.meetingId,
 	});
 
-	let selectedOptionIndexes = new SvelteSet<number>();
-
-	const poll = $derived(p.poll);
 	const meeting = $derived(p.meeting);
 
 	const simplifiedAgendaFlat = $derived(
@@ -53,92 +43,6 @@
 		),
 	);
 	const simplifiedCurrentAgendaItemId = $derived(p.currentAgendaItemId);
-
-	const isMultiWinner = $derived(poll?.type === 'multi_winner');
-
-	const effectiveSelection = $derived(
-		poll
-			? [...selectedOptionIndexes]
-					.filter((i) => i >= 0 && i < poll.options.length)
-					.toSorted((a, b) => a - b)
-					.slice(0, poll.maxVotesPerVoter)
-			: [],
-	);
-
-	const hasVoted = $derived(p.myPollVoteOptionIndexes.length > 0);
-
-	let isChangingVote = $state(false);
-	let isSubmittingVote = $state(false);
-
-	const canSubmitVote = $derived(
-		!!poll &&
-			poll.isOpen &&
-			effectiveSelection.length > 0 &&
-			effectiveSelection.length <= poll.maxVotesPerVoter &&
-			(!hasVoted || isChangingVote),
-	);
-
-	$effect(() => {
-		if (!poll?.isOpen) {
-			selectedOptionIndexes.clear();
-			isChangingVote = false;
-			return;
-		}
-		if (isChangingVote) {
-			return;
-		}
-		selectedOptionIndexes.clear();
-		for (const i of p.myPollVoteOptionIndexes) {
-			selectedOptionIndexes.add(i);
-		}
-	});
-
-	function toggleOption(optionIndex: number, checked: boolean) {
-		if (!poll?.isOpen || (hasVoted && !isChangingVote)) {
-			return;
-		}
-		if (isMultiWinner) {
-			if (!checked) {
-				selectedOptionIndexes.delete(optionIndex);
-			} else if (selectedOptionIndexes.size < poll.maxVotesPerVoter) {
-				selectedOptionIndexes.add(optionIndex);
-			}
-		} else if (checked) {
-			selectedOptionIndexes.clear();
-			selectedOptionIndexes.add(optionIndex);
-		}
-	}
-
-	async function submitVote() {
-		if (!poll || !canSubmitVote) {
-			return;
-		}
-		isSubmittingVote = true;
-		try {
-			await p.vote(poll.id, effectiveSelection);
-			isChangingVote = false;
-		} finally {
-			isSubmittingVote = false;
-		}
-	}
-
-	async function retractVote() {
-		if (!poll) {
-			return;
-		}
-		isSubmittingVote = true;
-		try {
-			await p.retractVote(poll.id);
-			isChangingVote = false;
-		} finally {
-			isSubmittingVote = false;
-		}
-	}
-
-	function enterChangeVote() {
-		isChangingVote = true;
-		selectedOptionIndexes.clear();
-	}
 
 	const meetingStatusLabel = $derived.by(() => {
 		const s = meeting?.status;
@@ -163,20 +67,6 @@
 	const meetingBlocked = $derived(
 		meeting && (!meeting.isOpen || !meeting.startedAt || Date.now() < meeting.startedAt),
 	);
-
-	function canSelectMoreOptions() {
-		return selectedOptionIndexes.size < (poll?.maxVotesPerVoter ?? 1);
-	}
-
-	function isOptionDisabled(optionIndex: number) {
-		if (!poll?.isOpen) {
-			return true;
-		}
-		if (hasVoted && !isChangingVote) {
-			return true;
-		}
-		return isMultiWinner && !canSelectMoreOptions() && !selectedOptionIndexes.has(optionIndex);
-	}
 </script>
 
 <SeoHead
@@ -355,119 +245,7 @@
 				{/if}
 			</div>
 
-			{#if poll}
-				<Separator />
-				<div class="space-y-3 rounded-lg border p-4">
-					<h2 class="text-lg font-semibold">{poll.title}</h2>
-					<p class="text-sm text-muted-foreground">
-						{#if poll.isOpen}
-							Omröstningen är öppen.
-						{:else}
-							Omröstningen är stängd.
-						{/if}
-					</p>
-
-					{#if poll.isOpen && !p.me?.absentSince}
-						{#if hasVoted && !isChangingVote}
-							<p class="text-sm text-muted-foreground">
-								Du har röstat ({p.myPollVoteOptionIndexes.length}/{poll.maxVotesPerVoter}).
-							</p>
-							<div class="flex flex-wrap gap-2">
-								<Button
-									variant="outline"
-									disabled={isSubmittingVote || p.actionBusy}
-									onclick={enterChangeVote}
-								>
-									Ändra röst
-								</Button>
-								<Button
-									variant="ghost"
-									disabled={isSubmittingVote || p.actionBusy}
-									onclick={retractVote}
-								>
-									Återkalla röst
-								</Button>
-							</div>
-						{:else}
-							<Field.Set>
-								<Field.Legend>Välj alternativ</Field.Legend>
-								<Field.Description>
-									{isMultiWinner
-										? `Välj upp till ${poll.maxVotesPerVoter} alternativ.`
-										: 'Välj ett alternativ.'}
-								</Field.Description>
-								<Field.Content>
-									{#if isMultiWinner}
-										<div class="flex flex-col gap-2">
-											{#each poll.options as option, optionIndex (optionIndex)}
-												<Field.Label for="poll-{optionIndex}">
-													<Field.Field orientation="horizontal">
-														<Field.Content>
-															<Field.Title>{option.title}</Field.Title>
-															{#if option.description}
-																<Field.Description>{option.description}</Field.Description>
-															{/if}
-														</Field.Content>
-														<Checkbox
-															checked={selectedOptionIndexes.has(optionIndex)}
-															onCheckedChange={(checked) =>
-																toggleOption(optionIndex, checked === true)}
-															disabled={isOptionDisabled(optionIndex)}
-															id="poll-{optionIndex}"
-														/>
-													</Field.Field>
-												</Field.Label>
-											{/each}
-										</div>
-									{:else}
-										<RadioGroup.Root
-											class="gap-2"
-											value={effectiveSelection[0]?.toString() ?? ''}
-											onValueChange={(value) => {
-												if (value !== undefined && value !== '') {
-													toggleOption(Number(value), true);
-												}
-											}}
-										>
-											{#each poll.options as option, optionIndex (optionIndex)}
-												<Field.Label for="poll-r-{optionIndex}">
-													<Field.Field orientation="horizontal">
-														<Field.Content>
-															<Field.Title>{option.title}</Field.Title>
-															{#if option.description}
-																<Field.Description>{option.description}</Field.Description>
-															{/if}
-														</Field.Content>
-														<RadioGroup.Item
-															value={optionIndex.toString()}
-															id="poll-r-{optionIndex}"
-															disabled={isOptionDisabled(optionIndex)}
-														/>
-													</Field.Field>
-												</Field.Label>
-											{/each}
-										</RadioGroup.Root>
-									{/if}
-								</Field.Content>
-							</Field.Set>
-							<Button
-								disabled={!canSubmitVote || isSubmittingVote || p.actionBusy}
-								onclick={submitVote}
-								loading={isSubmittingVote}
-							>
-								Lägg röst
-							</Button>
-						{/if}
-					{/if}
-
-					{#if !poll.isOpen && poll.isResultPublic}
-						<p class="text-sm text-muted-foreground">
-							Detaljerade valresultat visas inte i förenklat läge. Använd ordinarie mötesvy om det
-							går.
-						</p>
-					{/if}
-				</div>
-			{/if}
+			<SimplifiedPollDialog {p} />
 
 			<Separator />
 
