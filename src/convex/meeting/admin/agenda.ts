@@ -75,6 +75,8 @@ export const createAgendaItem = admin
 					: (normalizeAgendaItemDescription(args.description) ?? null),
 			pollIds,
 			depth: 0,
+			allowMotions: false,
+			motionSubmissionMode: 'open' as const,
 		} satisfies AgendaItem;
 
 		if (parentId) {
@@ -104,6 +106,8 @@ export const updateAgendaItem = admin
 		agendaItemId: z.string().min(1),
 		title: z.string().trim().min(1).optional(),
 		description: z.string().optional(),
+		allowMotions: z.boolean().optional(),
+		motionSubmissionMode: z.enum(['open', 'amendments_only']).optional(),
 		polls: z.array(PollDraftSchema.extend({ id: zid('meetingPolls').optional() })),
 	})
 	.public(async ({ ctx, args }) => {
@@ -209,6 +213,10 @@ export const updateAgendaItem = admin
 			title: args.title ?? agendaItem.title,
 			...(args.description !== undefined
 				? { description: normalizeAgendaItemDescription(args.description) ?? null }
+				: {}),
+			...(args.allowMotions !== undefined ? { allowMotions: args.allowMotions } : {}),
+			...(args.motionSubmissionMode !== undefined
+				? { motionSubmissionMode: args.motionSubmissionMode }
 				: {}),
 			pollIds: Array.from(newPollIds),
 		}));

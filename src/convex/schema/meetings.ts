@@ -9,6 +9,32 @@ export const AgendaItem = v.object({
 	pollIds: v.array(v.id('meetingPolls')),
 	/** Depth in the flat agenda list (0 = top-level, 1 = child, ...). */
 	depth: v.number(),
+	/** When true, participants may submit motions for this item while it is current. */
+	allowMotions: v.optional(v.boolean()),
+	/** How participant motion submission behaves for this item. */
+	motionSubmissionMode: v.optional(v.union(v.literal('open'), v.literal('amendments_only'))),
+});
+
+export const MeetingMotionStatus = v.union(
+	v.literal('pending'),
+	v.literal('approved'),
+	v.literal('rejected'),
+	v.literal('withdrawn'),
+);
+
+export const MeetingMotion = v.object({
+	meetingId: v.id('meetings'),
+	agendaItemId: v.string(),
+	proposerUserId: v.id('meetingParticipants'),
+	proposerName: v.string(),
+	title: v.string(),
+	text: v.string(),
+	amendsMotionId: v.optional(v.id('meetingMotions')),
+	status: MeetingMotionStatus,
+	/** Poll created when motion is approved (Ja/Nej/Avstår, closed). */
+	pollId: v.optional(v.id('meetingPolls')),
+	createdAt: v.number(),
+	decidedAt: v.optional(v.number()),
 });
 
 export const SpeakerQueueEntry = v.object({
@@ -213,4 +239,10 @@ export const meetingTables = {
 	meetingLobbyPresence: defineTable(MeetingLobbyPresence)
 		.index('by_meeting', ['meetingId'])
 		.index('by_meeting_user', ['meetingId', 'userId']),
+
+	meetingMotions: defineTable(MeetingMotion)
+		.index('by_meeting', ['meetingId'])
+		.index('by_meeting_status', ['meetingId', 'status'])
+		.index('by_meeting_agenda_status', ['meetingId', 'agendaItemId', 'status'])
+		.index('by_meeting_proposer_status', ['meetingId', 'proposerUserId', 'status']),
 };

@@ -21,6 +21,7 @@
 	import { page } from '$app/state';
 	import { useAppHttpClient } from '$lib/app-http/app-http-client.svelte';
 	import { createSimplifiedPolling } from './simplified-polling.svelte';
+	import SimplifiedMeetingMotions from './simplified-meeting-motions.svelte';
 	import SimplifiedPollDialog from './simplified-poll-dialog.svelte';
 
 	const app = useAppHttpClient();
@@ -141,6 +142,8 @@
 			</div>
 
 			<Separator />
+
+			<SimplifiedMeetingMotions {p} meetingLive={!meetingBlocked} />
 
 			<div class="space-y-2">
 				<h2 class="text-lg font-semibold">Dina begäranden</h2>

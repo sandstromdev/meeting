@@ -14,7 +14,17 @@ export type AgendaItem = {
 	description: string | null;
 	pollIds: Id<'meetingPolls'>[];
 	depth: number;
+	allowMotions?: boolean;
+	motionSubmissionMode?: 'open' | 'amendments_only';
 };
+
+/** Normalized motion settings for an agenda row (defaults for legacy items). */
+export function agendaItemMotionSettings(item: AgendaItem) {
+	return {
+		allowMotions: item.allowMotions ?? false,
+		motionSubmissionMode: item.motionSubmissionMode ?? ('open' as const),
+	};
+}
 
 export type Agenda = AgendaItem[];
 export type NumberedAgendaItem = AgendaItem & { number: string };
@@ -335,6 +345,8 @@ export function createNewAgendaItem(title: string, depth = 0) {
 		description: null,
 		pollIds: [],
 		depth,
+		allowMotions: false,
+		motionSubmissionMode: 'open',
 	} satisfies AgendaItem;
 }
 

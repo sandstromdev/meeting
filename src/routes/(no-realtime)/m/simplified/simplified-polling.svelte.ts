@@ -142,6 +142,28 @@ export class SimplifiedPolling {
 
 	hasPendingReturnRequest = $derived(!!this.meSnapshot?.hasPendingReturnRequest);
 
+	motionsApproved = $derived(this.hotSnapshot?.motionsApproved ?? []);
+
+	pendingMotion = $derived(this.meSnapshot?.pendingMotion ?? null);
+
+	currentAgendaRow = $derived.by(() => {
+		const id = this.currentAgendaItemId;
+		const agenda = this.coldSnapshot?.agenda ?? [];
+		if (!id) {
+			return null;
+		}
+		return agenda.find((a) => a.id === id) ?? null;
+	});
+
+	motionParticipantSettings = $derived(
+		this.currentAgendaRow
+			? {
+					allowMotions: this.currentAgendaRow.allowMotions,
+					motionSubmissionMode: this.currentAgendaRow.motionSubmissionMode,
+				}
+			: { allowMotions: false, motionSubmissionMode: 'open' as const },
+	);
+
 	constructor(deps: SimplifiedPollingDeps) {
 		this.#mx = new MeetingHttpClient(deps);
 
@@ -382,6 +404,30 @@ export class SimplifiedPolling {
 			this.#mx.mutation(api.meeting.users.meetingPoll.retractVote, { pollId }),
 		);
 		await this.#runHotCycle();
+	}
+
+	async submitMotion(args: {
+		title?: string;
+		text: string;
+		amendsMotionId?: Id<'meetingMotions'>;
+	}) {
+		const r = await this.#withAction(() =>
+			this.#mx.mutation(api.meeting.users.motions.submitMotion, args),
+		);
+		if (r?.ok) {
+			await this.#runHotCycle();
+		}
+		return r;
+	}
+
+	async withdrawMotion() {
+		const ok = await this.#withAction(() =>
+			this.#mx.mutation(api.meeting.users.motions.withdrawMyPendingMotion, {}),
+		);
+		if (ok) {
+			await this.#runHotCycle();
+		}
+		return ok;
 	}
 
 	retryRealtimeNow() {

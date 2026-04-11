@@ -6,6 +6,7 @@ import {
 	getVotesCounter,
 	getVotersCounter,
 } from '$convex/helpers/counters';
+import { agendaItemMotionSettings } from '$convex/helpers/agenda';
 import { withMe } from '$convex/helpers/auth';
 import { getLatestMeetingPollResultSnapshot } from '$convex/helpers/meetingPoll';
 import { getMeetingRuntimeVersions } from '$convex/helpers/meetingRuntime';
@@ -45,6 +46,8 @@ export type SimplifiedColdSnapshot = {
 		title: string;
 		description: string | null;
 		depth: number;
+		allowMotions: boolean;
+		motionSubmissionMode: 'open' | 'amendments_only';
 	}>;
 	/** Resolved like `getData`: valid meeting pointer or first item. */
 	currentAgendaItemId: string | null;
@@ -96,6 +99,16 @@ export type SimplifiedHotSnapshot = {
 	} | null;
 	/** Present when `poll` is closed with a stored result snapshot; mirrors `getPollResultsById` without `pollId`. */
 	pollResults: SimplifiedPollResultsPayload | null;
+	/** Approved motions on the current agenda item (for participant display). */
+	motionsApproved: Array<{
+		_id: Id<'meetingMotions'>;
+		title: string;
+		text: string;
+		amendsMotionId?: Id<'meetingMotions'>;
+		proposerName: string;
+		createdAt: number;
+		pollId?: Id<'meetingPolls'>;
+	}>;
 };
 
 export type SimplifiedMeSnapshot = {
@@ -109,6 +122,15 @@ export type SimplifiedMeSnapshot = {
 	};
 	hasPendingReturnRequest: boolean;
 	currentPollVoteOptionIndexes: number[];
+	/** Participant's pending motion anywhere in this meeting, if any. */
+	pendingMotion: {
+		_id: Id<'meetingMotions'>;
+		title: string;
+		text: string;
+		amendsMotionId?: Id<'meetingMotions'>;
+		agendaItemId: string;
+		createdAt: number;
+	} | null;
 };
 
 export const getVersions = withMe.query().public(async ({ ctx }): Promise<SimplifiedVersions> => {
@@ -131,12 +153,17 @@ export const getColdSnapshot = withMe
 				timezone: ctx.meeting.timezone,
 				date: ctx.meeting.date,
 			},
-			agenda: ctx.meeting.agenda.map((item) => ({
-				id: item.id,
-				title: item.title,
-				description: item.description ?? null,
-				depth: item.depth,
-			})),
+			agenda: ctx.meeting.agenda.map((item) => {
+				const m = agendaItemMotionSettings(item);
+				return {
+					id: item.id,
+					title: item.title,
+					description: item.description ?? null,
+					depth: item.depth,
+					allowMotions: m.allowMotions,
+					motionSubmissionMode: m.motionSubmissionMode,
+				};
+			}),
 			currentAgendaItemId: resolveSimplifiedCurrentAgendaItemId(
 				ctx.meeting.agenda,
 				ctx.meeting.currentAgendaItemId,
@@ -219,6 +246,35 @@ export const getHotSnapshot = withMe
 		const [versions, pollData] = await Promise.all([versionsPromise, pollDataPromise]);
 		const { poll, pollCounters, pollResults } = pollData;
 
+		const currentAgendaResolved = resolveSimplifiedCurrentAgendaItemId(
+			ctx.meeting.agenda,
+			ctx.meeting.currentAgendaItemId,
+		);
+
+		const motionsApproved = currentAgendaResolved
+			? await (async () => {
+					const rows = await ctx.db
+						.query('meetingMotions')
+						.withIndex('by_meeting_agenda_status', (q) =>
+							q
+								.eq('meetingId', ctx.meeting._id)
+								.eq('agendaItemId', currentAgendaResolved)
+								.eq('status', 'approved'),
+						)
+						.collect();
+					rows.sort((a, b) => a.createdAt - b.createdAt);
+					return rows.map((m) => ({
+						_id: m._id,
+						title: m.title,
+						text: m.text,
+						amendsMotionId: m.amendsMotionId,
+						proposerName: m.proposerName,
+						createdAt: m.createdAt,
+						pollId: m.pollId,
+					}));
+				})()
+			: [];
+
 		const currentSpeaker = ctx.meeting.currentSpeaker
 			? { userId: ctx.meeting.currentSpeaker.userId }
 			: null;
@@ -254,6 +310,7 @@ export const getHotSnapshot = withMe
 			poll,
 			pollCounters,
 			pollResults,
+			motionsApproved,
 		};
 	});
 
@@ -275,6 +332,24 @@ export const getMeSnapshot = withMe
 			return votes.map((vote) => vote.optionIndex);
 		})();
 
+		const pendingMotionRow = await ctx.db
+			.query('meetingMotions')
+			.withIndex('by_meeting_proposer_status', (q) =>
+				q.eq('meetingId', ctx.meeting._id).eq('proposerUserId', ctx.me._id).eq('status', 'pending'),
+			)
+			.first();
+
+		const pendingMotion = pendingMotionRow
+			? {
+					_id: pendingMotionRow._id,
+					title: pendingMotionRow.title,
+					text: pendingMotionRow.text,
+					amendsMotionId: pendingMotionRow.amendsMotionId,
+					agendaItemId: pendingMotionRow.agendaItemId,
+					createdAt: pendingMotionRow.createdAt,
+				}
+			: null;
+
 		return {
 			me: {
 				_id: ctx.me._id,
@@ -286,5 +361,6 @@ export const getMeSnapshot = withMe
 			},
 			hasPendingReturnRequest: !!(ctx.me.absentSince && ctx.me.returnRequestedAt),
 			currentPollVoteOptionIndexes,
+			pendingMotion,
 		};
 	});

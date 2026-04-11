@@ -2,6 +2,7 @@
 	import Agenda from '$lib/components/blocks/agenda';
 	import CurrentAgendaItem from '$lib/components/blocks/current-agenda-item.svelte';
 	import MeetingInfo from '$lib/components/blocks/meeting-info.svelte';
+	import MeetingMotionsParticipant from '$lib/components/blocks/meeting-motions-participant.svelte';
 	import QueueControlsMeeting from '$lib/components/blocks/queue-controls-meeting.svelte';
 	import RequestView from '$lib/components/blocks/request-view.svelte';
 	import SpeakerQueue from '$lib/components/blocks/speaker-queue.svelte';
@@ -41,6 +42,7 @@
 		<Timer />
 		<Agenda flat={ctx.agenda.flat} currentAgendaItemId={ctx.agenda.currentAgendaItemId ?? null} />
 		<RequestView />
+		<MeetingMotionsParticipant />
 		<QueueControlsMeeting />
 		<SpeakerQueue />
 	</main>

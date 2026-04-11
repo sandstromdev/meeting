@@ -33,6 +33,8 @@ export async function updateAgendaItem(
 		agendaItemId: string;
 		title: string;
 		description?: string;
+		allowMotions?: boolean;
+		motionSubmissionMode?: 'open' | 'amendments_only';
 		polls: MeetingPollDraft[];
 	},
 ) {
@@ -40,6 +42,8 @@ export async function updateAgendaItem(
 		agendaItemId: args.agendaItemId,
 		title: args.title,
 		description: args.description,
+		allowMotions: args.allowMotions,
+		motionSubmissionMode: args.motionSubmissionMode,
 		polls: args.polls,
 	});
 

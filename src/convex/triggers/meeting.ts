@@ -139,4 +139,8 @@ export function registerMeetingSimplifiedSnapshotTriggers(triggers: Triggers<Dat
 			await bumpHotFromMeetingScopedDoc(ctx as MutationCtx, change);
 		});
 	}
+
+	triggers.register('meetingMotions', async (ctx, change) => {
+		await bumpHotFromMeetingScopedDoc(ctx as MutationCtx, change);
+	});
 }
