@@ -2,6 +2,7 @@ import { withMe } from '$convex/helpers/auth';
 import { AppError, appErrors } from '$convex/helpers/error';
 import { getAbsentCounter } from '$convex/helpers/counters';
 import { completeReturnToMeeting } from '$convex/helpers/meeting';
+import { clearLobbyPresenceForUser } from '$convex/helpers/lobbyPresence';
 
 // --- Public mutations ---
 
@@ -52,6 +53,13 @@ export const leaveMeeting = withMe.mutation().public(async ({ ctx }) => {
 	});
 
 	await getAbsentCounter(meeting._id).inc(ctx);
+
+	if (!meeting.isOpen) {
+		await clearLobbyPresenceForUser(ctx, {
+			meetingId: meeting._id,
+			userId: me.userId,
+		});
+	}
 });
 
 export const requestReturnToMeeting = withMe.mutation().public(async ({ ctx }) => {

@@ -11,6 +11,7 @@ import type { UseQueryOptions, UseQueryReturn } from '$lib/types';
 import { PUBLIC_SITE_URL } from '$env/static/public';
 
 export type MeetingData = typeof api.meeting.users.meeting.getData._returnType;
+export type AttendanceState = typeof api.meeting.users.meeting.getAttendance._returnType;
 
 const [getContext, setContext] = createContext<MeetingState>();
 
@@ -31,11 +32,11 @@ type CurrentSpeaker =
 			startTime?: never;
 	  };
 
-type AttendanceState = {
+/* type AttendanceState = {
 	participants: number;
 	absent: number;
 	banned: number;
-};
+}; */
 
 export class MeetingState {
 	#data: MeetingData;
@@ -45,7 +46,7 @@ export class MeetingState {
 	readonly agenda: AgendaState;
 	readonly speakerQueue: SpeakerQueue;
 
-	constructor(data: Getter<MeetingData>) {
+	constructor(data: Getter<MeetingData>, attendance: Getter<AttendanceState>) {
 		this.#data = $state(data());
 		this.convex = useConvexClient();
 
@@ -59,22 +60,28 @@ export class MeetingState {
 		this.agenda = new AgendaState(this);
 		this.speakerQueue = new SpeakerQueue(this);
 
-		this.#attendance = $state({
-			participants: 0,
-			absent: 0,
-			banned: 0,
-		});
-
-		const attendance = this.adminQuery(api.meeting.admin.meeting.getAttendance);
+		this.#attendance = $state(attendance());
 
 		$effect(() => {
 			this.#data = data();
+			this.#attendance = attendance();
+		});
 
-			this.#attendance = {
-				participants: attendance.data?.participants ?? 0,
-				absent: attendance.data?.absentees ?? 0,
-				banned: attendance.data?.banned ?? 0,
+		// Lobby-only presence heartbeat until the meeting opens (closed / invite_only gating uses snapshot at open).
+		$effect(() => {
+			const loaded = data();
+			const meeting = loaded.meeting;
+			if (!meeting?._id || meeting.isOpen) {
+				return;
+			}
+
+			const intervalMs = 8000;
+			const tick = () => {
+				void this.mutate(api.meeting.users.auth.refreshLobbyPresence);
 			};
+			tick();
+			const handle = setInterval(tick, intervalMs);
+			return () => clearInterval(handle);
 		});
 	}
 
@@ -267,7 +274,7 @@ export class MeetingState {
 		return this.#attendance.participants;
 	}
 	get absent() {
-		return this.#attendance.absent;
+		return this.#attendance.absentees;
 	}
 
 	get banned() {
@@ -360,8 +367,8 @@ export class MeetingState {
 	}
 }
 
-export function setMeetingContext(data: Getter<MeetingData>) {
-	const ctx = new MeetingState(data);
+export function setMeetingContext(data: Getter<MeetingData>, attendance: Getter<AttendanceState>) {
+	const ctx = new MeetingState(data, attendance);
 	setContext(ctx);
 	return ctx;
 }

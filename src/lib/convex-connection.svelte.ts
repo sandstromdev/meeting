@@ -1,5 +1,6 @@
 import { browser } from '$app/environment';
-import type { ConvexClient } from 'convex/browser';
+import type { ConnectionState, ConvexClient } from 'convex/browser';
+import type { Getter } from 'runed';
 import { createContext, untrack } from 'svelte';
 
 /** Milliseconds the realtime participant view waits after disconnect before simplified fallback */
@@ -7,16 +8,15 @@ export const DISCONNECT_REDIRECT_MS = 14_000;
 /** Connection retry count threshold before immediate simplified fallback */
 export const RETRY_REDIRECT_THRESHOLD = 14;
 
-export type ConvexConnectionSnapshot = {
-	isWebSocketConnected: boolean;
-	hasEverConnected: boolean;
-	connectionRetries: number;
-};
-
-const fallback: ConvexConnectionSnapshot = {
+const fallback: ConnectionState = {
 	isWebSocketConnected: false,
 	hasEverConnected: false,
 	connectionRetries: 0,
+	hasInflightRequests: false,
+	timeOfOldestInflightRequest: null,
+	connectionCount: 0,
+	inflightMutations: 0,
+	inflightActions: 0,
 };
 
 const noop = () => {};
@@ -24,29 +24,22 @@ const noop = () => {};
 const [getConvexStatus, setContext] = createContext<ConvexStatus>();
 
 class ConvexStatus {
-	#snapshot = $state<ConvexConnectionSnapshot>({ ...fallback });
+	#snapshot = $state<ConnectionState>({ ...fallback });
 	#unsubscribe: () => void;
 
-	constructor(client: ConvexClient) {
+	constructor(client: Getter<ConvexClient>) {
 		this.#unsubscribe = noop;
 
-		const state = client.connectionState();
-		this.#snapshot = {
-			isWebSocketConnected: state.isWebSocketConnected,
-			hasEverConnected: state.hasEverConnected,
-			connectionRetries: state.connectionRetries,
-		};
-
 		$effect(() => {
-			this.#unsubscribe();
+			if (!browser) {
+				return;
+			}
 
-			this.#unsubscribe = client.subscribeToConnectionState((s) => {
+			const c = client();
+
+			this.#unsubscribe = c.subscribeToConnectionState((s) => {
 				untrack(() => {
-					this.#snapshot = {
-						isWebSocketConnected: s.isWebSocketConnected,
-						hasEverConnected: s.hasEverConnected,
-						connectionRetries: s.connectionRetries,
-					};
+					this.#snapshot = s;
 				});
 			});
 
@@ -94,30 +87,34 @@ class ConvexStatus {
 			}
 		};
 
-		const runFallback = () => {
-			clearDisconnectTimer();
-			onFallback();
-		};
+		$effect(() => {
+			console.log('should fallback immediately', this.shouldFallbackImmediately(retries));
+			console.log('should schedule fallback', this.shouldScheduleFallback);
 
-		if (this.shouldFallbackImmediately(retries)) {
-			runFallback();
+			const runFallback = () => {
+				clearDisconnectTimer();
+				onFallback();
+			};
+
+			if (this.shouldFallbackImmediately(retries)) {
+				runFallback();
+				return clearDisconnectTimer;
+			}
+
+			if (!this.shouldScheduleFallback) {
+				return clearDisconnectTimer;
+			}
+
+			disconnectTimer = setTimeout(runFallback, delayMs);
+
 			return clearDisconnectTimer;
-		}
-
-		if (!this.shouldScheduleFallback) {
-			return clearDisconnectTimer;
-		}
-
-		disconnectTimer = setTimeout(runFallback, delayMs);
+		});
 
 		return clearDisconnectTimer;
 	}
 }
 
-export function initConvexStatus(client: ConvexClient) {
-	if (!browser) {
-		return;
-	}
+export function initConvexStatus(client: Getter<ConvexClient>) {
 	return new ConvexStatus(client);
 }
 

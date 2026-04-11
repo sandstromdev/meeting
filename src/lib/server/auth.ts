@@ -3,7 +3,6 @@ import { api } from '$convex/_generated/api';
 import { type Handle, type RequestEvent } from '@sveltejs/kit';
 import { getConvexClient } from './convex';
 import { assertAuthed } from './guards';
-import { createAuth } from '$convex/auth';
 import * as privateEnv from '$env/static/private';
 import * as publicEnv from '$env/static/public';
 import { getSecureCookieName } from '$lib/server/cookie';
@@ -43,9 +42,13 @@ export const handleAuth = (async ({ event, resolve }) => {
 	const sessionToken = event.cookies.get(getSecureCookieName('better-auth.session_token'));
 
 	// Get the convex_jwt cookie from cookies.
-	let token = await getToken(createAuth, event.cookies);
+	let token = getToken(event.cookies);
 
-	// If the token is not found, try to get a new one from the session token.
+	// This is a workaround to not show the login page when the token is not found.
+	// There are two tokens in cookies: session_token and convex_jwt. The convex_jwt has a short expiration time.
+	// If the convex_jwt is not found, we try to get a new one from the session token.
+	// This is handled on the client by the authClient, but not before the page is redirected to login.
+	// This should be removed when the authClient is updated to handle this scenario.
 	if (!token && sessionToken && event.route.id !== '/api/auth/[...all]') {
 		const response = await event.fetch('/api/auth/get-session', {
 			method: 'GET',

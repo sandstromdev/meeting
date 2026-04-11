@@ -1,7 +1,7 @@
 import type { DataModel } from '$convex/_generated/dataModel';
 import { createBuilder } from '$convex/helpers/builder';
 import type { StripSystemFields } from '$lib/types';
-import { triggers } from './triggers';
+import { triggers } from '$convex/triggers';
 
 export const c = createBuilder<DataModel>(triggers);
 
