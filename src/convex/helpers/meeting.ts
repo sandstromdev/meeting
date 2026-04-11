@@ -16,7 +16,7 @@ export async function logSpeakerSlot(
 	await ctx.scheduler.runAfter(0, internal.meeting.jobs.speakerLog.logSpeaker, {
 		meetingId: ctx.meeting._id,
 		type,
-		by,
+		by: { name: by.name, userId: by.userId },
 		startTime,
 		endTime,
 	});

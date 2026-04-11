@@ -44,10 +44,20 @@ type SimplifiedRequest = {
 	startTime: number | null;
 } | null;
 
+/** Who has the floor; same order as MeetingState.currentSpeaker. */
+export type SimplifiedActiveSpeech =
+	| { kind: 'empty' }
+	| { kind: 'point_of_order'; userId: Id<'meetingParticipants'> }
+	| { kind: 'reply'; userId: Id<'meetingParticipants'> }
+	| { kind: 'speaker'; userId: Id<'meetingParticipants'> };
+
 export type SimplifiedHotSnapshot = {
 	simplifiedHotVersion: number;
 	/** Same resolution as cold snapshot: valid meeting pointer or first item. */
 	currentAgendaItemId: string | null;
+	/** Queue head (talare som tagits från kön). */
+	currentSpeaker: { userId: Id<'meetingParticipants'> } | null;
+	activeSpeech: SimplifiedActiveSpeech;
 	requests: {
 		break: SimplifiedRequest;
 		reply: SimplifiedRequest;
@@ -140,12 +150,33 @@ export const getHotSnapshot = withMe
 
 		const [versions, poll] = await Promise.all([versionsPromise, pollPromise]);
 
+		const currentSpeaker = ctx.meeting.currentSpeaker
+			? { userId: ctx.meeting.currentSpeaker.userId }
+			: null;
+
+		const activeSpeech: SimplifiedActiveSpeech = (() => {
+			const po = ctx.meeting.pointOfOrder;
+			if (po?.type === 'accepted') {
+				return { kind: 'point_of_order', userId: po.by.userId };
+			}
+			const reply = ctx.meeting.reply;
+			if (reply?.type === 'accepted') {
+				return { kind: 'reply', userId: reply.by.userId };
+			}
+			if (ctx.meeting.currentSpeaker) {
+				return { kind: 'speaker', userId: ctx.meeting.currentSpeaker.userId };
+			}
+			return { kind: 'empty' };
+		})();
+
 		return {
 			simplifiedHotVersion: versions.simplifiedHotVersion,
 			currentAgendaItemId: resolveSimplifiedCurrentAgendaItemId(
 				ctx.meeting.agenda,
 				ctx.meeting.currentAgendaItemId,
 			),
+			currentSpeaker,
+			activeSpeech,
 			requests: {
 				break: ctx.meeting.break,
 				reply: ctx.meeting.reply,

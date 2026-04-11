@@ -132,6 +132,7 @@ export const doneSpeaking = withMe.mutation().public(async ({ ctx }) => {
 			now,
 		);
 		await db.patch('meetings', _id, { pointOfOrder: null });
+
 		return true;
 	}
 
@@ -160,7 +161,6 @@ export const doneSpeaking = withMe.mutation().public(async ({ ctx }) => {
 		userId: currentSpeaker.userId,
 		name: currentSpeaker.name,
 		startTime: currentSpeaker.startTime,
-		creationTime: consumedCt ?? meeting.lastConsumedCt ?? -1,
 	};
 
 	const nextCursor = consumedCt ?? meeting.lastConsumedCt ?? -1;
@@ -183,7 +183,9 @@ export const doneSpeaking = withMe.mutation().public(async ({ ctx }) => {
 		.withIndex('by_meeting', (q) => q.eq('meetingId', _id).gt('_creationTime', nextCursor))
 		.order('asc')
 		.take(20);
+
 	let nextEntry: (typeof candidates)[number] | null = null;
+
 	for (const entry of candidates) {
 		const participant = await db.get('meetingParticipants', entry.userId);
 		if (!participant?.absentSince) {
@@ -191,15 +193,18 @@ export const doneSpeaking = withMe.mutation().public(async ({ ctx }) => {
 			break;
 		}
 	}
+
 	if (!nextEntry) {
 		await db.patch('meetings', _id, { previousSpeaker, currentSpeaker: null });
 		return true;
 	}
 
 	const latestMeeting = await db.get('meetings', _id);
+
 	if (!latestMeeting) {
 		return true;
 	}
+
 	const latestPreviousSpeaker =
 		latestMeeting.currentSpeaker != null
 			? {
@@ -207,6 +212,7 @@ export const doneSpeaking = withMe.mutation().public(async ({ ctx }) => {
 					creationTime: latestMeeting.currentSpeaker.ct ?? latestMeeting.lastConsumedCt ?? -1,
 				}
 			: null;
+
 	await db.patch('meetings', _id, {
 		previousSpeaker: latestPreviousSpeaker,
 		currentSpeaker: {
@@ -217,5 +223,6 @@ export const doneSpeaking = withMe.mutation().public(async ({ ctx }) => {
 			entryId: nextEntry._id,
 		},
 	});
+
 	return true;
 });

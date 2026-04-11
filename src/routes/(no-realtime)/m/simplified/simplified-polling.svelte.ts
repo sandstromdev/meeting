@@ -93,13 +93,34 @@ export class SimplifiedPolling {
 		return true;
 	});
 
-	canRequestReply = $derived(!!this.requests && !!this.me && !this.requests.reply);
+	activeSpeech = $derived(this.hotSnapshot?.activeSpeech ?? { kind: 'empty' as const });
+
+	hotCurrentSpeaker = $derived(this.hotSnapshot?.currentSpeaker ?? null);
+
+	isFloorSpeaker = $derived.by(() => {
+		const speech = this.activeSpeech;
+		const u = this.me;
+		if (!u || speech.kind === 'empty') {
+			return false;
+		}
+		return speech.userId === u._id;
+	});
+
+	isQueuedCurrentSpeaker = $derived(
+		!!this.me && !!this.hotCurrentSpeaker && this.hotCurrentSpeaker.userId === this.me._id,
+	);
+
+	canRequestReply = $derived(
+		!!this.requests && !!this.me && !this.requests.reply && !this.isFloorSpeaker,
+	);
 
 	canRecallReply = $derived(
 		this.requests?.reply?.type === 'requested' && this.requests.reply.by.userId === this.me?._id,
 	);
 
-	canRequestPointOfOrder = $derived(!!this.requests && !!this.me && !this.requests.pointOfOrder);
+	canRequestPointOfOrder = $derived(
+		!!this.requests && !!this.me && !this.requests.pointOfOrder && !this.isFloorSpeaker,
+	);
 
 	canRecallPointOfOrder = $derived(
 		this.requests?.pointOfOrder?.type === 'requested' &&
@@ -112,7 +133,7 @@ export class SimplifiedPolling {
 
 	canRequestBreak = $derived(!this.requests?.break);
 
-	canMarkAbsent = $derived(!!this.me && !this.me.absentSince);
+	canMarkAbsent = $derived(!!this.me && !this.me.absentSince && !this.isFloorSpeaker);
 
 	/** True when our streck-förslag is pending (show recall). */
 	shouldRecallBreak = $derived(this.hasRequestedBreak);
@@ -310,6 +331,12 @@ export class SimplifiedPolling {
 			this.#mx.mutation(api.meeting.users.queue.recallSpeakerQueueRequest, {}),
 		);
 		await this.#refreshMe();
+	}
+
+	async doneSpeaking() {
+		await this.#withAction(() => this.#mx.mutation(api.meeting.users.queue.doneSpeaking, {}));
+		await this.#refreshMe();
+		await this.#runHotCycle();
 	}
 
 	async requestSlotAction(type: RequestSlotType) {

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { computeAgendaNumbers } from '$convex/helpers/agenda';
 	import Agenda from '$lib/components/blocks/agenda';
+	import QueueControlsView from '$lib/components/blocks/queue-controls-view.svelte';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
 	import { Button } from '$lib/components/ui/button';
 	import Checkbox from '$lib/components/ui/checkbox/checkbox.svelte';
@@ -307,79 +308,52 @@
 				{#if p.me?.absentSince}
 					<p class="text-sm text-muted-foreground">Du är markerad som frånvarande.</p>
 				{:else}
-					<div class="flex flex-col gap-2">
-						<Button
-							class="w-full"
-							disabled={p.actionBusy || (!p.isInSpeakerQueue && !p.canJoinQueue)}
-							onclick={() => (p.isInSpeakerQueue ? p.leaveQueue() : p.joinQueue())}
-						>
-							{#if p.isInSpeakerQueue}
-								<LogOutIcon class="size-4" />
-								Gå ur kön
-							{:else}
-								<MicIcon class="size-4" />
-								Ställ dig i kön
-							{/if}
-						</Button>
-					</div>
-
-					<Separator />
-
-					<div class="grid gap-2 sm:grid-cols-3">
-						{#if p.canRequestReply}
-							<Button
-								variant="outline"
-								disabled={p.actionBusy}
-								onclick={() => p.requestSlotAction('reply')}
-							>
-								Begär replik
-							</Button>
-						{:else if p.canRecallReply}
-							<Button
-								variant="outline"
-								disabled={p.actionBusy}
-								onclick={() => p.recallSlotRequestAction('reply')}
-							>
-								Återkalla replik
-							</Button>
-						{/if}
-
-						{#if p.canRequestPointOfOrder}
-							<Button
-								variant="outline"
-								disabled={p.actionBusy}
-								onclick={() => p.requestSlotAction('pointOfOrder')}
-							>
-								Ordningsfråga
-							</Button>
-						{:else if p.canRecallPointOfOrder}
-							<Button
-								variant="outline"
-								disabled={p.actionBusy}
-								onclick={() => p.recallSlotRequestAction('pointOfOrder')}
-							>
-								Återkalla ordningsfråga
-							</Button>
-						{/if}
-
-						{#if !p.shouldRecallBreak}
-							<Button
-								variant="outline"
-								disabled={p.actionBusy || !p.canRequestBreak}
-								onclick={() => p.requestSlotAction('break')}
-							>
-								Föreslå streck
-							</Button>
-						{:else}
-							<Button
-								variant="outline"
-								disabled={p.actionBusy}
-								onclick={() => p.recallSlotRequestAction('break')}
-							>
-								Återkalla streck
-							</Button>
-						{/if}
-					</div>
+					<QueueControlsView
+						noBorder
+						absentSince={p.me?.absentSince ?? 0}
+						isInQueue={p.isInSpeakerQueue}
+						isFloorSpeaker={p.isFloorSpeaker}
+						isQueuedCurrentSpeaker={p.isQueuedCurrentSpeaker}
+						canJoinQueue={p.canJoinQueue}
+						canRequestPointOfOrder={p.canRequestPointOfOrder}
+						canRecallPointOfOrder={p.canRecallPointOfOrder}
+						canRequestReply={p.canRequestReply}
+						canRecallReply={p.canRecallReply}
+						canRequestBreak={p.canRequestBreak}
+						hasRequestedBreak={p.shouldRecallBreak}
+						canMarkAbsent={p.canMarkAbsent}
+						actionBusy={p.actionBusy}
+						onDoneSpeaking={async () => {
+							await p.doneSpeaking();
+						}}
+						onJoinQueue={async () => {
+							await p.joinQueue();
+						}}
+						onLeaveQueue={async () => {
+							await p.leaveQueue();
+						}}
+						onRequestPointOfOrder={async () => {
+							await p.requestSlotAction('pointOfOrder');
+						}}
+						onRecallPointOfOrder={async () => {
+							await p.recallSlotRequestAction('pointOfOrder');
+						}}
+						onRequestReply={async () => {
+							await p.requestSlotAction('reply');
+						}}
+						onRecallReply={async () => {
+							await p.recallSlotRequestAction('reply');
+						}}
+						onRequestBreak={async () => {
+							await p.requestSlotAction('break');
+						}}
+						onRecallBreak={async () => {
+							await p.recallSlotRequestAction('break');
+						}}
+						onMarkAbsent={async () => {
+							await p.leaveMeeting();
+						}}
+					/>
 				{/if}
 			</div>
 

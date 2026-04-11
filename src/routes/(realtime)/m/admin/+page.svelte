@@ -12,7 +12,7 @@
 	import { DetailedAgenda } from '$lib/components/blocks/agenda';
 	import CurrentAgendaItem from '$lib/components/blocks/current-agenda-item.svelte';
 	import MeetingInfo from '$lib/components/blocks/meeting-info.svelte';
-	import QueueControls from '$lib/components/blocks/queue-controls.svelte';
+	import QueueControlsMeeting from '$lib/components/blocks/queue-controls-meeting.svelte';
 	import RequestView from '$lib/components/blocks/request-view.svelte';
 	import SpeakerQueue from '$lib/components/blocks/speaker-queue.svelte';
 	import Timer from '$lib/components/blocks/timer.svelte';
@@ -33,7 +33,7 @@
 <div class="mx-auto flex h-full max-w-[90vw] grid-cols-4 flex-col gap-4 p-4 lg:grid lg:py-12">
 	<aside class="col-span-1 flex flex-col rounded-lg border">
 		<h2 class="px-4 py-3 text-lg font-semibold">Kökontroll</h2>
-		<QueueControls noBorder size="sm" />
+		<QueueControlsMeeting noBorder size="sm" />
 		<Separator />
 		<QueueAdminControls />
 		<Separator />
