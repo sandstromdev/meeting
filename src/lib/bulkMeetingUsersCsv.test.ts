@@ -54,14 +54,20 @@ blank@example.com,Tom Roll,
 		});
 	});
 
-	it('marks duplicate emails in the same import as invalid', () => {
+	it('keeps the first row for a duplicate email and invalidates later rows', () => {
 		const rows = parseBulkMeetingUsersCsv(`email,name,role
 same@example.com,Forsta,participant
 same@example.com,Andra,participant
+same@example.com,Tredje,participant
 `);
 
-		expect(rows.every((row) => !row.ok)).toBe(true);
-		expect(rows[0].errors[0]).toContain('E-postadressen forekommer flera ganger');
+		expect(rows[0].ok).toBe(true);
+		expect(rows[1].ok).toBe(false);
+		expect(rows[1].errors.some((message) => message.includes('Dubblett'))).toBe(true);
+		expect(rows[1].errors.some((message) => message.includes('rad 2'))).toBe(true);
+		expect(rows[2].ok).toBe(false);
+		expect(rows[2].errors.some((message) => message.includes('Dubblett'))).toBe(true);
+		expect(rows[2].errors.some((message) => message.includes('rad 2'))).toBe(true);
 	});
 
 	it('throws when the row limit is exceeded', () => {

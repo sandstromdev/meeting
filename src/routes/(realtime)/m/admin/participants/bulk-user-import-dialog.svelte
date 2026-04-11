@@ -16,6 +16,7 @@
 	import DownloadIcon from '@lucide/svelte/icons/download';
 	import { toast } from 'svelte-sonner';
 	import { useParticipantsContext } from './context.svelte';
+	import Input from '$lib/components/ui/input/input.svelte';
 
 	type PreviewSummary = {
 		total: number;
@@ -262,7 +263,7 @@
 </script>
 
 <Dialog.Root bind:open={ctx.bulkImportDialogOpen}>
-	<Dialog.Content class="flex max-h-[90vh] max-w-2xl flex-col gap-4">
+	<Dialog.Content class="flex max-h-[90vh] flex-col gap-4 sm:max-w-3xl">
 		<Dialog.Header>
 			<Dialog.Title>Massimport av användare</Dialog.Title>
 			<Dialog.Description>
@@ -282,14 +283,13 @@
 			<Tabs.Content value="file">
 				<Field.Field class="gap-2">
 					<Field.Label for="bulk-csv-file">CSV-fil</Field.Label>
-					<input
-						id="bulk-csv-file"
+					<Input
 						type="file"
 						accept=".csv,text/csv"
-						class="text-sm file:mr-2 file:rounded-md file:border file:border-input file:bg-background file:px-2 file:py-1"
 						onchange={onFilePick}
 						disabled={previewLoading || commitLoading}
 					/>
+
 					{#if fileName}
 						<p class="text-xs text-muted-foreground">Vald fil: {fileName}</p>
 					{/if}
@@ -318,6 +318,7 @@
 				size="sm"
 				disabled={previewLoading || commitLoading || csvText.trim().length === 0}
 				onclick={runPreview}
+				loading={previewLoading}
 			>
 				{previewLoading ? 'Förhandsgranskar…' : 'Förhandsgranska'}
 			</Button>
@@ -326,6 +327,7 @@
 				size="sm"
 				disabled={commitLoading || previewLoading || !previewResult || csvText.trim().length === 0}
 				onclick={runCommit}
+				loading={commitLoading}
 			>
 				{commitLoading ? 'Importerar…' : 'Verkställ import'}
 			</Button>

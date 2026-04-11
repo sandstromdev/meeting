@@ -30,7 +30,7 @@ export class BulkMeetingUsersCsvError extends Error {
 }
 
 const bulkMeetingUserRowSchema = z.object({
-	email: z.string().email(),
+	email: z.email(),
 	name: z.string().trim().min(1),
 	role: z.enum(ROLES),
 	password: z.string().min(4).optional(),
@@ -232,27 +232,18 @@ export function validationRowsFromNormalizedTable(
 		};
 	});
 
-	const duplicateRowsByEmail = new Map<string, number[]>();
+	const firstRowNumberByEmail = new Map<string, number>();
 	for (const row of parsedRows) {
 		if (row.email.length === 0) {
 			continue;
 		}
-		duplicateRowsByEmail.set(row.email, [
-			...(duplicateRowsByEmail.get(row.email) ?? []),
-			row.rowNumber,
-		]);
-	}
-
-	for (const row of parsedRows) {
-		const duplicateRows = duplicateRowsByEmail.get(row.email) ?? [];
-		if (duplicateRows.length < 2) {
+		const firstRowNumber = firstRowNumberByEmail.get(row.email);
+		if (firstRowNumber === undefined) {
+			firstRowNumberByEmail.set(row.email, row.rowNumber);
 			continue;
 		}
 		row.ok = false;
-		row.errors = [
-			...row.errors,
-			`E-postadressen forekommer flera ganger i importfilen (rader: ${duplicateRows.join(', ')}).`,
-		];
+		row.errors = [...row.errors, `Dubblett: samma e-postadress som på rad ${firstRowNumber}.`];
 		delete row.data;
 	}
 

@@ -8,6 +8,12 @@ import {
 	type BulkMeetingUserImportValidationRow,
 } from '$lib/bulkMeetingUsersCsv';
 
+/**
+ * Rows per `commitImportBatch` mutation. Convex enforces a short mutation runtime budget;
+ * each row can run Better Auth + several DB writes, so keep this small.
+ */
+export const COMMIT_IMPORT_MUTATION_MAX_ROWS = 3;
+
 export {
 	BULK_MEETING_USER_IMPORT_LIMIT,
 	bulkImportRawRowSchema,
