@@ -5,11 +5,16 @@
 	let { size = 'default' }: { size?: VariantProps<typeof variants>['size'] } = $props();
 
 	const meeting = getMeetingContext();
-	const stats = $derived([
-		{ id: 'voterRoll', value: meeting.voterRoll, label: 'Röstlängd' },
-		{ id: 'participants', value: meeting.participants, label: 'Mötesdeltagare' },
-		{ id: 'absent', value: meeting.absent, label: 'Frånvarande' },
-	]);
+	let stats = $derived(
+		meeting && {
+			topGrid: [
+				{ id: 'voterRoll', value: meeting.voterRoll, label: 'Röstlängd' },
+				{ id: 'participants', value: meeting.participants, label: 'Mötesdeltagare' },
+				{ id: 'absent', value: meeting.absent, label: 'Frånvarande' },
+			],
+			bottomGrid: [{ id: 'code', value: meeting.meetingCode, label: 'Möteskod' }],
+		},
+	);
 
 	const variants = tv({
 		base: 'px-4 py-3',
@@ -35,7 +40,20 @@
 
 <div class={root()}>
 	<div class="grid grid-cols-3 gap-4 text-center">
-		{#each stats as stat (stat.label)}
+		{#each stats.topGrid as stat (stat.label)}
+			<div>
+				<div id="{stat.id}-value" aria-labelledby="{stat.id}-label" class={number()}>
+					{stat.value}
+				</div>
+				<div id="{stat.id}-label" class={label()}>{stat.label}</div>
+			</div>
+		{/each}
+	</div>
+</div>
+
+<div class={root()}>
+	<div class="mt-4 text-center">
+		{#each stats.bottomGrid as stat (stat.label)}
 			<div>
 				<div id="{stat.id}-value" aria-labelledby="{stat.id}-label" class={number()}>
 					{stat.value}

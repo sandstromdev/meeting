@@ -365,6 +365,10 @@ export class MeetingState {
 	get isPollOpen() {
 		return this.meeting.currentPollId !== undefined;
 	}
+
+	get meetingCode() {
+		return this.meeting?.code;
+	}
 }
 
 export function setMeetingContext(data: Getter<MeetingData>, attendance: Getter<AttendanceState>) {
