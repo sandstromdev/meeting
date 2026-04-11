@@ -25,14 +25,13 @@ export const pollTypeConfigFields = {
 	majorityRule: v.optional(majorityRule),
 };
 
-/** One poll option in stored polls (post-migration shape). Legacy docs may still use plain strings. */
+/** One poll option as stored on `meetingPolls` / `userPolls`. */
 export const pollOptionRowV = v.object({
 	title: v.string(),
 	description: v.nullable(v.string()),
 });
 
-/** @deprecated Legacy shape; remove string-array branch after running `pollOptionsStringToRows` migration. */
-export const pollOptionsStoredV = v.union(v.array(v.string()), v.array(pollOptionRowV));
+export const pollOptionsStoredV = v.array(pollOptionRowV);
 
 /** Shared columns for `userPolls` and `meetingPolls` (excluding table-specific id/context fields). */
 export const pollRowSharedFields = {

@@ -11,7 +11,7 @@ export function createAgendaItemId() {
 export type AgendaItem = {
 	id: AgendaItemId;
 	title: string;
-	description?: string | null;
+	description: string | null;
 	pollIds: Id<'meetingPolls'>[];
 	depth: number;
 };
@@ -332,6 +332,7 @@ export function createNewAgendaItem(title: string, depth = 0) {
 	return {
 		id: createAgendaItemId(),
 		title,
+		description: null,
 		pollIds: [],
 		depth,
 	} satisfies AgendaItem;

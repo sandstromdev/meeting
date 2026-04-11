@@ -1,13 +1,13 @@
 import { ABSTAIN_OPTION_LABEL } from './pollConstants';
 
-/** One poll alternative as stored after migration (and as used in the UI API). */
+/** One poll alternative as stored in Convex and used in the UI API. */
 export type PollOptionRow = {
 	title: string;
 	description: string | null;
 };
 
-/** Legacy rows used `string[]`; new rows use `PollOptionRow[]`. */
-export type StoredPollOptions = readonly (string | PollOptionRow)[];
+/** `options` column on poll tables (`PollOptionRow[]`). */
+export type StoredPollOptions = readonly PollOptionRow[];
 
 export function normalizePollDescription(raw: string | null | undefined): string | null {
 	if (raw == null) {
@@ -17,19 +17,12 @@ export function normalizePollDescription(raw: string | null | undefined): string
 	return t === '' ? null : t;
 }
 
-export function isPollOptionRow(x: string | PollOptionRow): x is PollOptionRow {
-	return typeof x === 'object' && x !== null && 'title' in x;
-}
-
-/** Normalize one stored entry to a row (legacy string or new object). */
-export function normalizeOneStoredPollOption(x: string | PollOptionRow): PollOptionRow {
-	if (isPollOptionRow(x)) {
-		return {
-			title: x.title,
-			description: normalizePollDescription(x.description),
-		};
-	}
-	return { title: x, description: null };
+/** Normalize descriptions on stored rows (idempotent for already-normalized data). */
+export function normalizeOneStoredPollOption(x: PollOptionRow): PollOptionRow {
+	return {
+		title: x.title,
+		description: normalizePollDescription(x.description),
+	};
 }
 
 export function normalizeStoredPollOptions(options: StoredPollOptions): PollOptionRow[] {
@@ -38,11 +31,6 @@ export function normalizeStoredPollOptions(options: StoredPollOptions): PollOpti
 
 export function pollOptionTitles(options: StoredPollOptions): string[] {
 	return normalizeStoredPollOptions(options).map((o) => o.title);
-}
-
-/** `true` when every element is a string (legacy Convex shape). */
-export function isLegacyStringPollOptions(options: StoredPollOptions): boolean {
-	return options.length > 0 && options.every((x) => typeof x === 'string');
 }
 
 /**

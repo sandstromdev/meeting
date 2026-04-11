@@ -78,14 +78,11 @@ export type PollTypeConfig = z.infer<typeof pollTypeConfigZod>;
 
 /** Shared `single_winner` / `multi_winner` checks for drafts vs stored rows (winningCount strictness differs). */
 function refinePollTypeConfigCore(
-	data: PollTypeConfig & { options: readonly { title: string }[] | StoredPollOptions },
+	data: PollTypeConfig & { options: readonly { title: string }[] },
 	ctx: z.RefinementCtx,
 	mode: 'draftStrict' | 'rowLegacy',
 ) {
-	const optionsCount =
-		mode === 'draftStrict'
-			? (data.options as readonly { title: string }[]).length
-			: (data.options as StoredPollOptions).length;
+	const optionsCount = data.options.length;
 
 	if (data.type === 'single_winner') {
 		if (mode === 'draftStrict') {
@@ -176,7 +173,7 @@ export const RefinePollDraftSchema = PollDraftSchema.superRefine((data, ctx) => 
 
 export type PollDraft = z.infer<typeof PollDraftSchema>;
 
-/** Enforces branch invariants given `options` (same rules as draft refine; allows legacy single_winner without winningCount). */
+/** Enforces branch invariants given `options` (same rules as draft refine; allows stored single_winner without winningCount). */
 export function refinePollRowTypeConfig(
 	data: PollTypeConfig & { options: StoredPollOptions },
 	ctx: z.RefinementCtx,
@@ -200,7 +197,7 @@ const pollOptionRowZod = z
 /** Shared tail of meeting vs user poll rows (matches `pollRowSharedFields` in Convex). */
 export const pollRowSharedZod = z.object({
 	title: z.string().trim().min(1),
-	options: z.union([z.array(z.string().trim().min(1)).min(1), z.array(pollOptionRowZod).min(1)]),
+	options: z.array(pollOptionRowZod).min(1),
 	isResultPublic: z.boolean(),
 	allowsAbstain: z.boolean(),
 	maxVotesPerVoter: z.number().min(1),

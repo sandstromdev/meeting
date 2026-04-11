@@ -66,11 +66,13 @@ export const createAgendaItem = admin
 			}),
 		);
 
-		const desc = normalizeAgendaItemDescription(args.description);
 		const newItem = {
 			id: agendaItemId,
 			title: args.title,
-			...(desc !== undefined ? { description: desc } : {}),
+			description:
+				args.description === undefined
+					? null
+					: (normalizeAgendaItemDescription(args.description) ?? null),
 			pollIds,
 			depth: 0,
 		} satisfies AgendaItem;

@@ -7,14 +7,16 @@ import {
 } from './pollOptions';
 
 describe('pollOptions', () => {
-	it('normalizes legacy string options', () => {
-		expect(normalizeStoredPollOptions(['Ja', 'Nej'])).toEqual([
+	it('normalizes row objects and empty descriptions', () => {
+		expect(
+			normalizeStoredPollOptions([
+				{ title: 'Ja', description: null },
+				{ title: 'Nej', description: null },
+			]),
+		).toEqual([
 			{ title: 'Ja', description: null },
 			{ title: 'Nej', description: null },
 		]);
-	});
-
-	it('normalizes row objects and empty descriptions', () => {
 		expect(
 			normalizeStoredPollOptions([
 				{ title: 'A', description: '' },
