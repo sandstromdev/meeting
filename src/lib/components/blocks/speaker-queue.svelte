@@ -76,7 +76,7 @@
 			'Streck i debatten',
 			meeting.meeting.break.type === 'requested'
 				? `${meeting.meeting.break.by.name} har föreslagit ett streck i debatten.`
-				: 'Streck i debatten är accepterat.',
+				: 'Streck i debatten har godkänts.',
 			meeting.meeting.break.type === 'requested' ? 'default' : 'destructive',
 			meeting.meeting.break.type === 'accepted'
 				? undefined
