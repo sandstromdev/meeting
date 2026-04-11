@@ -93,8 +93,6 @@ export const create = platformAdmin
 			reply: null,
 		});
 
-		await createMeetingRuntimeState(ctx, meetingId);
-
 		const creatorParticipantId = await insertMeetingParticipant(ctx, {
 			meetingId,
 			userId: ctx.user.subject,
@@ -102,6 +100,8 @@ export const create = platformAdmin
 			role: 'admin',
 			absentSince: 0,
 		});
+
+		console.log('post insert', creatorParticipantId);
 
 		await applyNewParticipantSideEffects(ctx, {
 			meetingId,
