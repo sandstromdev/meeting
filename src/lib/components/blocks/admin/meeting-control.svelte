@@ -23,13 +23,19 @@
 	let dateInput = $state('');
 	let isLoading = $state(false);
 
+	function toDatetimeLocal(ts: number) {
+		const d = new Date(ts);
+		const pad = (n: number) => n.toString().padStart(2, '0');
+
+		return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+	}
+
 	$effect(() => {
 		if (editOpen && doc) {
 			title = doc.title ?? '';
 			code = doc.code ?? '';
 			const d = doc.date;
-			dateInput =
-				d != null ? new Date(d).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10);
+			dateInput = d != null ? toDatetimeLocal(d) : toDatetimeLocal(new Date().getTime());
 		}
 	});
 
@@ -171,7 +177,7 @@
 						</div>
 						<div class="grid gap-2">
 							<Label for="meeting-date">Datum</Label>
-							<Input id="meeting-date" bind:value={dateInput} type="date" />
+							<Input id="meeting-date" bind:value={dateInput} type="datetime-local" />
 						</div>
 					</div>
 					<Dialog.Footer>

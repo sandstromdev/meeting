@@ -45,13 +45,14 @@
 			toast.error('Fyll i alla obligatoriska fält.');
 			return;
 		}
-		let dateMs: number;
-		try {
-			dateMs = startOfDayTimestamp(dateStr, trimmedTz);
-		} catch {
-			toast.error('Ogiltigt datum eller tidszon.');
+
+		const dateMs = new Date(dateStr).getTime();
+
+		if (Number.isNaN(dateMs)) {
+			toast.error('Ogiltigt datum.');
 			return;
 		}
+
 		submitting = true;
 		try {
 			const loc = location.trim();
@@ -96,7 +97,7 @@
 
 			<div class="flex flex-col gap-1.5">
 				<Label for="meeting-date">Datum</Label>
-				<Input id="meeting-date" type="date" required bind:value={dateStr} />
+				<Input id="meeting-date" type="datetime-local" required bind:value={dateStr} />
 			</div>
 
 			<div class="flex flex-col gap-1.5">
