@@ -9,11 +9,18 @@ export { ABSTAIN_OPTION_LABEL } from './pollConstants';
 export const POLL_TYPES = ['multi_winner', 'single_winner'] as const;
 export type PollType = (typeof POLL_TYPES)[number];
 
-export const MAJORITY_RULES = ['simple', 'two_thirds', 'three_quarters', 'unanimous'] as const;
+export const MAJORITY_RULES = [
+	'simple',
+	'relative',
+	'two_thirds',
+	'three_quarters',
+	'unanimous',
+] as const;
 export type MajorityRule = (typeof MAJORITY_RULES)[number];
 
 export const MAJORITY_LABELS = {
 	simple: 'Enkel majoritet (>50 %)',
+	relative: 'Relativ majoritet (flest röster)',
 	two_thirds: 'Kvalificerad majoritet (≥2/3)',
 	three_quarters: '3/4 majoritet',
 	unanimous: 'Enighet (100 %)',
@@ -21,6 +28,10 @@ export const MAJORITY_LABELS = {
 
 export function getMajorityRuleThreshold(rule: MajorityRule) {
 	switch (rule) {
+		case 'relative':
+			throw new Error(
+				'getMajorityRuleThreshold: relative (plurality) has no fixed fraction threshold',
+			);
 		case 'simple':
 			return 0.5;
 		case 'two_thirds':
@@ -33,6 +44,10 @@ export function getMajorityRuleThreshold(rule: MajorityRule) {
 }
 
 export function meetsMajorityThreshold(rule: MajorityRule, votesCast: number, maxVotes: number) {
+	if (rule === 'relative') {
+		// Plurality: per-option threshold depends on being in the lead; this is only meaningful when compared to other counts.
+		return maxVotes > 0 && votesCast >= 1;
+	}
 	const threshold = getMajorityRuleThreshold(rule);
 	const minVotes =
 		rule === 'simple' ? Math.floor(maxVotes * threshold) + 1 : Math.ceil(maxVotes * threshold);
@@ -40,6 +55,9 @@ export function meetsMajorityThreshold(rule: MajorityRule, votesCast: number, ma
 }
 
 export function minimumVotesForMajority(rule: MajorityRule, maxVotes: number) {
+	if (rule === 'relative') {
+		return maxVotes > 0 ? 1 : Number.POSITIVE_INFINITY;
+	}
 	const threshold = getMajorityRuleThreshold(rule);
 	return rule === 'simple' ? Math.floor(maxVotes * threshold) + 1 : Math.ceil(maxVotes * threshold);
 }
@@ -81,9 +99,9 @@ export const POLL_PRESETS = [
 		preset: () =>
 			({
 				...newPollDraft(),
-				type: 'multi_winner',
+				type: 'single_winner',
 				winningCount: 1,
-				majorityRule: 'simple',
+				majorityRule: 'relative',
 				allowsAbstain: true,
 			}) satisfies PollDraft,
 	},
