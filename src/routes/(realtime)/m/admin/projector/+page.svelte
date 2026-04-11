@@ -69,7 +69,7 @@
 				</div>
 			{:else}
 				<div class="col-span-3 flex justify-center">
-					<div class="w-full max-w-md">
+					<div class="mx-auto w-full max-w-md text-center">
 						<PollView />
 					</div>
 				</div>
