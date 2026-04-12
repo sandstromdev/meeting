@@ -1,15 +1,10 @@
 <script lang="ts">
-	import AdminInfo from '$lib/components/blocks/admin/admin-info.svelte';
 	import MeetingInfo from '$lib/components/blocks/meeting-info.svelte';
 	import { getMeetingContext } from '$lib/context.svelte';
-	import { usePageState } from '$lib/page-state.svelte';
 	import { qr } from '@svelte-put/qr/svg';
 	import SeoHead from '$lib/components/ui/seo-head.svelte';
 
 	const meeting = getMeetingContext();
-	const vs = usePageState();
-	const queue = meeting.speakerQueue;
-	const cs = $derived(queue.current);
 </script>
 
 <SeoHead
@@ -28,8 +23,9 @@
 				{/each}
 			</p>
 		{/if}
-		<div class="rounded-lg border">
-			<AdminInfo size="lg" />
+		<div class="rounded-lg border px-6 py-4 text-center">
+			<div class="text-4xl font-semibold tabular-nums">{meeting.participants}</div>
+			<div class="mt-0.5 text-sm text-muted-foreground">Deltagare</div>
 		</div>
 	</div>
 	<div class="flex-1">
