@@ -4,10 +4,14 @@
 	import { page } from '$app/state';
 	import PollResultsDisplay from '$lib/components/poll-results-display.svelte';
 	import { Button } from '$lib/components/ui/button';
+	import Collapsible from '$lib/components/ui/collapsible/collapsible.svelte';
+	import CollapsibleContent from '$lib/components/ui/collapsible/collapsible-content.svelte';
+	import CollapsibleTrigger from '$lib/components/ui/collapsible/collapsible-trigger.svelte';
 	import { CopyButton } from '$lib/components/ui/copy-button';
 	import * as Field from '$lib/components/ui/field';
 	import SeoHead from '$lib/components/ui/seo-head.svelte';
 	import { Switch } from '$lib/components/ui/switch';
+	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
 	import { qr } from '@svelte-put/qr/svg';
 	import { useInterval } from 'runed';
 	import { getPollInfoPage } from './data.remote';
@@ -133,22 +137,29 @@
 		</div>
 
 		{#if !info.isOpen}
-			<div class="space-y-3">
-				<h2 class="text-lg font-medium">Resultat</h2>
-				{#if info.results}
-					<PollResultsDisplay
-						data={{ results: info.results }}
-						resultVisibility={info.resultVisibility}
-						size="lg"
-					/>
-				{:else if info.resultVisibility === 'none'}
-					<p class="rounded-lg border border-dashed px-4 py-3 text-sm text-muted-foreground">
-						Resultatet visas inte offentligt för den här omröstningen.
-					</p>
-				{:else}
-					<p class="text-sm text-muted-foreground">Resultat beräknas eller saknas ännu.</p>
-				{/if}
-			</div>
+			<Collapsible class="rounded-lg border">
+				<CollapsibleTrigger
+					class="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-muted/50 data-[state=open]:[&>svg]:rotate-180"
+				>
+					<span class="text-lg font-medium">Resultat</span>
+					<ChevronDownIcon class="size-4 shrink-0 transition-transform" />
+				</CollapsibleTrigger>
+				<CollapsibleContent class="border-t px-4 py-3">
+					{#if info.results}
+						<PollResultsDisplay
+							data={{ results: info.results }}
+							resultVisibility={info.resultVisibility}
+							size="lg"
+						/>
+					{:else if info.resultVisibility === 'none'}
+						<p class="rounded-lg border border-dashed px-4 py-3 text-sm text-muted-foreground">
+							Resultatet visas inte offentligt för den här omröstningen.
+						</p>
+					{:else}
+						<p class="text-sm text-muted-foreground">Resultat beräknas eller saknas ännu.</p>
+					{/if}
+				</CollapsibleContent>
+			</Collapsible>
 		{/if}
 	</div>
 
