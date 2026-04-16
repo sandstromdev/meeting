@@ -1,7 +1,7 @@
 import { Migrations } from '@convex-dev/migrations';
-import { components, internal } from '$convex/_generated/api';
-import type { DataModel } from '$convex/_generated/dataModel';
-import { internalMutation } from '$convex/_generated/server';
+import { components, internal } from '@lsnd/convex/_generated/api';
+import type { DataModel } from '@lsnd/convex/_generated/dataModel';
+import { internalMutation } from '@lsnd/convex/_generated/server';
 
 /**
  * `multi_winner` with winningCount 1 is equivalent to `single_winner` + relative majority

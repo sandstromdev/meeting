@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { PollOptionTotal } from '$convex/helpers/poll';
+	import type { PollOptionTotal } from '@lsnd/convex/helpers/poll';
 	import Progress from '$lib/components/ui/progress/progress.svelte';
 	import Separator from '$lib/components/ui/separator/separator.svelte';
 	import { ABSTAIN_OPTION_LABEL, getVoteShare } from '$lib/polls';

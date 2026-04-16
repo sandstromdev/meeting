@@ -1,4 +1,4 @@
-import { MeetingStatus } from '$convex/schema/meetings';
+import { MeetingStatus } from '@lsnd/convex/schema/meetings';
 import type { BadgeVariant } from './components/ui/badge';
 
 export type MeetingStatus = typeof MeetingStatus.type;

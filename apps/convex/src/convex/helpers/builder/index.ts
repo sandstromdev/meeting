@@ -1,5 +1,5 @@
 // oxlint-disable typescript/no-explicit-any
-import { AppError, appErrors } from '$convex/helpers/error';
+import { AppError, appErrors } from '@lsnd/convex/helpers/error';
 import type { Triggers } from 'convex-helpers/server/triggers';
 import { zodToConvex } from 'convex-helpers/server/zod4';
 import {

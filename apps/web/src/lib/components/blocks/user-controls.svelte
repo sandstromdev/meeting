@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { api } from '$convex/_generated/api';
+	import { api } from '@lsnd/convex/_generated/api';
 	import * as auth from '$lib/auth-client';
 	import Badge from '$lib/components/ui/badge/badge.svelte';
 	import Button from '$lib/components/ui/button/button.svelte';

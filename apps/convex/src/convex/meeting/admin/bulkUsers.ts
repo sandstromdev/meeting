@@ -1,13 +1,13 @@
-import { api } from '$convex/_generated/api';
-import { authed } from '$convex/helpers/auth';
+import { api } from '@lsnd/convex/_generated/api';
+import { authed } from '@lsnd/convex/helpers/auth';
 import {
 	BULK_MEETING_USER_IMPORT_LIMIT,
 	COMMIT_IMPORT_MUTATION_MAX_ROWS,
 	bulkImportRawRowSchema,
 	serverValidateBulkImportRows,
 	type BulkMeetingUserImportValidationRow,
-} from '$convex/helpers/bulkMeetingUsers';
-import { assertPlatformAdmin, findAuthUserByEmail } from '$convex/helpers/meetingAccess';
+} from '@lsnd/convex/helpers/bulkMeetingUsers';
+import { assertPlatformAdmin, findAuthUserByEmail } from '@lsnd/convex/helpers/meetingAccess';
 import { zid } from 'convex-helpers/server/zod4';
 import { z } from 'zod';
 

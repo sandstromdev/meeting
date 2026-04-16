@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { api } from '$convex/_generated/api';
+	import { api } from '@lsnd/convex/_generated/api';
 	import { notifyMutation } from '$lib/admin-toast';
 	import EditAgendaItem from '$lib/components/blocks/admin/agenda/edit-agenda-item.svelte';
 	import {

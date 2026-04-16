@@ -1,5 +1,5 @@
-import type { Id } from '$convex/_generated/dataModel';
-import type { MutationCtx, QueryCtx } from '$convex/_generated/server';
+import type { Id } from '@lsnd/convex/_generated/dataModel';
+import type { MutationCtx, QueryCtx } from '@lsnd/convex/_generated/server';
 
 type DbReader = QueryCtx['db'] | MutationCtx['db'];
 

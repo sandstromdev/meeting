@@ -1,7 +1,7 @@
 // See https://svelte.dev/docs/kit/types#app.d.ts
 // for information about these interfaces
-import { api } from '$convex/_generated/api';
-import type { Id, Doc } from '$convex/_generated/dataModel';
+import { api } from '@lsnd/convex/_generated/api';
+import type { Id, Doc } from '@lsnd/convex/_generated/dataModel';
 
 declare global {
 	namespace App {

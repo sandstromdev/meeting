@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { api } from '$convex/_generated/api';
+	import { api } from '@lsnd/convex/_generated/api';
 	import * as Alert from '$lib/components/ui/alert';
 	import { Button } from '$lib/components/ui/button';
 	import SeoHead from '$lib/components/ui/seo-head.svelte';

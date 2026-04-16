@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { api } from '$convex/_generated/api';
+	import { api } from '@lsnd/convex/_generated/api';
 	import type { PollResultsDisplayData } from '$lib/components/poll-results-display.svelte';
 	import { getMeetingContext } from '$lib/context.svelte';
 	import { usePageState } from '$lib/page-state.svelte';

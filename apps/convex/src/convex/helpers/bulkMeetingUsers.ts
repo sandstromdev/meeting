@@ -1,4 +1,4 @@
-import { appErrors } from '$convex/helpers/error';
+import { appErrors } from '@lsnd/convex/helpers/error';
 import {
 	BULK_MEETING_USER_IMPORT_LIMIT,
 	bulkImportRawRowSchema,

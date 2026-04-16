@@ -1,6 +1,6 @@
-import { components } from '$convex/_generated/api';
-import type { Doc, Id } from '$convex/_generated/dataModel';
-import type { MutationCtx, QueryCtx } from '$convex/_generated/server';
+import { components } from '@lsnd/convex/_generated/api';
+import type { Doc, Id } from '@lsnd/convex/_generated/dataModel';
+import type { MutationCtx, QueryCtx } from '@lsnd/convex/_generated/server';
 import { AppError, appErrors } from './error';
 
 export const MEETING_ACCESS_MODES = ['open', 'closed', 'invite_only'] as const;

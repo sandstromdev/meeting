@@ -2,7 +2,7 @@ import ora from 'ora';
 import { parseArgs } from 'util';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { copyFile, mkdtemp, rm } from 'node:fs/promises';
+import { copyFile, mkdtemp, mkdir, rm } from 'node:fs/promises';
 
 const { values } = parseArgs({
 	args: Bun.argv,
@@ -51,7 +51,9 @@ async function runCommand<T extends 'inherit' | 'pipe' | Bun.BunFile>(options: {
 	}
 }
 
-const repoRoot = join(dirname(Bun.fileURLToPath(import.meta.url)), '..');
+const scriptDir = dirname(Bun.fileURLToPath(import.meta.url));
+const convexRoot = join(scriptDir, '..');
+const repoRoot = join(convexRoot, '..', '..');
 
 const noop = () => {};
 
@@ -70,32 +72,40 @@ if (!tempDir) {
 	throw new Error('Failed to create temporary directory');
 }
 
-const filePath = join(tempDir, '.env');
+const tempConvexDir = join(tempDir, 'apps', 'convex');
+const tempSharedPkgDir = join(tempDir, 'packages', 'shared');
+
+const filePath = join(tempConvexDir, '.env');
 const output = Bun.file(filePath);
 
 try {
 	spinner.succeed(`Created temporary directory at ${tempDir}`);
 
-	spinner.text = 'Copying .env.schema to temporary directory…';
-	const schemaFilePath = join(repoRoot, '.env.schema');
+	spinner.text = 'Preparing temporary env validation workspace…';
+	const schemaFilePath = join(repoRoot, 'apps', 'convex', '.env.schema');
+	const sharedEnvFilePath = join(repoRoot, 'packages', 'shared', '.env.schema');
 
-	await copyFile(schemaFilePath, join(tempDir, '.env.schema'));
+	await mkdir(tempConvexDir, { recursive: true });
+	await mkdir(tempSharedPkgDir, { recursive: true });
 
-	spinner.succeed('Copied .env.schema to temporary directory');
+	await copyFile(schemaFilePath, join(tempConvexDir, '.env.schema'));
+	await copyFile(sharedEnvFilePath, join(tempSharedPkgDir, '.env.schema'));
+
+	spinner.succeed('Prepared temporary env validation workspace');
 
 	let command = ['bunx', 'convex', 'env', 'list'];
 	if (values.prod) {
 		command.push('--prod');
 	}
 
-	await runCommand({ command, stdout: output });
+	await runCommand({ command, stdout: output, cwd: convexRoot });
 
 	spinner.succeed('Fetched Convex environment variables');
 
 	const proc = await runCommand({
 		command: ['bunx', 'varlock', 'load'],
 		stdout: 'pipe',
-		cwd: tempDir,
+		cwd: tempConvexDir,
 		env: {
 			PATH: process.env.PATH as string,
 			IS_CONVEX: 'true',

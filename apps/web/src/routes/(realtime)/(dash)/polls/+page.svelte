@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { api } from '$convex/_generated/api';
-	import type { Doc, Id } from '$convex/_generated/dataModel';
+	import { api } from '@lsnd/convex/_generated/api';
+	import type { Doc, Id } from '@lsnd/convex/_generated/dataModel';
 	import { PUBLIC_SITE_URL } from '$env/static/public';
 	import PollResultsDisplay from '$lib/components/poll-results-display.svelte';
 	import * as Alert from '$lib/components/ui/alert';

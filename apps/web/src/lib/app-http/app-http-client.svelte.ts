@@ -1,6 +1,6 @@
 import { PUBLIC_CONVEX_URL } from '$env/static/public';
 import { useAuth } from '@mmailaender/convex-better-auth-svelte/svelte';
-import { getAppError } from '$convex/helpers/error';
+import { getAppError } from '@lsnd/convex/helpers/error';
 import { ConvexHttpClient } from 'convex/browser';
 import type { DefaultFunctionArgs, FunctionReference, OptionalRestArgs } from 'convex/server';
 import { ConvexError } from 'convex/values';

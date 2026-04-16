@@ -1,17 +1,17 @@
-import { withMe } from '$convex/helpers/auth';
+import { withMe } from '@lsnd/convex/helpers/auth';
 import {
 	getAbsentCounter,
 	getParticipantCounter,
 	getVotersCounter,
 	getVotesCounter,
-} from '$convex/helpers/counters';
-import { AppError, appErrors } from '$convex/helpers/error';
-import { assertValidPollVoteOptionIndexes } from '$convex/helpers/poll';
+} from '@lsnd/convex/helpers/counters';
+import { AppError, appErrors } from '@lsnd/convex/helpers/error';
+import { assertValidPollVoteOptionIndexes } from '@lsnd/convex/helpers/poll';
 import {
 	assertMeetingPollInMeeting,
 	getLatestMeetingPollResultSnapshot,
 	getMeetingPollOrThrow,
-} from '$convex/helpers/meetingPoll';
+} from '@lsnd/convex/helpers/meetingPoll';
 import { normalizeStoredPollOptions } from '$lib/pollOptions';
 import { zid } from 'convex-helpers/server/zod4';
 import { z } from 'zod';

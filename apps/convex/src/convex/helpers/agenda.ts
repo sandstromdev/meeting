@@ -1,4 +1,4 @@
-import type { Id } from '$convex/_generated/dataModel';
+import type { Id } from '@lsnd/convex/_generated/dataModel';
 import { AppError, appErrors } from './error';
 import type { Direction } from './types';
 

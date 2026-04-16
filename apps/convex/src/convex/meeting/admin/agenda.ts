@@ -1,4 +1,4 @@
-import { internal } from '$convex/_generated/api';
+import { internal } from '@lsnd/convex/_generated/api';
 import {
 	appendToAgenda,
 	canMoveSubtree,
@@ -14,20 +14,20 @@ import {
 	updateAgendaItemById,
 	type AgendaItem,
 	type AgendaItemId,
-} from '$convex/helpers/agenda';
-import { admin } from '$convex/helpers/auth';
-import { AppError, appErrors } from '$convex/helpers/error';
+} from '@lsnd/convex/helpers/agenda';
+import { admin } from '@lsnd/convex/helpers/auth';
+import { AppError, appErrors } from '@lsnd/convex/helpers/error';
 import {
 	assertMeetingPollEditable,
 	assertMeetingPollInMeeting,
 	createMeetingPollHelper,
 	getMeetingPollOrThrow,
-} from '$convex/helpers/meetingPoll';
+} from '@lsnd/convex/helpers/meetingPoll';
 import { optionsWithAbstainLastRows } from '$lib/pollOptions';
 import { FullPollSchema, PollDraftSchema, RefinePollDraftSchema } from '$lib/validation';
 import { zid } from 'convex-helpers/server/zod4';
 import { z } from 'zod';
-import type { Id } from '$convex/_generated/dataModel';
+import type { Id } from '@lsnd/convex/_generated/dataModel';
 
 // --- Public mutations ---
 

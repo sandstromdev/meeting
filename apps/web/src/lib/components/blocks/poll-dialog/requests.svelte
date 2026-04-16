@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { api } from '$convex/_generated/api';
+	import { api } from '@lsnd/convex/_generated/api';
 	import Request from '$lib/components/blocks/admin/request.svelte';
 	import CollapsibleContent from '$lib/components/ui/collapsible/collapsible-content.svelte';
 	import CollapsibleTrigger from '$lib/components/ui/collapsible/collapsible-trigger.svelte';

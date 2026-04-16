@@ -1,4 +1,4 @@
-import type { DataModel } from '$convex/_generated/dataModel';
+import type { DataModel } from '@lsnd/convex/_generated/dataModel';
 import { Triggers } from 'convex-helpers/server/triggers';
 import { registerMeetingSimplifiedSnapshotTriggers } from './meeting';
 

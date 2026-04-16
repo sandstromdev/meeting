@@ -3,7 +3,7 @@
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import UploadIcon from '@lucide/svelte/icons/upload';
 	import { useParticipantsContext } from './context.svelte';
-	import { api } from '$convex/_generated/api';
+	import { api } from '@lsnd/convex/_generated/api';
 	import RefreshCcwIcon from '@lucide/svelte/icons/refresh-ccw';
 	import RotateCcwKeyIcon from '@lucide/svelte/icons/rotate-ccw-key';
 	import UserXIcon from '@lucide/svelte/icons/user-x';

@@ -1,12 +1,12 @@
-import { c } from '$convex/helpers';
+import { c } from '@lsnd/convex/helpers';
 import {
 	buildOptionTotalsFromVotes,
 	computePollOutcome,
 	rankOptionsForScoring,
 	usableVotesFromRanked,
-} from '$convex/helpers/poll';
+} from '@lsnd/convex/helpers/poll';
 import { normalizeStoredPollOptions } from '$lib/pollOptions';
-import { getUserPollOrThrow } from '$convex/helpers/userPoll';
+import { getUserPollOrThrow } from '@lsnd/convex/helpers/userPoll';
 import { zid } from 'convex-helpers/server/zod4';
 
 export const getPollResults = c

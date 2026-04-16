@@ -9,7 +9,7 @@ const config = {
 			remoteFunctions: true,
 		},
 		alias: {
-			$convex: './src/convex',
+			'@lsnd/convex': '../convex/src/convex',
 		},
 	},
 	compilerOptions: {

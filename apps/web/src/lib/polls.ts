@@ -1,5 +1,5 @@
-import type { Doc, Id } from '$convex/_generated/dataModel';
-import type { PollOptionTotal } from '$convex/helpers/poll';
+import type { Doc, Id } from '@lsnd/convex/_generated/dataModel';
+import type { PollOptionTotal } from '@lsnd/convex/helpers/poll';
 import { draftOptionsFromStored } from './pollOptions';
 import { ABSTAIN_OPTION_LABEL } from './pollConstants';
 import type { PollDraft } from './validation';

@@ -1,5 +1,5 @@
-import { api } from '$convex/_generated/api';
-import type { Id } from '$convex/_generated/dataModel';
+import { api } from '@lsnd/convex/_generated/api';
+import type { Id } from '@lsnd/convex/_generated/dataModel';
 import { useConvexClient, useQuery } from '@mmailaender/convex-svelte';
 import type { ConvexClient } from 'convex/browser';
 import type { Getter } from 'runed';

@@ -1,16 +1,16 @@
-import { authComponent } from '$convex/auth';
-import { admin } from '$convex/helpers/auth';
+import { authComponent } from '@lsnd/convex/auth';
+import { admin } from '@lsnd/convex/helpers/auth';
 import {
 	getAbsentCounter,
 	getBannedCounter,
 	getParticipantCounter,
-} from '$convex/helpers/counters';
-import { grantMeetingAccess, revokeMeetingAccess } from '$convex/helpers/meetingAccess';
-import { completeReturnToMeeting, markParticipantAbsentNow } from '$convex/helpers/meeting';
-import { ensureParticipantInMeeting } from '$convex/helpers/users';
+} from '@lsnd/convex/helpers/counters';
+import { grantMeetingAccess, revokeMeetingAccess } from '@lsnd/convex/helpers/meetingAccess';
+import { completeReturnToMeeting, markParticipantAbsentNow } from '@lsnd/convex/helpers/meeting';
+import { ensureParticipantInMeeting } from '@lsnd/convex/helpers/users';
 import { zid } from 'convex-helpers/server/zod4';
 import { z } from 'zod';
-import { paginationOptsValidator } from '$convex/helpers/pagination';
+import { paginationOptsValidator } from '@lsnd/convex/helpers/pagination';
 
 // --- Public queries ---
 

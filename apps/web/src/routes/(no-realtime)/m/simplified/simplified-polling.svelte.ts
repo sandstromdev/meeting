@@ -1,14 +1,14 @@
 import { browser } from '$app/environment';
 import { goto } from '$app/navigation';
 import { resolve } from '$app/paths';
-import { api } from '$convex/_generated/api';
-import type { Id } from '$convex/_generated/dataModel';
+import { api } from '@lsnd/convex/_generated/api';
+import type { Id } from '@lsnd/convex/_generated/dataModel';
 import type {
 	SimplifiedColdSnapshot,
 	SimplifiedHotSnapshot,
 	SimplifiedMeSnapshot,
 	SimplifiedVersions,
-} from '../../../../convex/meeting/users/simplified';
+} from '@lsnd/convex/meeting/users/simplified';
 import type { AppHttpClient } from '$lib/app-http/app-http-client.svelte';
 import { MeetingHttpClient } from '$lib/app-http/meeting-http-client';
 import { messageFromSimplifiedConvexError } from '$lib/simplified/simplified-convex-errors';

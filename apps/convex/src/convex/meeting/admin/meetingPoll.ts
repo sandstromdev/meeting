@@ -1,20 +1,20 @@
-import { internal } from '$convex/_generated/api';
-import { findAgendaItemById, setPollIdsForItem } from '$convex/helpers/agenda';
-import { admin } from '$convex/helpers/auth';
+import { internal } from '@lsnd/convex/_generated/api';
+import { findAgendaItemById, setPollIdsForItem } from '@lsnd/convex/helpers/agenda';
+import { admin } from '@lsnd/convex/helpers/auth';
 import {
 	getAbsentCounter,
 	getParticipantCounter,
 	getVotersCounter,
 	getVotesCounter,
-} from '$convex/helpers/counters';
-import { AppError, appErrors } from '$convex/helpers/error';
+} from '@lsnd/convex/helpers/counters';
+import { AppError, appErrors } from '@lsnd/convex/helpers/error';
 import {
 	assertMeetingPollEditable,
 	assertMeetingPollInMeeting,
 	createMeetingPollHelper,
 	getLatestMeetingPollResultSnapshot,
 	getMeetingPollOrThrow,
-} from '$convex/helpers/meetingPoll';
+} from '@lsnd/convex/helpers/meetingPoll';
 import { draftOptionsFromStored, optionsWithAbstainLastRows } from '$lib/pollOptions';
 import { FullPollSchema, PollDraftSchema, RefinePollDraftSchema } from '$lib/validation';
 import { zid } from 'convex-helpers/server/zod4';

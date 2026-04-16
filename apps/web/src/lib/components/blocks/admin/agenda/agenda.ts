@@ -1,4 +1,4 @@
-import { api } from '$convex/_generated/api';
+import { api } from '@lsnd/convex/_generated/api';
 import type { MeetingState } from '$lib/context.svelte';
 import { type MeetingPollDraft } from '$lib/polls';
 import { RefinePollDraftSchema } from '$lib/validation';

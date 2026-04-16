@@ -1,13 +1,13 @@
-import { c } from '$convex/helpers';
-import { authed } from '$convex/helpers/auth';
-import { getUserPollVotesCounter, getUserPollVotersCounter } from '$convex/helpers/counters';
-import { AppError, appErrors } from '$convex/helpers/error';
-import { assertValidPollVoteOptionIndexes } from '$convex/helpers/poll';
+import { c } from '@lsnd/convex/helpers';
+import { authed } from '@lsnd/convex/helpers/auth';
+import { getUserPollVotesCounter, getUserPollVotersCounter } from '@lsnd/convex/helpers/counters';
+import { AppError, appErrors } from '@lsnd/convex/helpers/error';
+import { assertValidPollVoteOptionIndexes } from '@lsnd/convex/helpers/poll';
 import {
 	getLatestUserPollResultSnapshot,
 	getUserPollOrThrow,
 	getVoterKey,
-} from '$convex/helpers/userPoll';
+} from '@lsnd/convex/helpers/userPoll';
 import { normalizeStoredPollOptions } from '$lib/pollOptions';
 import { zid } from 'convex-helpers/server/zod4';
 import { z } from 'zod';

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { api } from '$convex/_generated/api';
+	import { api } from '@lsnd/convex/_generated/api';
 	import PollResultsDisplay from '$lib/components/poll-results-display.svelte';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
 	import Progress from '$lib/components/ui/progress/progress.svelte';

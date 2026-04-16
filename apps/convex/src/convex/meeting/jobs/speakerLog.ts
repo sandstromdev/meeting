@@ -1,4 +1,4 @@
-import { c } from '$convex/helpers';
+import { c } from '@lsnd/convex/helpers';
 import { zid } from 'convex-helpers/server/zod4';
 import { z } from 'zod';
 

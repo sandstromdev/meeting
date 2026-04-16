@@ -1,4 +1,4 @@
-import { getAppError } from '$convex/helpers/error';
+import { getAppError } from '@lsnd/convex/helpers/error';
 
 /** Maps Convex / network failures to user-visible Swedish messages (parity with simplified data.remote throwRemoteError). */
 export function messageFromSimplifiedConvexError(cause: unknown): string {

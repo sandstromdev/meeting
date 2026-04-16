@@ -1,4 +1,5 @@
 import { Context } from 'runed';
+import type { HTMLInputAttributes } from 'svelte/elements';
 import type { ReadableBoxedValues, WritableBoxedValues } from 'svelte-toolbelt';
 import { useRamp, type UseRampOptions } from '$lib/hooks/use-ramp.svelte';
 import type { ButtonElementProps } from '../button';
@@ -28,7 +29,7 @@ export class NumberFieldRootContext {
 export class NumberFieldInputContext {
 	constructor(readonly rootState: NumberFieldRootContext) {}
 
-	oninput(e: Parameters<NonNullable<HTMLInputElement['oninput']>>[0]) {
+	oninput(e: Parameters<NonNullable<HTMLInputAttributes['oninput']>>[0]) {
 		const value = (e.currentTarget as HTMLInputElement).value;
 
 		if (

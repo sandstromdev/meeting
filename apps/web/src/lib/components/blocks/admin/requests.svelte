@@ -9,7 +9,7 @@
 	import XIcon from '@lucide/svelte/icons/x';
 	import { useQuery } from '@mmailaender/convex-svelte';
 	import { notifyMutation } from '$lib/admin-toast';
-	import { api } from '$convex/_generated/api';
+	import { api } from '@lsnd/convex/_generated/api';
 	import Request from '$lib/components/blocks/admin/request.svelte';
 
 	const meeting = getMeetingContext();

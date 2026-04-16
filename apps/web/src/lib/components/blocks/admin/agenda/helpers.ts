@@ -1,5 +1,5 @@
-import { api } from '$convex/_generated/api';
-import type { AgendaItem, Agenda } from '$convex/helpers/agenda';
+import { api } from '@lsnd/convex/_generated/api';
+import type { AgendaItem, Agenda } from '@lsnd/convex/helpers/agenda';
 import { notifyMutation } from '$lib/admin-toast';
 import { confirm } from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
 import type { MeetingState } from '$lib/context.svelte';

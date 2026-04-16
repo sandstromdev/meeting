@@ -1,4 +1,4 @@
-import type { Doc, Id } from '$convex/_generated/dataModel';
+import type { Doc, Id } from '@lsnd/convex/_generated/dataModel';
 import type { Auth } from 'convex/server';
 import { stripSystemFields } from '.';
 import { AppError, appErrors } from './error';

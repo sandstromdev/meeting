@@ -1,5 +1,5 @@
-import type { Id } from '$convex/_generated/dataModel';
-import type { MutationCtx } from '$convex/_generated/server';
+import type { Id } from '@lsnd/convex/_generated/dataModel';
+import type { MutationCtx } from '@lsnd/convex/_generated/server';
 
 import { getAbsentCounter, getParticipantCounter } from './counters';
 

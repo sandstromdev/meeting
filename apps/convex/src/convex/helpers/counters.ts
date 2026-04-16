@@ -1,6 +1,6 @@
-import type { Id } from '$convex/_generated/dataModel';
-import type { QueryCtx } from '$convex/_generated/server';
-import { ShardedCounter } from '$convex/counter/client';
+import type { Id } from '@lsnd/convex/_generated/dataModel';
+import type { QueryCtx } from '@lsnd/convex/_generated/server';
+import { ShardedCounter } from '@lsnd/convex/counter/client';
 import { components } from '../_generated/api';
 
 type Counters =

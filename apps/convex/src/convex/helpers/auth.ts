@@ -1,6 +1,6 @@
 import { zid } from 'convex-helpers/server/zod4';
 import type { UserIdentity } from 'convex/server';
-import type { QueryCtx } from '$convex/_generated/server';
+import type { QueryCtx } from '@lsnd/convex/_generated/server';
 import { AppError, appErrors } from './error';
 import { c } from './index';
 import { getMeetingParticipant } from './meeting';

@@ -1,4 +1,4 @@
-import type { Id } from '$convex/_generated/dataModel';
+import type { Id } from '@lsnd/convex/_generated/dataModel';
 import type { FunctionReference, FunctionReturnType } from 'convex/server';
 import type { Getter } from 'runed';
 

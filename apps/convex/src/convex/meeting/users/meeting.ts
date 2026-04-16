@@ -1,12 +1,12 @@
-import { authed, withMe, withMeeting } from '$convex/helpers/auth';
+import { authed, withMe, withMeeting } from '@lsnd/convex/helpers/auth';
 import {
 	getAbsentCounter,
 	getBannedCounter,
 	getParticipantCounter,
-} from '$convex/helpers/counters';
-import { AppError, appErrors } from '$convex/helpers/error';
-import { getMeetingParticipant } from '$convex/helpers/meeting';
-import { assertMeetingNotArchived } from '$convex/helpers/meetingLifecycle';
+} from '@lsnd/convex/helpers/counters';
+import { AppError, appErrors } from '@lsnd/convex/helpers/error';
+import { getMeetingParticipant } from '@lsnd/convex/helpers/meeting';
+import { assertMeetingNotArchived } from '@lsnd/convex/helpers/meetingLifecycle';
 import { zid } from 'convex-helpers/server/zod4';
 
 // --- Public queries ---

@@ -13,10 +13,11 @@ Thumbs.db
 # Output
 .netlify
 .output
-.vercel
+**/.vercel
 .wrangler
-/.svelte-kit
-/build
+**/.svelte-kit
+**/build
+**/.turbo
 
 # Vite
 vite.config.js.timestamp-*

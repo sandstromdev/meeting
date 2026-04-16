@@ -1,5 +1,5 @@
-import { c } from '$convex/helpers';
-import { getVotesCounter, getVotersCounter } from '$convex/helpers/counters';
+import { c } from '@lsnd/convex/helpers';
+import { getVotesCounter, getVotersCounter } from '@lsnd/convex/helpers/counters';
 import { zid } from 'convex-helpers/server/zod4';
 import { z } from 'zod';
 

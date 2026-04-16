@@ -1,6 +1,6 @@
-import type { DataModel, Doc, Id } from '$convex/_generated/dataModel';
-import type { MutationCtx } from '$convex/_generated/server';
-import { getMeetingRuntimeState } from '$convex/helpers/meetingRuntime';
+import type { DataModel, Doc, Id } from '@lsnd/convex/_generated/dataModel';
+import type { MutationCtx } from '@lsnd/convex/_generated/server';
+import { getMeetingRuntimeState } from '@lsnd/convex/helpers/meetingRuntime';
 import type { Triggers } from 'convex-helpers/server/triggers';
 
 async function bumpMeetingRuntimeVersions(

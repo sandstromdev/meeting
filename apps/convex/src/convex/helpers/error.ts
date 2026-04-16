@@ -1,5 +1,5 @@
 import { ConvexError, type Value } from 'convex/values';
-import type { Id } from '$convex/_generated/dataModel';
+import type { Id } from '@lsnd/convex/_generated/dataModel';
 import { ErrorMessages } from '$lib/errors';
 import { z } from 'zod';
 

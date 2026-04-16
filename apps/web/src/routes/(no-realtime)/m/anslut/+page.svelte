@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { isAppErrorCode } from '$convex/helpers/error';
+	import { isAppErrorCode } from '@lsnd/convex/helpers/error';
 	import { signOut } from '$lib/auth-client';
 	import AlertDescription from '$lib/components/ui/alert/alert-description.svelte';
 	import AlertTitle from '$lib/components/ui/alert/alert-title.svelte';

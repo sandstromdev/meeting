@@ -3,27 +3,12 @@ import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
+	envDir: '../..',
 	plugins: [tailwindcss(), sveltekit()],
 	test: {
 		passWithNoTests: false,
-		projects: [
-			{
-				extends: true,
-				test: {
-					name: 'convex',
-					include: ['src/convex/**/*.test.{ts,js}'],
-					environment: 'edge-runtime',
-				},
-			},
-			{
-				extends: true,
-				test: {
-					name: 'app',
-					include: ['src/**/*.test.{ts,js}'],
-					exclude: ['src/convex/**'],
-					environment: 'node',
-				},
-			},
-		],
+		name: 'app',
+		include: ['src/**/*.test.{ts,js}'],
+		environment: 'node',
 	},
 });

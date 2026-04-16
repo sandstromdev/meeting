@@ -1,6 +1,6 @@
-import { withMe } from '$convex/helpers/auth';
-import { logSpeakerSlot } from '$convex/helpers/meeting';
-import { Request } from '$convex/schema/meetings';
+import { withMe } from '@lsnd/convex/helpers/auth';
+import { logSpeakerSlot } from '@lsnd/convex/helpers/meeting';
+import { Request } from '@lsnd/convex/schema/meetings';
 import { z } from 'zod';
 
 // --- Public queries ---

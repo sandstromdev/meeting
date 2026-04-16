@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { computeAgendaNumbers } from '$convex/helpers/agenda';
+	import { computeAgendaNumbers } from '@lsnd/convex/helpers/agenda';
 	import Agenda from '$lib/components/blocks/agenda';
 	import QueueControlsView from '$lib/components/blocks/queue-controls-view.svelte';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';

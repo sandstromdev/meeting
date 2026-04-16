@@ -1,6 +1,6 @@
 import { dev } from '$app/environment';
-import { api } from '$convex/_generated/api';
-import type { Id } from '$convex/_generated/dataModel';
+import { api } from '@lsnd/convex/_generated/api';
+import type { Id } from '@lsnd/convex/_generated/dataModel';
 import type { Cookies } from '@sveltejs/kit';
 import { getConvexClient } from './convex';
 

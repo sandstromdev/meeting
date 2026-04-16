@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { api } from '$convex/_generated/api';
-	import { canMoveSubtree } from '$convex/helpers/agenda';
+	import { api } from '@lsnd/convex/_generated/api';
+	import { canMoveSubtree } from '@lsnd/convex/helpers/agenda';
 	import EditAgendaItem from '$lib/components/blocks/admin/agenda/edit-agenda-item.svelte';
 	import { removeAgendaItemWithChoice } from '$lib/components/blocks/admin/agenda/helpers';
 	import { Button } from '$lib/components/ui/button';

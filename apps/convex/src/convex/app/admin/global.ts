@@ -1,6 +1,6 @@
-import { authComponent, createAuth } from '$convex/auth';
-import { authed } from '$convex/helpers/auth';
-import { AppError, appErrors } from '$convex/helpers/error';
+import { authComponent, createAuth } from '@lsnd/convex/auth';
+import { authed } from '@lsnd/convex/helpers/auth';
+import { AppError, appErrors } from '@lsnd/convex/helpers/error';
 import * as z from 'zod';
 
 const admin = authed.use(async ({ ctx, next }) => {

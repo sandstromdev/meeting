@@ -1,14 +1,14 @@
-import type { Id } from '$convex/_generated/dataModel';
-import { api } from '$convex/_generated/api';
+import type { Id } from '@lsnd/convex/_generated/dataModel';
+import { api } from '@lsnd/convex/_generated/api';
 import {
 	getAbsentCounter,
 	getParticipantCounter,
 	getVotesCounter,
 	getVotersCounter,
-} from '$convex/helpers/counters';
-import { withMe } from '$convex/helpers/auth';
-import { getLatestMeetingPollResultSnapshot } from '$convex/helpers/meetingPoll';
-import { getMeetingRuntimeVersions } from '$convex/helpers/meetingRuntime';
+} from '@lsnd/convex/helpers/counters';
+import { withMe } from '@lsnd/convex/helpers/auth';
+import { getLatestMeetingPollResultSnapshot } from '@lsnd/convex/helpers/meetingPoll';
+import { getMeetingRuntimeVersions } from '@lsnd/convex/helpers/meetingRuntime';
 import { normalizeStoredPollOptions, type PollOptionRow } from '$lib/pollOptions';
 
 export type SimplifiedPollResultsPayload = Omit<

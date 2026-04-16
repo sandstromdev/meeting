@@ -1,5 +1,5 @@
-import { query } from '$convex/_generated/server';
-import { authComponent } from '$convex/auth';
+import { query } from '@lsnd/convex/_generated/server';
+import { authComponent } from '@lsnd/convex/auth';
 
 // --- Public queries ---
 

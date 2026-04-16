@@ -1,4 +1,4 @@
-import { type AppErrorMessages } from '$convex/helpers/error';
+import { type AppErrorMessages } from '@lsnd/convex/helpers/error';
 
 export const ErrorMessages = {
 	// HTTP-shaped (401 / 403 / 500), no domain payload

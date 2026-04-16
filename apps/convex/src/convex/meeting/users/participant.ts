@@ -1,10 +1,10 @@
 import { zid } from 'convex-helpers/server/zod4';
-import type { QueryCtx } from '$convex/_generated/server';
-import type { Id } from '$convex/_generated/dataModel';
-import { authed } from '$convex/helpers/auth';
-import { AppError, appErrors } from '$convex/helpers/error';
-import { assertMeetingNotArchived } from '$convex/helpers/meetingLifecycle';
-import { pickParticipantData } from '$convex/helpers/users';
+import type { QueryCtx } from '@lsnd/convex/_generated/server';
+import type { Id } from '@lsnd/convex/_generated/dataModel';
+import { authed } from '@lsnd/convex/helpers/auth';
+import { AppError, appErrors } from '@lsnd/convex/helpers/error';
+import { assertMeetingNotArchived } from '@lsnd/convex/helpers/meetingLifecycle';
+import { pickParticipantData } from '@lsnd/convex/helpers/users';
 import { hasRole } from '$lib/roles';
 import type { UserIdentity } from 'convex/server';
 import { z } from 'zod';

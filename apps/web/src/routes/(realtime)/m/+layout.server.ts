@@ -4,7 +4,7 @@ import {
 } from '$lib/server/meeting-route-guards';
 import { convexLoad } from '@mmailaender/convex-svelte/sveltekit';
 import type { LayoutServerLoad } from './$types';
-import { api } from '$convex/_generated/api';
+import { api } from '@lsnd/convex/_generated/api';
 import { redirect } from '@sveltejs/kit';
 
 export const load = (async ({ locals, cookies, url }) => {

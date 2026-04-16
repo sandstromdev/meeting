@@ -4,8 +4,8 @@
  * idempotencyKey is accepted on writes for forward compatibility; dedup is not implemented (v1).
  */
 import { command, query } from '$app/server';
-import { api } from '$convex/_generated/api';
-import { type AppError, appErrors, getAppError } from '$convex/helpers/error';
+import { api } from '@lsnd/convex/_generated/api';
+import { type AppError, appErrors, getAppError } from '@lsnd/convex/helpers/error';
 import { zid } from 'convex-helpers/server/zod4';
 import { z } from 'zod';
 

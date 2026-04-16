@@ -1,5 +1,5 @@
 import { PUBLIC_CONVEX_SITE_URL } from '$env/static/public';
-import { appErrors, getAppError } from '$convex/helpers/error';
+import { appErrors, getAppError } from '@lsnd/convex/helpers/error';
 import { MeetingSnapshotSchema } from '$lib/validation';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';

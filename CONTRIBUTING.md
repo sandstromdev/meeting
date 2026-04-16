@@ -21,7 +21,7 @@ bun run dev:all
 
 The app usually runs at `http://localhost:4000`.
 
-Environment variables are documented in `.env.schema`. Use `.env.local` for local development. For backend values used by Convex, keep the Convex dashboard environment in sync where needed.
+Environment variables are documented in `apps/web/.env.schema` and `apps/convex/.env.schema`. Use `.env.local` for local development. For backend values used by Convex, keep the Convex dashboard environment in sync where needed.
 
 ## Testing
 

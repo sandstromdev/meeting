@@ -1,8 +1,8 @@
-import { withMe } from '$convex/helpers/auth';
-import { AppError, appErrors } from '$convex/helpers/error';
-import { getAbsentCounter } from '$convex/helpers/counters';
-import { completeReturnToMeeting } from '$convex/helpers/meeting';
-import { clearLobbyPresenceForUser } from '$convex/helpers/lobbyPresence';
+import { withMe } from '@lsnd/convex/helpers/auth';
+import { AppError, appErrors } from '@lsnd/convex/helpers/error';
+import { getAbsentCounter } from '@lsnd/convex/helpers/counters';
+import { completeReturnToMeeting } from '@lsnd/convex/helpers/meeting';
+import { clearLobbyPresenceForUser } from '@lsnd/convex/helpers/lobbyPresence';
 
 // --- Public mutations ---
 

@@ -1,4 +1,4 @@
-import { api } from '$convex/_generated/api';
+import { api } from '@lsnd/convex/_generated/api';
 import type { UseQueryReturn } from '@mmailaender/convex-svelte';
 import { createContext } from 'svelte';
 import type { MeetingState } from '$lib/context.svelte';

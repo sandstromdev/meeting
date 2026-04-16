@@ -1,5 +1,5 @@
-import { api } from '$convex/_generated/api';
-import { getAppError } from '$convex/helpers/error';
+import { api } from '@lsnd/convex/_generated/api';
+import { getAppError } from '@lsnd/convex/helpers/error';
 
 import { PUBLIC_SITE_URL } from '$env/static/public';
 import { setMeetingCookie } from '$lib/server/meeting-cookie';

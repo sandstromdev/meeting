@@ -1,6 +1,6 @@
-import { api } from '$convex/_generated/api';
-import type { Id } from '$convex/_generated/dataModel';
-import { getAppError } from '$convex/helpers/error';
+import { api } from '@lsnd/convex/_generated/api';
+import type { Id } from '@lsnd/convex/_generated/dataModel';
+import { getAppError } from '@lsnd/convex/helpers/error';
 import { deleteMeetingCookie } from '$lib/server/meeting-cookie';
 import { getAuthState } from '@mmailaender/convex-better-auth-svelte/sveltekit';
 import { convexLoad } from '@mmailaender/convex-svelte/sveltekit';

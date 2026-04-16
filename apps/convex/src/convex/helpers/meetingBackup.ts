@@ -1,5 +1,5 @@
-import type { Doc, Id } from '$convex/_generated/dataModel';
-import type { QueryCtx } from '$convex/_generated/server';
+import type { Doc, Id } from '@lsnd/convex/_generated/dataModel';
+import type { QueryCtx } from '@lsnd/convex/_generated/server';
 
 type PollDoc = Doc<'meetingPolls'>;
 type PollResultDoc = Doc<'meetingPollResults'>;

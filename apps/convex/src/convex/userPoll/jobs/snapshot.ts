@@ -1,10 +1,10 @@
-import { internal } from '$convex/_generated/api';
-import { c } from '$convex/helpers';
+import { internal } from '@lsnd/convex/_generated/api';
+import { c } from '@lsnd/convex/helpers';
 import {
 	buildUserPollResultSnapshot,
 	getLatestUserPollResultSnapshot,
-} from '$convex/helpers/userPoll';
-import { shouldSkipPollSnapshotAction } from '$convex/helpers/poll';
+} from '@lsnd/convex/helpers/userPoll';
+import { shouldSkipPollSnapshotAction } from '@lsnd/convex/helpers/poll';
 import {
 	FullUserPollSchema,
 	pollSnapshotCountsUserZod,

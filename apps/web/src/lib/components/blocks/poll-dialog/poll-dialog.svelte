@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { api } from '$convex/_generated/api';
-	import type { Id } from '$convex/_generated/dataModel';
+	import { api } from '@lsnd/convex/_generated/api';
+	import type { Id } from '@lsnd/convex/_generated/dataModel';
 	import PollResultsDisplay, {
 		type PollResultsDisplayData,
 	} from '$lib/components/poll-results-display.svelte';

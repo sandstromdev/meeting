@@ -1,5 +1,5 @@
 import { getRequestEvent } from '$app/server';
-import { api } from '$convex/_generated/api';
+import { api } from '@lsnd/convex/_generated/api';
 import { type Handle, type RequestEvent } from '@sveltejs/kit';
 import { getConvexClient } from './convex';
 import { assertAuthed } from './guards';

@@ -1,10 +1,10 @@
-import { api } from '$convex/_generated/api';
+import { api } from '@lsnd/convex/_generated/api';
 import { getCurrentUser } from '$lib/server/auth';
 import { error, redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { getVoterSessionToken } from './token';
 import { getConvexClient } from '$lib/server/convex';
-import { getAppError } from '$convex/helpers/error';
+import { getAppError } from '@lsnd/convex/helpers/error';
 
 export const load = (async ({ params, cookies }) => {
 	const currentUser = await getCurrentUser();

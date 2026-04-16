@@ -1,9 +1,9 @@
-import { authComponent, createAuth } from '$convex/auth';
-import type { Doc } from '$convex/_generated/dataModel';
-import type { MutationCtx } from '$convex/_generated/server';
-import { admin } from '$convex/helpers/auth';
-import { COMMIT_IMPORT_MUTATION_MAX_ROWS } from '$convex/helpers/bulkMeetingUsers';
-import { AppError, appErrors, getAppError } from '$convex/helpers/error';
+import { authComponent, createAuth } from '@lsnd/convex/auth';
+import type { Doc } from '@lsnd/convex/_generated/dataModel';
+import type { MutationCtx } from '@lsnd/convex/_generated/server';
+import { admin } from '@lsnd/convex/helpers/auth';
+import { COMMIT_IMPORT_MUTATION_MAX_ROWS } from '@lsnd/convex/helpers/bulkMeetingUsers';
+import { AppError, appErrors, getAppError } from '@lsnd/convex/helpers/error';
 import {
 	assertPlatformAdmin,
 	findAuthUserByEmail,
@@ -12,8 +12,8 @@ import {
 	grantMeetingAccess,
 	normalizeEmail,
 	revokeMeetingAccess,
-} from '$convex/helpers/meetingAccess';
-import { ensureParticipantInMeeting } from '$convex/helpers/users';
+} from '@lsnd/convex/helpers/meetingAccess';
+import { ensureParticipantInMeeting } from '@lsnd/convex/helpers/users';
 import { ROLES, type Role } from '$lib/roles';
 import { z } from 'zod';
 

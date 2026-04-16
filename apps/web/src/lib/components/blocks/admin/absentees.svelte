@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Id } from '$convex/_generated/dataModel';
+	import type { Id } from '@lsnd/convex/_generated/dataModel';
 	import {
 		Collapsible,
 		CollapsibleContent,
@@ -10,7 +10,7 @@
 	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
 	import { untrack } from 'svelte';
 	import { useQuery } from '@mmailaender/convex-svelte';
-	import { api } from '$convex/_generated/api';
+	import { api } from '@lsnd/convex/_generated/api';
 	import { formatDuration } from '$lib/duration';
 	import { useNow } from '$lib/now.svelte';
 

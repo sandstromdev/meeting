@@ -1,4 +1,4 @@
-import { api } from '$convex/_generated/api';
+import { api } from '@lsnd/convex/_generated/api';
 import { type MeetingState } from './context.svelte';
 
 type SpeakerQueueEntry = (typeof api.meeting.users.queue.getNextSpeakers._returnType)[number];

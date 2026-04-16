@@ -53,7 +53,7 @@ bun install
 
 ### 2) Environment
 
-Use `.env.local` for local development (gitignored). Variable names and semantics are defined in `[.env.schema](.env.schema)` ([Varlock](https://varlock.dev) / [@env-spec](https://varlock.dev/env-spec)); that file is for docs and Varlock tooling only—SvelteKit still loads values from `.env*` through Vite.
+Use `.env.local` for local development (gitignored). Variable names and semantics are defined in `apps/web/.env.schema` and `apps/convex/.env.schema` ([Varlock](https://varlock.dev) / [@env-spec](https://varlock.dev/env-spec)); those files are for docs and Varlock tooling only—SvelteKit still loads values from `.env*` through Vite.
 
 Check required variables against the schema: `bun run env:validate`.
 

@@ -2,7 +2,7 @@
 	import PollDialog from '$lib/components/blocks/poll-dialog/poll-dialog.svelte';
 	import type { PollResultsDisplayData } from '$lib/components/poll-results-display.svelte';
 	import Separator from '$lib/components/ui/separator/separator.svelte';
-	import { api } from '$convex/_generated/api';
+	import { api } from '@lsnd/convex/_generated/api';
 	import type { SimplifiedPolling } from './simplified-polling.svelte';
 
 	let { p }: { p: SimplifiedPolling } = $props();

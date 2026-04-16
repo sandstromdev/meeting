@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { api } from '$convex/_generated/api';
-	import type { Id } from '$convex/_generated/dataModel';
+	import { api } from '@lsnd/convex/_generated/api';
+	import type { Id } from '@lsnd/convex/_generated/dataModel';
 	import { confirm } from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
 	import * as NativeSelect from '$lib/components/ui/native-select';
 	import { getMeetingContext } from '$lib/context.svelte';

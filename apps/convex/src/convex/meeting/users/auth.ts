@@ -1,11 +1,11 @@
-import { AppError, appErrors } from '$convex/helpers/error';
-import { canUserJoinMeeting } from '$convex/helpers/meetingAccess';
-import { authed, withMe } from '$convex/helpers/auth';
-import { getMeetingByCode, getMeetingParticipant } from '$convex/helpers/meeting';
-import { touchLobbyPresence } from '$convex/helpers/lobbyPresence';
+import { AppError, appErrors } from '@lsnd/convex/helpers/error';
+import { canUserJoinMeeting } from '@lsnd/convex/helpers/meetingAccess';
+import { authed, withMe } from '@lsnd/convex/helpers/auth';
+import { getMeetingByCode, getMeetingParticipant } from '@lsnd/convex/helpers/meeting';
+import { touchLobbyPresence } from '@lsnd/convex/helpers/lobbyPresence';
 import { MeetingCode } from '$lib/validation';
 import { zid } from 'convex-helpers/server/zod4';
-import { ensureParticipantInMeeting, pickParticipantData } from '$convex/helpers/users';
+import { ensureParticipantInMeeting, pickParticipantData } from '@lsnd/convex/helpers/users';
 
 // --- Public queries ---
 

@@ -1,13 +1,13 @@
-import { internal } from '$convex/_generated/api';
-import type { MutationCtx } from '$convex/_generated/server';
-import { authed } from '$convex/helpers/auth';
-import { AppError, appErrors } from '$convex/helpers/error';
+import { internal } from '@lsnd/convex/_generated/api';
+import type { MutationCtx } from '@lsnd/convex/_generated/server';
+import { authed } from '@lsnd/convex/helpers/auth';
+import { AppError, appErrors } from '@lsnd/convex/helpers/error';
 import {
 	assertUserPollEditable,
 	assertUserPollOwner,
 	getLatestUserPollResultSnapshot,
 	getUserPollOrThrow,
-} from '$convex/helpers/userPoll';
+} from '@lsnd/convex/helpers/userPoll';
 import { draftOptionsFromStored, optionsWithAbstainLastRows } from '$lib/pollOptions';
 import {
 	FullUserPollSchema,

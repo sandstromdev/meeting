@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { api } from '$convex/_generated/api';
+	import { api } from '@lsnd/convex/_generated/api';
 	import { getMeetingContext } from '$lib/context.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { cn } from '$lib/utils';

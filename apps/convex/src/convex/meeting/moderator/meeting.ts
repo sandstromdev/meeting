@@ -1,6 +1,6 @@
-import { moderator } from '$convex/helpers/auth';
-import { AppError, appErrors } from '$convex/helpers/error';
-import { logSpeakerSlot } from '$convex/helpers/meeting';
+import { moderator } from '@lsnd/convex/helpers/auth';
+import { AppError, appErrors } from '@lsnd/convex/helpers/error';
+import { logSpeakerSlot } from '@lsnd/convex/helpers/meeting';
 import { zid } from 'convex-helpers/server/zod4';
 import { z } from 'zod';
 

@@ -1,6 +1,6 @@
 import { form, getRequestEvent } from '$app/server';
-import { api } from '$convex/_generated/api';
-import { getAppError } from '$convex/helpers/error';
+import { api } from '@lsnd/convex/_generated/api';
+import { getAppError } from '@lsnd/convex/helpers/error';
 import { setMeetingCookie } from '$lib/server/meeting-cookie';
 import { error, invalid, redirect } from '@sveltejs/kit';
 import { ConnectFormSchema } from './schema';

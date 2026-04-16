@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { api } from '$convex/_generated/api';
-	import type { Doc } from '$convex/_generated/dataModel';
+	import { api } from '@lsnd/convex/_generated/api';
+	import type { Doc } from '@lsnd/convex/_generated/dataModel';
 	import { Button } from '$lib/components/ui/button';
 	import { confirm } from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';

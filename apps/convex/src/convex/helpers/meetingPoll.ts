@@ -1,5 +1,5 @@
-import type { Doc, Id } from '$convex/_generated/dataModel';
-import type { MutationCtx } from '$convex/_generated/server';
+import type { Doc, Id } from '@lsnd/convex/_generated/dataModel';
+import type { MutationCtx } from '@lsnd/convex/_generated/server';
 import { optionsWithAbstainLastRows, type PollOptionRow } from '$lib/pollOptions';
 import { getEligibleVotes, type MajorityRule, type MeetingPollDraft } from '$lib/polls';
 import type { StripSystemFields } from '$lib/types';

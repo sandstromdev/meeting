@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { api } from '$convex/_generated/api';
+	import { api } from '@lsnd/convex/_generated/api';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import Checkbox from '$lib/components/ui/checkbox/checkbox.svelte';
 	import * as Dialog from '$lib/components/ui/dialog';

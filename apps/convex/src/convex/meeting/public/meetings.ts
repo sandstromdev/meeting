@@ -1,11 +1,11 @@
 import { MeetingCode } from '$lib/validation';
 import { zid } from 'convex-helpers/server/zod4';
-import { authed } from '$convex/helpers/auth';
-import { c } from '$convex/helpers';
-import { canUserJoinMeeting } from '$convex/helpers/meetingAccess';
-import { AppError, appErrors } from '$convex/helpers/error';
-import { getMeetingByCode } from '$convex/helpers/meeting';
-import { assertMeetingNotArchived } from '$convex/helpers/meetingLifecycle';
+import { authed } from '@lsnd/convex/helpers/auth';
+import { c } from '@lsnd/convex/helpers';
+import { canUserJoinMeeting } from '@lsnd/convex/helpers/meetingAccess';
+import { AppError, appErrors } from '@lsnd/convex/helpers/error';
+import { getMeetingByCode } from '@lsnd/convex/helpers/meeting';
+import { assertMeetingNotArchived } from '@lsnd/convex/helpers/meetingLifecycle';
 
 // --- Public queries ---
 

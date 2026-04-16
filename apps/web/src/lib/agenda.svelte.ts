@@ -1,6 +1,6 @@
-import { api } from '$convex/_generated/api';
-import type { Id } from '$convex/_generated/dataModel';
-import { computeAgendaNumbers } from '$convex/helpers/agenda';
+import { api } from '@lsnd/convex/_generated/api';
+import type { Id } from '@lsnd/convex/_generated/dataModel';
+import { computeAgendaNumbers } from '@lsnd/convex/helpers/agenda';
 import type { MeetingData, MeetingState } from './context.svelte';
 import { SvelteMap } from 'svelte/reactivity';
 

@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { api } from '$convex/_generated/api';
-	import type { Id } from '$convex/_generated/dataModel';
+	import { api } from '@lsnd/convex/_generated/api';
+	import type { Id } from '@lsnd/convex/_generated/dataModel';
 	import { createAgendaItem, updateAgendaItem } from '$lib/components/blocks/admin/agenda/agenda';
 	import {
 		hydratePollRowToDraft,

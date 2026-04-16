@@ -1,19 +1,19 @@
-import { internal } from '$convex/_generated/api';
-import type { Id } from '$convex/_generated/dataModel';
-import { c } from '$convex/helpers';
-import { getAbsentCounter, getParticipantCounter } from '$convex/helpers/counters';
+import { internal } from '@lsnd/convex/_generated/api';
+import type { Id } from '@lsnd/convex/_generated/dataModel';
+import { c } from '@lsnd/convex/helpers';
+import { getAbsentCounter, getParticipantCounter } from '@lsnd/convex/helpers/counters';
 import {
 	buildMeetingPollResultSnapshot,
 	getLatestMeetingPollResultSnapshot,
 	getMeetingPollOrThrow,
-} from '$convex/helpers/meetingPoll';
+} from '@lsnd/convex/helpers/meetingPoll';
 import {
 	buildOptionTotalsFromVotes,
 	computePollOutcome,
 	rankOptionsForScoring,
 	shouldSkipPollSnapshotAction,
 	usableVotesFromRanked,
-} from '$convex/helpers/poll';
+} from '@lsnd/convex/helpers/poll';
 import { normalizeStoredPollOptions } from '$lib/pollOptions';
 import {
 	FullPollSchema,

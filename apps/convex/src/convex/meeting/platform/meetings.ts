@@ -1,7 +1,10 @@
-import { authed } from '$convex/helpers/auth';
-import { AppError, appErrors } from '$convex/helpers/error';
-import { applyNewParticipantSideEffects, insertMeetingParticipant } from '$convex/helpers/users';
-import type { QueryCtx } from '$convex/_generated/server';
+import { authed } from '@lsnd/convex/helpers/auth';
+import { AppError, appErrors } from '@lsnd/convex/helpers/error';
+import {
+	applyNewParticipantSideEffects,
+	insertMeetingParticipant,
+} from '@lsnd/convex/helpers/users';
+import type { QueryCtx } from '@lsnd/convex/_generated/server';
 import { zid } from 'convex-helpers/server/zod4';
 import { z } from 'zod';
 

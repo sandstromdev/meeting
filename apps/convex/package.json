@@ -1,0 +1,49 @@
+{
+	"name": "@lsnd-meeting/convex",
+	"private": true,
+	"version": "0.0.1",
+	"type": "module",
+	"exports": {
+		"./helpers": "./src/convex/helpers/index.ts",
+		"./helpers/*": "./src/convex/helpers/*.ts",
+		"./triggers": "./src/convex/triggers/index.ts",
+		"./triggers/*": "./src/convex/triggers/*.ts",
+		"./_generated/*": "./src/convex/_generated/*.ts",
+		"./app/*": "./src/convex/app/*.ts",
+		"./betterAuth/*": "./src/convex/betterAuth/*.ts",
+		"./counter/*": "./src/convex/counter/*.ts",
+		"./meeting/*": "./src/convex/meeting/*.ts",
+		"./schema/*": "./src/convex/schema/*.ts",
+		"./userPoll/*": "./src/convex/userPoll/*.ts",
+		"./*": "./src/convex/*.ts"
+	},
+	"scripts": {
+		"env:validate": "bun run scripts/validate-convex-env.ts",
+		"codegen": "convex codegen",
+		"dev": "convex dev",
+		"deploy": "convex deploy",
+		"lint": "prettier --cache --check . --ignore-path ../../.prettierignore && oxlint .",
+		"test": "vitest run --config ./vitest.config.ts",
+		"test:watch": "vitest --config ./vitest.config.ts",
+		"validate:convex-env": "bun run scripts/validate-convex-env.ts",
+		"validate:convex-env:prod": "bun run scripts/validate-convex-env.ts --prod"
+	},
+	"dependencies": {
+		"@convex-dev/better-auth": "^0.11.4",
+		"@convex-dev/migrations": "^0.3.3",
+		"better-auth": "1.5.5",
+		"convex": "^1.35.1",
+		"convex-helpers": "^0.1.114",
+		"zod": "^4.3.6"
+	},
+	"devDependencies": {
+		"@edge-runtime/vm": "^5.0.0",
+		"@types/bun": "^1.3.12",
+		"@types/node": "^25.6.0",
+		"convex-test": "^0.0.47",
+		"ora": "^9.3.0",
+		"typescript": "^5.9.3",
+		"varlock": "^0.7.2",
+		"vitest": "^4.1.4"
+	}
+}

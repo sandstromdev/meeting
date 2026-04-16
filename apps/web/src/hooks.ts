@@ -1,4 +1,4 @@
-import { AppError } from '$convex/helpers/error';
+import { AppError } from '@lsnd/convex/helpers/error';
 import { PUBLIC_CONVEX_URL } from '$env/static/public';
 import {
 	decodeConvexLoad,

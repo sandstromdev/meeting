@@ -8,7 +8,7 @@
 	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
 	import { formatDurationMs } from '$lib/duration';
 	import { cn } from '$lib/utils';
-	import { api } from '$convex/_generated/api';
+	import { api } from '@lsnd/convex/_generated/api';
 	import { useQuery } from '@mmailaender/convex-svelte';
 
 	const meeting = getMeetingContext();
