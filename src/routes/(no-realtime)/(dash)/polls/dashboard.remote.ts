@@ -131,7 +131,7 @@ function createPollActionCommand(
 				await listOwnedPolls().refresh();
 				return { ok: true as const };
 			} catch (e) {
-				const out = convexCatchToResult(e);
+				const out = convexCatchToResult(e, 'dashboard_polls_remote');
 				logRemote(kind, 'err', { pollId: input.pollId, appErrorCode: out.error.code });
 				return out;
 			}
