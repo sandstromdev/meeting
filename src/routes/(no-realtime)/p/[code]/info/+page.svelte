@@ -148,7 +148,7 @@
 					{#if info.results}
 						<PollResultsDisplay
 							data={{ results: info.results }}
-							resultVisibility={info.resultVisibility}
+							resultVisibility={info.resultVisibility == 'full' ? 'winner' : 'none'}
 							size="lg"
 						/>
 					{:else if info.resultVisibility === 'none'}
