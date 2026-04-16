@@ -13,6 +13,10 @@ const userPollBaseFields = {
 	code: v.string(),
 	ownerUserId: v.string(),
 	visibilityMode: userPollVisibilityMode,
+	/** When true, `/p/{code}/info` is available (projector / share sheet). */
+	infoPageEnabled: v.optional(v.boolean()),
+	/** When true and poll is open, info page may show aggregate vote / voter counts. */
+	infoPageShowLiveVoteCounts: v.optional(v.boolean()),
 	...pollRowSharedFields,
 };
 

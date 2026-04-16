@@ -2,7 +2,7 @@
 	import PollDialog from '$lib/components/blocks/poll-dialog/poll-dialog.svelte';
 	import type { PollResultsDisplayData } from '$lib/components/poll-results-display.svelte';
 	import Separator from '$lib/components/ui/separator/separator.svelte';
-	import { api } from '$convex/_generated/api';
+	import type { api } from '$convex/_generated/api';
 	import type { SimplifiedPolling } from './simplified-polling.svelte';
 
 	let { p }: { p: SimplifiedPolling } = $props();
@@ -22,6 +22,7 @@
 			isOpen: pl.isOpen,
 			maxVotesPerVoter: pl.maxVotesPerVoter,
 			isResultPublic: pl.isResultPublic,
+			resultVisibility: pl.resultVisibility,
 			type: pl.type,
 			hasVoted: idx.length > 0,
 			myVoteOptionIndexes: [...idx],
@@ -42,12 +43,12 @@
 			results: {
 				winners: raw.results.winners,
 				optionTotals: raw.results.optionTotals,
-				counts: raw.results.counts,
+				...(raw.results.counts != null ? { counts: raw.results.counts } : {}),
 			},
 		};
 	});
 
-	const showDetailedResults = $derived(!!p.poll?.isResultPublic);
+	const resultVisibility = $derived(p.poll?.resultVisibility ?? 'none');
 
 	async function vote(optionIndexes: number[]) {
 		const pl = p.poll;
@@ -70,7 +71,7 @@
 		poll={pollForDialog}
 		{counters}
 		pollResults={pollResultsDisplay}
-		{showDetailedResults}
+		{resultVisibility}
 		isProjector={false}
 		isAbsent={!!p.me?.absentSince}
 		isAdmin={false}

@@ -10,25 +10,32 @@
 		Label as FormLabel,
 	} from '$lib/components/ui/form';
 	import { Input } from '$lib/components/ui/input';
-	import Textarea from '$lib/components/ui/textarea/textarea.svelte';
 	import * as InputGroup from '$lib/components/ui/input-group';
 	import { NativeSelectOption } from '$lib/components/ui/native-select';
 	import NativeSelect from '$lib/components/ui/native-select/native-select.svelte';
 	import * as NumberField from '$lib/components/ui/number-field';
 	import * as RadioGroup from '$lib/components/ui/radio-group';
+	import Switch from '$lib/components/ui/switch/switch.svelte';
 	import * as Tabs from '$lib/components/ui/tabs';
+	import Textarea from '$lib/components/ui/textarea/textarea.svelte';
 	import {
 		ABSTAIN_OPTION_LABEL,
 		MAJORITY_LABELS,
-		type PollTableNames,
+		newPollDraft,
 		type EditablePollDraft,
+		type UserPollDraft,
 	} from '$lib/polls';
 	import {
-		PollDraftSchema,
-		RefinePollDraftSchema,
+		normalizePollDraftVisibility,
+		pollDraftObjectSchema,
+		RefinePollDraftObjectSchema,
+		RefineStandalonePollDraftObjectSchema,
+		standalonePollDraftObjectSchema,
 		type PollDraft,
-		type UserPollVisibility,
+		type PollDraftInput,
+		type StandalonePollDraftFormValues,
 	} from '$lib/validation';
+	import { resolve } from '$app/paths';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
 	import { tick } from 'svelte';
@@ -50,20 +57,7 @@
 	};
 
 	let {
-		poll = {
-			title: '',
-			options: [
-				{ title: '', description: null },
-				{ title: '', description: null },
-			],
-			type: 'single_winner',
-			winningCount: 1,
-			majorityRule: 'simple',
-			isResultPublic: false,
-			allowsAbstain: true,
-			maxVotesPerVoter: 1,
-			visibilityMode: 'public',
-		},
+		poll = newPollDraft(),
 		isStandalone = false,
 		onSubmit,
 		submitLabel = 'Skapa omröstning',
@@ -77,10 +71,17 @@
 	const instanceId = $props.id();
 
 	// svelte-ignore state_referenced_locally
-	const pollForm = superForm(defaults(poll, zod4(PollDraftSchema)), {
+	const pollObjectSchema = isStandalone ? standalonePollDraftObjectSchema : pollDraftObjectSchema;
+	// svelte-ignore state_referenced_locally
+	const pollRefineSchema = isStandalone
+		? RefineStandalonePollDraftObjectSchema
+		: RefinePollDraftObjectSchema;
+
+	// svelte-ignore state_referenced_locally
+	const pollForm = superForm(defaults(poll, zod4(pollObjectSchema)), {
 		id: instanceId,
 		SPA: true,
-		validators: zod4(RefinePollDraftSchema),
+		validators: zod4(pollRefineSchema),
 		resetForm: false,
 		dataType: 'json',
 		onSubmit: () => submit(),
@@ -101,7 +102,7 @@
 			return;
 		}
 		const maxA = Math.max(1, f.options.length);
-		let patch: Partial<PollDraft> | null = null;
+		let patch: Partial<PollDraftInput> | null = null;
 		if (f.type === 'single_winner') {
 			if (f.maxVotesPerVoter !== 1 || f.winningCount !== 1) {
 				patch = { maxVotesPerVoter: 1, winningCount: 1 };
@@ -196,22 +197,28 @@
 				return;
 			}
 
-			await onSubmit(result.data);
+			await onSubmit(normalizePollDraftVisibility(result.data));
 		} finally {
 			submitting = false;
 		}
 	}
 
-	const resultsPublicOptions = $derived([
+	const resultsVisibilityOptions = $derived([
 		{
-			value: 'public',
-			label: 'Alla kan se resultatet',
-			description: 'Alla kan se resultatet av omröstningen.',
+			value: 'none' as const,
+			label: `Endast ${isStandalone ? 'du' : 'admin'} ser resultatet`,
+			description: `Ingen annan ser utfallet när omröstningen är stängd.`,
 		},
 		{
-			value: 'private',
-			label: `Endast ${isStandalone ? 'du' : 'admin'} kan se resultatet`,
-			description: `Endast ${isStandalone ? 'du' : 'admin'} kan se resultatet av omröstningen.`,
+			value: 'winner' as const,
+			label: 'Alla ser vem som vann',
+			description:
+				'Alla ser vilket alternativ som vann, men inte hur många röster varje alternativ fick.',
+		},
+		{
+			value: 'full' as const,
+			label: 'Alla ser hela resultatet',
+			description: 'Alla ser röstfördelning och antal röster per alternativ.',
 		},
 	]);
 </script>
@@ -234,9 +241,50 @@
 			<FormFieldErrors />
 		</FormField>
 
+		{#if isStandalone}
+			<FormField form={pollForm} name={'code' as any}>
+				<FormControl>
+					{#snippet children({ props })}
+						<FormLabel>Kod (valfri)</FormLabel>
+						<FormDescription>
+							4–24 tecken. Endast bokstäver, siffror och bindestreck. Måste börja och sluta med en
+							bokstav eller siffra. Lämna tomt för att generera en kod automatiskt.
+						</FormDescription>
+						<Input
+							{...props}
+							value={($draft as StandalonePollDraftFormValues).code}
+							placeholder="t.ex. styrelseval-2026"
+							class="w-full font-mono"
+							autocomplete="off"
+							spellcheck="false"
+							oninput={(e) =>
+								draft.update(
+									(d) => ({
+										...(d as StandalonePollDraftFormValues),
+										code: e.currentTarget.value,
+									}),
+									{ taint: true },
+								)}
+						/>
+						{#if ($draft as StandalonePollDraftFormValues).code.trim() !== ''}
+							<p class="text-sm text-muted-foreground">
+								Röstsida:
+								<a
+									class="font-mono underline"
+									href={resolve(`/p/${($draft as StandalonePollDraftFormValues).code.trim()}`)}
+								>
+									{resolve(`/p/${($draft as StandalonePollDraftFormValues).code.trim()}`)}
+								</a>
+							</p>
+						{/if}
+					{/snippet}
+				</FormControl>
+				<FormFieldErrors />
+			</FormField>
+		{/if}
+
 		<Field.Set>
 			<Field.Legend>Alternativ (minst 2)</Field.Legend>
-			<Field.Description>Alternativen som röstaren kan välja mellan.</Field.Description>
 
 			<FormField form={pollForm} name="allowsAbstain">
 				<Field.Label for="allowsAbstain">
@@ -431,7 +479,6 @@
 		{#if isStandalone}
 			<Field.Set>
 				<Field.Legend>Säkerhet</Field.Legend>
-				<Field.Description>Vem kan komma åt omröstningen?</Field.Description>
 				<FormField form={pollForm} name="visibilityMode">
 					<RadioGroup.Root bind:value={$draft.visibilityMode} class="grid auto-fit-60 gap-2">
 						<Field.Label for="account_required">
@@ -459,18 +506,67 @@
 			</Field.Set>
 
 			<Field.Separator />
+
+			<Field.Set>
+				<Field.Legend>Infosida (projektor)</Field.Legend>
+				<Field.Description>
+					Visa en sida med kod, QR och röstsiffror. Hur mycket av <strong>slutresultatet</strong> som
+					visas styrs av synlighet nedan.
+				</Field.Description>
+				<Field.Field orientation="horizontal">
+					<Switch
+						id="infoPageEnabled"
+						checked={Boolean(($draft as UserPollDraft).infoPageEnabled)}
+						onCheckedChange={(v) =>
+							draft.update((d) => ({ ...d, infoPageEnabled: v === true }) as UserPollDraft)}
+					/>
+					<Field.Content>
+						<Field.Label for="infoPageEnabled" class="font-medium"
+							>Aktivera '/info'-sidan</Field.Label
+						>
+						<Field.Description>
+							Länken kan delas för projektor eller värdskap. Utan detta ger samma kod ett fel som
+							vid ogiltig kod.
+						</Field.Description>
+					</Field.Content>
+				</Field.Field>
+				<Field.Field orientation="horizontal">
+					<Switch
+						id="infoPageShowLiveVoteCounts"
+						checked={Boolean(($draft as UserPollDraft).infoPageShowLiveVoteCounts)}
+						disabled={!($draft as UserPollDraft).infoPageEnabled}
+						onCheckedChange={(v) =>
+							draft.update(
+								(d) => ({ ...d, infoPageShowLiveVoteCounts: v === true }) as UserPollDraft,
+							)}
+					/>
+					<Field.Content>
+						<Field.Label for="infoPageShowLiveVoteCounts" class="font-medium"
+							>Visa antal röster medan omröstningen är öppen</Field.Label
+						>
+						<Field.Description>
+							Visar aggregerat antal röster och antal röstande på infosidan. Gäller inte per
+							alternativ.
+						</Field.Description>
+					</Field.Content>
+				</Field.Field>
+			</Field.Set>
+
+			<Field.Separator />
 		{/if}
 
 		<Field.Set>
 			<Field.Legend>Synlighet</Field.Legend>
-			<Field.Description>Vem kan se resultatet av omröstningen?</Field.Description>
-			<FormField form={pollForm} name="isResultPublic">
+			<FormField form={pollForm} name="resultVisibility">
 				<RadioGroup.Root
 					class="grid auto-fit-60 gap-2"
-					value={$draft.isResultPublic ? 'public' : 'private'}
-					onValueChange={(value) => ($draft.isResultPublic = value === 'public')}
+					value={$draft.resultVisibility}
+					onValueChange={(value) => {
+						$draft.resultVisibility = value as PollDraft['resultVisibility'];
+						$draft.isResultPublic = value === 'full';
+					}}
 				>
-					{#each resultsPublicOptions as option (option.value)}
+					{#each resultsVisibilityOptions as option (option.value)}
 						<FormControl>
 							{#snippet children({ props })}
 								<Field.Label for={props.id}>

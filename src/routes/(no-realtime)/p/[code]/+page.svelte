@@ -10,35 +10,39 @@
 	import PollResultsDisplay from '$lib/components/poll-results-display.svelte';
 	import * as RadioGroup from '$lib/components/ui/radio-group';
 	import SeoHead from '$lib/components/ui/seo-head.svelte';
-	import {
-		getPollByCode as getPollByCodeRemote,
-		retractVote as retractVoteRemote,
-		vote as voteRemote,
-	} from './data.remote';
+	import { getPollByCode as getPollByCodeRemote, vote as voteRemote } from './data.remote';
 	import { toast } from 'svelte-sonner';
 	import Delayed from '$lib/components/ui/delayed.svelte';
 	import { useInterval } from 'runed';
+	import { browser } from '$app/environment';
 
 	let { data } = $props();
 
 	let draftSelectedOptionIndexes = $state<number[] | null>(null);
 	let submitting = $state(false);
 
+	// Local state so we can update it from remote polling.
 	let poll = $derived(data.poll);
 	const currentUser = $derived(data.currentUser);
 
 	let lastUpdatedAt = $state(0);
 
-	useInterval(10_000, {
+	// Keep local poll in sync when navigating between codes.
+	$effect(() => {
+		poll = data.poll;
+		draftSelectedOptionIndexes = null;
+	});
+
+	useInterval(5_000, {
 		callback: async () => {
-			if (!data.poll) {
+			if (!data.poll || !browser) {
 				return;
 			}
 
 			const result = await getPollByCodeRemote({
 				code: data.poll.code,
 				voterSessionToken: data.voterSessionToken,
-			});
+			}).run();
 
 			if (result.ok) {
 				if (JSON.stringify(result.poll) !== JSON.stringify(poll)) {
@@ -101,32 +105,6 @@
 		} catch (error) {
 			console.error(error);
 			toast.error('Kunde inte spara din röst.');
-		} finally {
-			submitting = false;
-		}
-	}
-
-	async function retractVote() {
-		if (!poll || submitting) {
-			return;
-		}
-		try {
-			submitting = true;
-			const result = await retractVoteRemote({
-				pollId: poll.id,
-				voterSessionToken: data.voterSessionToken,
-			});
-			if (result.ok) {
-				draftSelectedOptionIndexes = [];
-				toast.success('Din röst har tagits bort.');
-				await invalidateAll();
-			} else {
-				console.error(result);
-				toast.error(result.error.message);
-			}
-		} catch (error) {
-			console.error(error);
-			toast.error('Kunde inte ta bort din röst.');
 		} finally {
 			submitting = false;
 		}
@@ -221,7 +199,10 @@
 					{:else}
 						<div class="space-y-2">
 							{#each poll.options as option, optionIndex (optionIndex)}
-								<Field.Label for="option-{optionIndex.toString()}">
+								<Field.Label
+									for="option-{optionIndex.toString()}"
+									class="has-disabled:bg-muted/50 has-disabled:text-muted-foreground"
+								>
 									<Field.Field orientation="horizontal">
 										<Field.Content>
 											<Field.Title>{option.title}</Field.Title>
@@ -232,7 +213,7 @@
 										<Checkbox
 											checked={selectedSet.has(optionIndex)}
 											disabled={isOptionDisabled(optionIndex)}
-											onchange={() => toggleMultiOption(optionIndex)}
+											onCheckedChange={() => toggleMultiOption(optionIndex)}
 											id="option-{optionIndex.toString()}"
 										/>
 									</Field.Field>
@@ -248,9 +229,6 @@
 						<Button onclick={submitVote} disabled={!canSubmit || submitting}>
 							{submitting ? 'Sparar...' : 'Skicka röst'}
 						</Button>
-						<Button variant="outline" onclick={retractVote} disabled={submitting || !poll.hasVoted}>
-							Ta bort min röst
-						</Button>
 					</div>
 				</Card.Content>
 			</Card.Root>
@@ -261,8 +239,11 @@
 					<Card.Description>Den här omröstningen tar inte längre emot röster.</Card.Description>
 				</Card.Header>
 				<Card.Content class="space-y-4 pt-0">
-					{#if poll.results && poll.isResultPublic}
-						<PollResultsDisplay data={{ results: poll.results }} showDetailedResults />
+					{#if poll.results}
+						<PollResultsDisplay
+							data={{ results: poll.results }}
+							resultVisibility={poll.resultVisibility}
+						/>
 					{/if}
 				</Card.Content>
 			</Card.Root>

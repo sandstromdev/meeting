@@ -5,21 +5,14 @@
  */
 import { command, query } from '$app/server';
 import { api } from '$convex/_generated/api';
-import { type AppError, appErrors, getAppError } from '$convex/helpers/error';
+import { appErrors } from '$convex/helpers/error';
 import { zid } from 'convex-helpers/server/zod4';
 import { z } from 'zod';
 
 import { getConvexClient } from '$lib/server/convex';
 import { getCurrentUser } from '$lib/server/auth';
-
-function convexCatchToResult(e: unknown): { ok: false; error: AppError } {
-	const appErr = getAppError(e);
-	if (!appErr) {
-		console.error('[user_poll_remote] unexpected_error', e);
-	}
-	const err = appErr ?? appErrors.internal_error();
-	return { ok: false, error: err };
-}
+import { convexCatchToResult } from '$lib/server/convexCatchToResult';
+import { UserPollCodeSchema } from '$lib/validation';
 
 function logRemote(
 	kind: 'vote' | 'retractVote' | 'getPollByCode',
@@ -35,7 +28,7 @@ function logRemote(
 
 export const getPollByCode = query(
 	z.object({
-		code: z.string().trim().min(4),
+		code: UserPollCodeSchema,
 		voterSessionToken: z.string().nullable().optional(),
 	}),
 	async (input) => {
@@ -61,7 +54,7 @@ export const getPollByCode = query(
 			logRemote('getPollByCode', 'ok', { pollId: poll.id });
 			return { ok: true as const, poll };
 		} catch (e) {
-			const out = convexCatchToResult(e);
+			const out = convexCatchToResult(e, 'user_poll_remote');
 			logRemote('getPollByCode', 'err', { pollId, appErrorCode: out.error.code });
 			return out;
 		}
@@ -84,34 +77,11 @@ export const vote = command(
 				voterSessionToken: input.voterSessionToken,
 			});
 		} catch (e) {
-			const out = convexCatchToResult(e);
+			const out = convexCatchToResult(e, 'user_poll_remote');
 			logRemote('vote', 'err', { pollId: input.pollId, appErrorCode: out.error.code });
 			return out;
 		}
 		logRemote('vote', 'ok', { pollId: input.pollId });
-		return { ok: true as const };
-	},
-);
-
-export const retractVote = command(
-	z.object({
-		pollId: zid('userPolls'),
-		voterSessionToken: z.string().nullable().optional(),
-		idempotencyKey: z.string().optional(),
-	}),
-	async (input) => {
-		const convex = getConvexClient();
-		try {
-			await convex.mutation(api.userPoll.public.retractVote, {
-				pollId: input.pollId,
-				voterSessionToken: input.voterSessionToken,
-			});
-		} catch (e) {
-			const out = convexCatchToResult(e);
-			logRemote('retractVote', 'err', { pollId: input.pollId, appErrorCode: out.error.code });
-			return out;
-		}
-		logRemote('retractVote', 'ok', { pollId: input.pollId });
 		return { ok: true as const };
 	},
 );

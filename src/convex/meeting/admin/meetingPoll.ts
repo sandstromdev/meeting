@@ -16,7 +16,11 @@ import {
 	getMeetingPollOrThrow,
 } from '$convex/helpers/meetingPoll';
 import { draftOptionsFromStored, optionsWithAbstainLastRows } from '$lib/pollOptions';
-import { FullPollSchema, PollDraftSchema, RefinePollDraftSchema } from '$lib/validation';
+import {
+	resolveResultVisibilityForWrite,
+	syncIsResultPublicFromVisibility,
+} from '$lib/pollResultVisibility';
+import { FullPollSchema, PollDraftPartialSchema, RefinePollDraftSchema } from '$lib/validation';
 import { zid } from 'convex-helpers/server/zod4';
 import { z } from 'zod';
 
@@ -126,7 +130,7 @@ export const editPoll = admin
 	.mutation()
 	.input({
 		pollId: zid('meetingPolls'),
-		edits: PollDraftSchema.partial(),
+		edits: PollDraftPartialSchema,
 	})
 	.public(async ({ ctx, args }) => {
 		const poll = await getMeetingPollOrThrow(ctx.db, args.pollId);
@@ -139,6 +143,13 @@ export const editPoll = admin
 			args.edits.options ?? draftOptionsFromStored(poll.options, poll.allowsAbstain);
 		const mergedType = args.edits.type ?? poll.type;
 
+		const resolvedVisibility = resolveResultVisibilityForWrite({
+			stored: poll,
+			editsResultVisibility: args.edits.resultVisibility,
+			editsIsResultPublic: args.edits.isResultPublic,
+		});
+		const resolvedIsPublic = syncIsResultPublicFromVisibility(resolvedVisibility);
+
 		const draftForRefine =
 			mergedType === 'multi_winner'
 				? {
@@ -148,7 +159,8 @@ export const editPoll = admin
 						winningCount:
 							args.edits.winningCount ??
 							(poll.type === 'multi_winner' ? poll.winningCount : undefined),
-						isResultPublic: args.edits.isResultPublic ?? poll.isResultPublic,
+						resultVisibility: resolvedVisibility,
+						isResultPublic: resolvedIsPublic,
 						allowsAbstain: nextAllowsAbstain,
 						maxVotesPerVoter: args.edits.maxVotesPerVoter ?? poll.maxVotesPerVoter,
 					}
@@ -160,7 +172,8 @@ export const editPoll = admin
 						majorityRule:
 							args.edits.majorityRule ??
 							(poll.type === 'single_winner' ? poll.majorityRule : undefined),
-						isResultPublic: args.edits.isResultPublic ?? poll.isResultPublic,
+						resultVisibility: resolvedVisibility,
+						isResultPublic: resolvedIsPublic,
 						allowsAbstain: nextAllowsAbstain,
 						maxVotesPerVoter: args.edits.maxVotesPerVoter ?? poll.maxVotesPerVoter,
 					};
@@ -174,6 +187,8 @@ export const editPoll = admin
 			...poll,
 			...args.edits,
 			options,
+			resultVisibility: refinedDraft.data.resultVisibility,
+			isResultPublic: refinedDraft.data.isResultPublic,
 		};
 
 		updatedFields.updatedAt = Date.now();

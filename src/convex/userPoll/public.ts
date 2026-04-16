@@ -8,7 +8,13 @@ import {
 	getUserPollOrThrow,
 	getVoterKey,
 } from '$convex/helpers/userPoll';
+import { buildTieredPollResultsPayload } from '$convex/helpers/pollResultPayload';
 import { normalizeStoredPollOptions } from '$lib/pollOptions';
+import {
+	effectiveResultVisibility,
+	syncIsResultPublicFromVisibility,
+} from '$lib/pollResultVisibility';
+import { UserPollCodeSchema } from '$lib/validation';
 import { zid } from 'convex-helpers/server/zod4';
 import { z } from 'zod';
 
@@ -17,18 +23,16 @@ import { z } from 'zod';
 export const getByCode = c
 	.query()
 	.input({
-		code: z.string().trim().min(4),
+		code: UserPollCodeSchema,
 		voterSessionToken: z.string().nullable().optional(),
 	})
 	.public(async ({ ctx, args }) => {
 		const poll = await ctx.db
 			.query('userPolls')
-			.withIndex('by_code', (q) => q.eq('code', args.code.toUpperCase()))
+			.withIndex('by_code', (q) => q.eq('code', args.code))
 			.unique();
 
 		AppError.assertNotNull(poll, appErrors.user_poll_code_not_found(args.code));
-
-		const identity = await ctx.auth.getUserIdentity();
 
 		const voterKey = await getVoterKey(ctx, poll.visibilityMode, args.voterSessionToken).catch(
 			() => null,
@@ -48,10 +52,26 @@ export const getByCode = c
 				? await getLatestUserPollResultSnapshot(ctx.db, poll._id)
 				: null;
 
-		const canSeeOptionTotals =
-			!poll.isOpen &&
-			poll.closedAt != null &&
-			(poll.isResultPublic || identity?.subject === poll.ownerUserId);
+		/** Resolved from `poll.resultVisibility` or legacy `isResultPublic` (see `effectiveResultVisibility`). */
+		const resultVisibility = effectiveResultVisibility(poll);
+		const isClosed = !poll.isOpen && poll.closedAt != null;
+		/** `/p/[code]` participant surface: never upgrade via auth/owner; owners use dashboard / `getResultsByPollId`. */
+		const canSeeAnyResults = isClosed && latestResult != null && resultVisibility !== 'none';
+
+		const results =
+			canSeeAnyResults && latestResult
+				? buildTieredPollResultsPayload({
+						results: {
+							optionTotals: latestResult.results.optionTotals,
+							winners: latestResult.results.winners,
+							isTie: latestResult.results.isTie,
+							majorityRule: latestResult.results.majorityRule,
+							counts: latestResult.results.counts,
+						},
+						effective: resultVisibility,
+						isPrivileged: false,
+					})
+				: null;
 
 		return {
 			id: poll._id,
@@ -60,23 +80,83 @@ export const getByCode = c
 			options: normalizeStoredPollOptions(poll.options),
 			type: poll.type,
 			isOpen: poll.isOpen,
-			isResultPublic: poll.isResultPublic,
+			/** @deprecated Mirrors `resultVisibility === 'full'`; prefer `resultVisibility`. */
+			isResultPublic: syncIsResultPublicFromVisibility(resultVisibility),
+			resultVisibility,
 			allowsAbstain: poll.allowsAbstain,
 			ownerUserId: poll.ownerUserId,
 			maxVotesPerVoter: poll.maxVotesPerVoter,
 			visibilityMode: poll.visibilityMode,
 			hasVoted: myVotes.length > 0,
 			myVoteOptionIndexes: myVotes.map((vote) => vote.optionIndex),
-			results:
-				latestResult && canSeeOptionTotals
-					? {
-							winners: latestResult.results.winners,
+			results,
+		};
+	});
+
+/** Public infosida (`/p/{code}/info`): projector-friendly link, optional live metrics, closed results tiered like `getByCode`. */
+export const getInfoPageByCode = c
+	.query()
+	.input({
+		code: UserPollCodeSchema,
+	})
+	.public(async ({ ctx, args }) => {
+		const poll = await ctx.db
+			.query('userPolls')
+			.withIndex('by_code', (q) => q.eq('code', args.code))
+			.unique();
+
+		AppError.assertNotNull(poll, appErrors.user_poll_code_not_found(args.code));
+
+		if (!(poll.infoPageEnabled ?? false)) {
+			throw appErrors.user_poll_code_not_found(args.code);
+		}
+
+		const resultVisibility = effectiveResultVisibility(poll);
+		const isResultPublic = syncIsResultPublicFromVisibility(resultVisibility);
+
+		let votesCount: number | undefined;
+		let votersCount: number | undefined;
+		if (poll.isOpen && (poll.infoPageShowLiveVoteCounts ?? false)) {
+			[votesCount, votersCount] = await Promise.all([
+				getUserPollVotesCounter(poll._id).count(ctx),
+				getUserPollVotersCounter(poll._id).count(ctx),
+			]);
+		}
+
+		const isClosed = !poll.isOpen && poll.closedAt != null;
+		const latestResult = isClosed ? await getLatestUserPollResultSnapshot(ctx.db, poll._id) : null;
+
+		const canSeeAnyResults = isClosed && latestResult != null && resultVisibility !== 'none';
+
+		const results =
+			canSeeAnyResults && latestResult
+				? buildTieredPollResultsPayload({
+						results: {
 							optionTotals: latestResult.results.optionTotals,
+							winners: latestResult.results.winners,
 							isTie: latestResult.results.isTie,
 							majorityRule: latestResult.results.majorityRule,
 							counts: latestResult.results.counts,
-						}
-					: null,
+						},
+						effective: resultVisibility,
+						isPrivileged: false,
+					})
+				: null;
+
+		return {
+			id: poll._id,
+			code: poll.code,
+			title: poll.title,
+			isOpen: poll.isOpen,
+			visibilityMode: poll.visibilityMode,
+			resultVisibility,
+			/** @deprecated Prefer `resultVisibility`. */
+			isResultPublic,
+			infoPageEnabled: poll.infoPageEnabled ?? false,
+			infoPageShowLiveVoteCounts: poll.infoPageShowLiveVoteCounts ?? false,
+			votesCount,
+			votersCount,
+			results,
 		};
 	});
 
@@ -109,7 +189,14 @@ export const getResultsByPollId = c
 		}
 
 		const result = await getLatestUserPollResultSnapshot(ctx.db, poll._id);
-		if (!result || !poll.isResultPublic) {
+		if (!result) {
+			return null;
+		}
+
+		const identity = await ctx.auth.getUserIdentity();
+		const isOwner = identity?.subject === poll.ownerUserId;
+		const resultVisibility = effectiveResultVisibility(poll);
+		if (!isOwner && resultVisibility !== 'full') {
 			return null;
 		}
 
@@ -174,32 +261,5 @@ export const vote = c
 		}
 		await Promise.all(counterUpdates);
 
-		return true;
-	});
-
-export const retractVote = c
-	.mutation()
-	.input({
-		pollId: zid('userPolls'),
-		voterSessionToken: z.string().nullable().optional(),
-	})
-	.public(async ({ ctx, args }) => {
-		const poll = await getUserPollOrThrow(ctx.db, args.pollId);
-		AppError.assert(poll.isOpen, appErrors.illegal_user_poll_action('vote_while_closed'));
-		const voterKey = await getVoterKey(ctx, poll.visibilityMode, args.voterSessionToken ?? null);
-
-		const existingVotes = await ctx.db
-			.query('userPollVotes')
-			.withIndex('by_poll_and_voterKey', (q) =>
-				q.eq('pollId', args.pollId).eq('voterKey', voterKey),
-			)
-			.collect();
-		if (existingVotes.length === 0) {
-			return true;
-		}
-
-		await Promise.all(existingVotes.map((vote) => ctx.db.delete('userPollVotes', vote._id)));
-		await getUserPollVotesCounter(args.pollId).subtract(ctx, existingVotes.length);
-		await getUserPollVotersCounter(args.pollId).dec(ctx);
 		return true;
 	});

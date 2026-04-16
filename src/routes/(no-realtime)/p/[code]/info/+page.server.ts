@@ -2,65 +2,50 @@ import { api } from '$convex/_generated/api';
 import { getCurrentUser } from '$lib/server/auth';
 import { error, redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { getVoterSessionToken } from './token';
 import { getConvexClient } from '$lib/server/convex';
 import { getAppError } from '$convex/helpers/error';
 import { UserPollCodeSchema } from '$lib/validation';
 
-export const load = (async ({ params, cookies }) => {
+export const load = (async ({ params }) => {
 	const currentUser = await getCurrentUser();
-
-	const voterSessionToken = getVoterSessionToken(cookies);
-
 	const convex = getConvexClient();
 
 	const trimmed = params.code.trim();
 	const parsedCode = UserPollCodeSchema.safeParse(trimmed);
 	if (!parsedCode.success) {
-		return {
-			poll: null,
-			currentUser,
-			voterSessionToken,
-		};
+		throw error(404, 'Omröstningen hittades inte');
 	}
 
 	if (trimmed !== params.code) {
-		throw redirect(302, `/p/${parsedCode.data}`);
+		throw redirect(302, `/p/${parsedCode.data}/info`);
 	}
 
-	let poll;
-
+	let info;
 	try {
-		poll = await convex.query(api.userPoll.public.getByCode, {
+		info = await convex.query(api.userPoll.public.getInfoPageByCode, {
 			code: parsedCode.data,
-			voterSessionToken,
 		});
 	} catch (e) {
 		const err = getAppError(e);
 
 		if (err?.is('user_poll_code_not_found')) {
-			return {
-				poll: null,
-				currentUser,
-				voterSessionToken,
-			};
+			throw error(404, 'Omröstningen hittades inte');
 		}
 
 		console.error(e);
 		throw error(500, 'Ett fel har inträffat');
 	}
 
-	if (poll?.visibilityMode === 'account_required' && !currentUser) {
-		throw redirect(302, `/sign-in?redirect=${encodeURIComponent(`/p/${parsedCode.data}`)}`);
+	if (info.visibilityMode === 'account_required' && !currentUser) {
+		throw redirect(302, `/sign-in?redirect=${encodeURIComponent(`/p/${parsedCode.data}/info`)}`);
 	}
 
-	if (poll && poll.code !== parsedCode.data) {
-		throw redirect(302, `/p/${poll.code}`);
+	if (info.code !== parsedCode.data) {
+		throw redirect(302, `/p/${info.code}/info`);
 	}
 
 	return {
-		poll,
+		info,
 		currentUser,
-		voterSessionToken,
 	};
 }) satisfies PageServerLoad;

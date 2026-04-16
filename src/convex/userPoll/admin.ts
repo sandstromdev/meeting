@@ -1,6 +1,8 @@
 import { internal } from '$convex/_generated/api';
+import type { Id } from '$convex/_generated/dataModel';
 import type { MutationCtx } from '$convex/_generated/server';
 import { authed } from '$convex/helpers/auth';
+import { getUserPollVotesCounter, getUserPollVotersCounter } from '$convex/helpers/counters';
 import { AppError, appErrors } from '$convex/helpers/error';
 import {
 	assertUserPollEditable,
@@ -10,14 +12,22 @@ import {
 } from '$convex/helpers/userPoll';
 import { draftOptionsFromStored, optionsWithAbstainLastRows } from '$lib/pollOptions';
 import {
+	resolveResultVisibilityForWrite,
+	syncIsResultPublicFromVisibility,
+} from '$lib/pollResultVisibility';
+import {
 	FullUserPollSchema,
-	PollDraftSchema,
 	PollTypeSchema,
 	RefinePollDraftSchema,
+	RefineStandalonePollDraftSchema,
 	refinePollRowTypeConfig,
 	UserPollBaseSchema,
+	UserPollCodeSchema,
+	UserPollDraftPartialSchema,
+	type StandalonePollDraft,
 } from '$lib/validation';
 import { zid } from 'convex-helpers/server/zod4';
+import { z } from 'zod';
 
 function createCode() {
 	const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -40,6 +50,28 @@ async function createUniqueCode(ctx: MutationCtx) {
 		}
 	}
 	throw appErrors.internal_error();
+}
+
+async function assertUserPollCodeAvailable(
+	ctx: MutationCtx,
+	code: string,
+	exceptPollId?: Id<'userPolls'>,
+) {
+	const parsed = UserPollCodeSchema.safeParse(code);
+	AppError.assertZodSuccess(parsed, appErrors.invalid_poll_draft);
+
+	const existing = await ctx.db
+		.query('userPolls')
+		.withIndex('by_code', (q) => q.eq('code', parsed.data))
+		.unique();
+
+	if (!existing) {
+		return;
+	}
+	if (exceptPollId !== undefined && existing._id === exceptPollId) {
+		return;
+	}
+	throw appErrors.user_poll_code_already_exists(parsed.data);
 }
 
 const userPollAdmin = authed.use(({ ctx, next }) => {
@@ -66,7 +98,7 @@ export const getPoll = userPollAdmin
 		return poll;
 	});
 
-/** Latest stored result snapshot for dashboard / owner review (ignores `isResultPublic`). */
+/** Latest stored result snapshot for dashboard / owner review (ignores public `resultVisibility`). */
 export const getMyPollResultsSnapshot = userPollAdmin
 	.query()
 	.input({ pollId: zid('userPolls') })
@@ -93,18 +125,52 @@ export const getMyPollResultsSnapshot = userPollAdmin
 		};
 	});
 
+export const watchOwnedPollMetrics = userPollAdmin
+	.query()
+	.input({ pollIds: z.array(zid('userPolls')).max(50) })
+	.public(async ({ ctx, args }) => {
+		return await Promise.all(
+			args.pollIds.map(async (pollId) => {
+				const poll = await getUserPollOrThrow(ctx.db, pollId);
+				assertUserPollOwner(poll, ctx.user.subject);
+
+				const [votesCount, votersCount] = await Promise.all([
+					getUserPollVotesCounter(poll._id).count(ctx),
+					getUserPollVotersCounter(poll._id).count(ctx),
+				]);
+
+				return {
+					pollId: poll._id,
+					isOpen: poll.isOpen,
+					closedAt: poll.closedAt,
+					updatedAt: poll.updatedAt,
+					votesCount,
+					votersCount,
+				};
+			}),
+		);
+	});
+
 // --- Public mutations ---
 
 export const createPoll = userPollAdmin
 	.mutation()
 	.input({
-		draft: RefinePollDraftSchema,
+		draft: RefineStandalonePollDraftSchema,
 	})
 	.public(async ({ ctx, args }) => {
+		const parsedDraft = args.draft as StandalonePollDraft;
+		const code = parsedDraft.code !== undefined ? parsedDraft.code : await createUniqueCode(ctx);
+		if (parsedDraft.code !== undefined) {
+			await assertUserPollCodeAvailable(ctx, code);
+		}
+
 		const draft = {
 			...args.draft,
-			code: await createUniqueCode(ctx),
+			code,
 			ownerUserId: ctx.user.subject,
+			infoPageEnabled: args.draft.infoPageEnabled ?? false,
+			infoPageShowLiveVoteCounts: args.draft.infoPageShowLiveVoteCounts ?? false,
 			isOpen: false,
 			updatedAt: Date.now(),
 			openedAt: null,
@@ -138,6 +204,9 @@ export const duplicatePoll = userPollAdmin
 			maxVotesPerVoter: source.maxVotesPerVoter,
 			allowsAbstain: source.allowsAbstain,
 			isResultPublic: source.isResultPublic,
+			resultVisibility: source.resultVisibility,
+			infoPageEnabled: source.infoPageEnabled ?? false,
+			infoPageShowLiveVoteCounts: source.infoPageShowLiveVoteCounts ?? false,
 			code: await createUniqueCode(ctx),
 			ownerUserId: ctx.user.subject,
 			visibilityMode: source.visibilityMode,
@@ -161,17 +230,26 @@ export const editPoll = userPollAdmin
 	.mutation()
 	.input({
 		pollId: zid('userPolls'),
-		edits: PollDraftSchema.partial(),
+		edits: UserPollDraftPartialSchema,
 	})
 	.public(async ({ ctx, args }) => {
 		const poll = await getUserPollOrThrow(ctx.db, args.pollId);
 		assertUserPollOwner(poll, ctx.user.subject);
 		assertUserPollEditable(poll);
 
+		const { code: codeEdit, ...editsRest } = args.edits;
+
 		const nextAllowsAbstain = args.edits.allowsAbstain ?? poll.allowsAbstain;
 		const draftOptions =
 			args.edits.options ?? draftOptionsFromStored(poll.options, poll.allowsAbstain);
 		const mergedType = args.edits.type ?? poll.type;
+
+		const resolvedVisibility = resolveResultVisibilityForWrite({
+			stored: poll,
+			editsResultVisibility: args.edits.resultVisibility,
+			editsIsResultPublic: args.edits.isResultPublic,
+		});
+		const resolvedIsPublic = syncIsResultPublicFromVisibility(resolvedVisibility);
 
 		const draftForRefine =
 			mergedType === 'multi_winner'
@@ -182,7 +260,8 @@ export const editPoll = userPollAdmin
 						winningCount:
 							args.edits.winningCount ??
 							(poll.type === 'multi_winner' ? poll.winningCount : undefined),
-						isResultPublic: args.edits.isResultPublic ?? poll.isResultPublic,
+						resultVisibility: resolvedVisibility,
+						isResultPublic: resolvedIsPublic,
 						allowsAbstain: nextAllowsAbstain,
 						maxVotesPerVoter: args.edits.maxVotesPerVoter ?? poll.maxVotesPerVoter,
 					}
@@ -194,7 +273,8 @@ export const editPoll = userPollAdmin
 						majorityRule:
 							args.edits.majorityRule ??
 							(poll.type === 'single_winner' ? poll.majorityRule : undefined),
-						isResultPublic: args.edits.isResultPublic ?? poll.isResultPublic,
+						resultVisibility: resolvedVisibility,
+						isResultPublic: resolvedIsPublic,
 						allowsAbstain: nextAllowsAbstain,
 						maxVotesPerVoter: args.edits.maxVotesPerVoter ?? poll.maxVotesPerVoter,
 					};
@@ -202,11 +282,23 @@ export const editPoll = userPollAdmin
 		const refinedDraft = RefinePollDraftSchema.safeParse(draftForRefine);
 		AppError.assertZodSuccess(refinedDraft, appErrors.invalid_poll_draft);
 
+		let nextCode = poll.code;
+		if (codeEdit !== undefined) {
+			const trimmed = codeEdit.trim();
+			if (trimmed !== '' && trimmed !== poll.code) {
+				await assertUserPollCodeAvailable(ctx, trimmed, args.pollId);
+				nextCode = trimmed;
+			}
+		}
+
 		const options = optionsWithAbstainLastRows(refinedDraft.data.options, nextAllowsAbstain);
 		const updatedFields = {
 			...poll,
-			...args.edits,
+			...editsRest,
+			code: nextCode,
 			options,
+			resultVisibility: refinedDraft.data.resultVisibility,
+			isResultPublic: refinedDraft.data.isResultPublic,
 			updatedAt: Date.now(),
 		};
 

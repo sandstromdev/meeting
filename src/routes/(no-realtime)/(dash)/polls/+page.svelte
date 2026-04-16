@@ -1,6 +1,6 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import { resolve } from '$app/paths';
-	import { api } from '$convex/_generated/api';
 	import type { Doc, Id } from '$convex/_generated/dataModel';
 	import { PUBLIC_SITE_URL } from '$env/static/public';
 	import PollResultsDisplay from '$lib/components/poll-results-display.svelte';
@@ -9,52 +9,256 @@
 	import { CopyButton } from '$lib/components/ui/copy-button';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
-	import EditPoll from '$lib/components/ui/edit-poll.svelte';
 	import Heading from '$lib/components/ui/heading.svelte';
 	import SeoHead from '$lib/components/ui/seo-head.svelte';
 	import { hydratePollRowToDraft, type UserPollDraft } from '$lib/polls';
 	import CopyIcon from '@lucide/svelte/icons/copy';
 	import EllipsisVerticalIcon from '@lucide/svelte/icons/ellipsis-vertical';
+	import ExternalLinkIcon from '@lucide/svelte/icons/external-link';
 	import PencilIcon from '@lucide/svelte/icons/pencil';
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
-	import { useConvexClient, useQuery } from '@mmailaender/convex-svelte';
+	import { useInterval } from 'runed';
 	import { toast } from 'svelte-sonner';
 	import CreatePoll from './create-poll.svelte';
 	import EditPollDialog from '$lib/components/ui/edit-poll-dialog.svelte';
+	import {
+		cancelPoll as cancelPollRemote,
+		closePoll as closePollRemote,
+		duplicatePoll as duplicatePollRemote,
+		editPoll as editPollRemote,
+		getPollResultsSnapshot as getPollResultsSnapshotRemote,
+		listOwnedPolls as listOwnedPollsRemote,
+		openPoll as openPollRemote,
+		removePoll as removePollRemote,
+		watchOwnedPollMetrics as watchOwnedPollMetricsRemote,
+	} from './dashboard.remote';
+
+	type DashboardPoll = Doc<'userPolls'> & {
+		votesCount: number | null;
+		votersCount: number | null;
+	};
+	type PollMetrics = Extract<
+		Awaited<ReturnType<typeof watchOwnedPollMetricsRemote>>,
+		{ ok: true }
+	>['metrics'][number];
+	type PollResultsSnapshot = Extract<
+		Awaited<ReturnType<typeof getPollResultsSnapshotRemote>>,
+		{ ok: true }
+	>['snapshot'];
+	type RemoteMutationResult = Promise<{ ok: true } | { ok: false; error: { message: string } }>;
+
+	const OPEN_POLL_INTERVAL_MS = 5_000;
+	const POLLS_REFRESH_INTERVAL_MS = 25_000;
+	const RESULTS_PENDING_INTERVAL_MS = 1_500;
 
 	function participantPollUrl(code: string): string {
 		const base = PUBLIC_SITE_URL.replace(/\/$/, '');
 		return `${base}${resolve(`/p/${code}`)}`;
 	}
 
+	function participantPollInfoUrl(code: string): string {
+		const base = PUBLIC_SITE_URL.replace(/\/$/, '');
+		return `${base}${resolve(`/p/${code}/info`)}`;
+	}
+
+	function toDashboardPoll(poll: Doc<'userPolls'>, existing?: DashboardPoll): DashboardPoll {
+		return {
+			...poll,
+			votesCount: existing?.votesCount ?? null,
+			votersCount: existing?.votersCount ?? null,
+		};
+	}
+
+	function mergePolls(
+		nextPolls: Doc<'userPolls'>[],
+		currentPolls: DashboardPoll[],
+	): DashboardPoll[] {
+		const currentById = new Map(currentPolls.map((poll) => [poll._id, poll]));
+		return nextPolls.map((poll) => toDashboardPoll(poll, currentById.get(poll._id)));
+	}
+
+	function mergePollMetrics(
+		currentPolls: DashboardPoll[],
+		metrics: PollMetrics[],
+	): DashboardPoll[] {
+		const metricsById = new Map(metrics.map((metric) => [metric.pollId, metric]));
+
+		return currentPolls.map((poll) => {
+			const metric = metricsById.get(poll._id);
+			if (!metric) {
+				return poll;
+			}
+
+			return {
+				...poll,
+				isOpen: metric.isOpen,
+				closedAt: metric.closedAt,
+				updatedAt: metric.updatedAt,
+				votesCount: metric.votesCount,
+				votersCount: metric.votersCount,
+			};
+		});
+	}
+
 	let { data } = $props();
 
-	const convex = useConvexClient();
-	const standaloneApi = api.userPoll.public;
-	const standaloneAdminApi = api.userPoll.admin;
-	const ownedPolls = useQuery(standaloneApi.getMyOwnedPolls);
+	const serverPolls = $derived(mergePolls(data.ownedPolls ?? [], []));
+
+	let localPolls = $state.raw<DashboardPoll[] | null>(null);
+
+	const polls = $derived(localPolls ?? serverPolls);
+
+	let pollsRefreshing = $state(false);
+	let pollsError = $state<string | null>(null);
 
 	let resultsDialogOpen = $state(false);
 	let resultsDialogPollId = $state<Id<'userPolls'> | null>(null);
 	let resultsDialogPollTitle = $state('');
+	let resultsSnapshot = $state<PollResultsSnapshot | null>(null);
+	let resultsSnapshotLoading = $state(false);
+	let resultsSnapshotError = $state<string | null>(null);
 
 	let editDialogPoll = $state<UserPollDraft | null>(null);
 
-	const resultsSnapshot = useQuery(standaloneAdminApi.getMyPollResultsSnapshot, () =>
-		resultsDialogOpen && resultsDialogPollId ? { pollId: resultsDialogPollId } : 'skip',
-	);
-
 	let actionLoadingPollId = $state<string | null>(null);
 	let actionLoadingType = $state<string | null>(null);
+	let refreshingPolls = false;
+	let refreshingMetrics = $state(false);
+	let refreshingResults = false;
+
+	const user = $derived(data.currentUser);
+	const isAdmin = $derived(user?.role === 'admin');
+	const openPollIds = $derived(polls.filter((poll) => poll.isOpen).map((poll) => poll._id));
+
+	const sortedPolls = $derived(polls.toSorted((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0)));
+	const openPolls = $derived(sortedPolls.filter((poll) => poll.isOpen));
+	const closedPolls = $derived(sortedPolls.filter((poll) => !poll.isOpen));
+
+	const OPEN_PAGE_SIZE = 10;
+	const CLOSED_PAGE_SIZE = 10;
+
+	let openVisibleCount = $state(OPEN_PAGE_SIZE);
+	let closedVisibleCount = $state(CLOSED_PAGE_SIZE);
+
+	const openVisiblePolls = $derived(openPolls.slice(0, openVisibleCount));
+	const closedVisiblePolls = $derived(closedPolls.slice(0, closedVisibleCount));
+
+	$effect(() => {
+		const minOpen = Math.min(OPEN_PAGE_SIZE, openPolls.length);
+		openVisibleCount = Math.min(Math.max(openVisibleCount, minOpen), openPolls.length);
+	});
+
+	$effect(() => {
+		const minClosed = Math.min(CLOSED_PAGE_SIZE, closedPolls.length);
+		closedVisibleCount = Math.min(Math.max(closedVisibleCount, minClosed), closedPolls.length);
+	});
+
+	const shouldPollResultsSnapshot = $derived(
+		isAdmin &&
+			resultsDialogOpen &&
+			resultsDialogPollId !== null &&
+			resultsSnapshot?.kind === 'pending',
+	);
+
+	async function refreshPolls(options: { silent?: boolean } = {}) {
+		if (!browser || !isAdmin || refreshingPolls) {
+			return;
+		}
+
+		refreshingPolls = true;
+		pollsRefreshing = true;
+
+		try {
+			const result = await listOwnedPollsRemote().run();
+
+			if (!result.ok) {
+				pollsError = result.error.message;
+				if (!options.silent) {
+					toast.error(result.error.message);
+				}
+				return;
+			}
+
+			localPolls = mergePolls(result.polls, polls);
+			pollsError = null;
+		} finally {
+			pollsRefreshing = false;
+			refreshingPolls = false;
+		}
+	}
+
+	async function refreshOpenPollMetrics(options: { silent?: boolean } = {}) {
+		if (!browser || !isAdmin || refreshingMetrics || openPollIds.length === 0) {
+			return;
+		}
+
+		refreshingMetrics = true;
+
+		try {
+			const result = await watchOwnedPollMetricsRemote({ pollIds: openPollIds }).run();
+
+			if (!result.ok) {
+				if (!options.silent) {
+					toast.error(result.error.message);
+				}
+				return;
+			}
+
+			localPolls = mergePollMetrics(polls, result.metrics);
+			pollsError = null;
+		} finally {
+			refreshingMetrics = false;
+		}
+	}
+
+	async function refreshResultsSnapshot(options: { silent?: boolean } = {}) {
+		if (!browser || !isAdmin || !resultsDialogPollId || refreshingResults) {
+			return;
+		}
+
+		refreshingResults = true;
+		resultsSnapshotLoading = true;
+
+		try {
+			const pollId = resultsDialogPollId;
+			const result = await getPollResultsSnapshotRemote({ pollId }).run();
+
+			if (!result.ok) {
+				resultsSnapshotError = result.error.message;
+				if (!options.silent) {
+					toast.error(result.error.message);
+				}
+				return;
+			}
+
+			resultsSnapshot = result.snapshot;
+			resultsSnapshotError = null;
+		} finally {
+			resultsSnapshotLoading = false;
+			refreshingResults = false;
+		}
+	}
 
 	function openResultsDialog(pollId: Id<'userPolls'>, title: string) {
 		resultsDialogPollId = pollId;
 		resultsDialogPollTitle = title;
+		resultsSnapshot = null;
+		resultsSnapshotError = null;
 		resultsDialogOpen = true;
+		void refreshResultsSnapshot({ silent: true });
 	}
 
 	function openEditDialog(poll: Doc<'userPolls'>) {
 		editDialogPoll = hydratePollRowToDraft(poll) as UserPollDraft;
+	}
+
+	async function refreshDashboardState() {
+		await refreshPolls({ silent: true });
+		await refreshOpenPollMetrics({ silent: true });
+	}
+
+	async function handlePollCreated() {
+		await refreshDashboardState();
 	}
 
 	async function submitPollEdit(draft: UserPollDraft) {
@@ -65,26 +269,25 @@
 			return;
 		}
 
-		try {
-			await convex.mutation(standaloneAdminApi.editPoll, {
-				pollId: id,
-				edits: edits,
-			});
-			toast.success('Omröstningen uppdaterades.');
-			editDialogPoll = null;
-		} catch (error) {
-			console.error(error);
-			toast.error('Kunde inte spara ändringar.');
-		}
-	}
+		const result = await editPollRemote({
+			pollId: id,
+			edits,
+		});
 
-	const user = $derived(data.currentUser.data);
-	const isAdmin = $derived(user?.role === 'admin');
+		if (!result.ok) {
+			toast.error(result.error.message);
+			return;
+		}
+
+		editDialogPoll = null;
+		toast.success('Omröstningen uppdaterades.');
+		await refreshDashboardState();
+	}
 
 	async function withPollAction(
 		pollId: string,
 		action: 'open' | 'close' | 'cancel' | 'remove' | 'duplicate',
-		fn: () => Promise<unknown>,
+		fn: () => RemoteMutationResult,
 		successMessage: string,
 	) {
 		if (actionLoadingPollId) {
@@ -93,16 +296,65 @@
 		actionLoadingPollId = pollId;
 		actionLoadingType = action;
 		try {
-			await fn();
+			const result = await fn();
+			if (!result.ok) {
+				toast.error(result.error.message);
+				return;
+			}
 			toast.success(successMessage);
-		} catch (error) {
-			console.error(error);
-			toast.error('Kunde inte uppdatera omröstningen.');
+			await refreshDashboardState();
 		} finally {
 			actionLoadingPollId = null;
 			actionLoadingType = null;
 		}
 	}
+
+	const pollsListInterval = useInterval(POLLS_REFRESH_INTERVAL_MS, {
+		immediate: false,
+		callback: async () => {
+			if (!isAdmin || openPollIds.length > 0) {
+				return;
+			}
+
+			await refreshPolls({ silent: true });
+		},
+	});
+
+	const openPollMetricsInterval = useInterval(OPEN_POLL_INTERVAL_MS, {
+		immediate: false,
+		callback: async () => {
+			if (!isAdmin || openPollIds.length === 0) {
+				return;
+			}
+
+			await refreshOpenPollMetrics({ silent: true });
+		},
+	});
+
+	const resultsPendingInterval = useInterval(RESULTS_PENDING_INTERVAL_MS, {
+		immediate: false,
+		callback: async () => {
+			if (!shouldPollResultsSnapshot) {
+				return;
+			}
+
+			await refreshResultsSnapshot({ silent: true });
+		},
+	});
+
+	$effect(() => {
+		if (!browser) {
+			return;
+		}
+		pollsListInterval.resume();
+		openPollMetricsInterval.resume();
+		resultsPendingInterval.resume();
+		return () => {
+			pollsListInterval.pause();
+			openPollMetricsInterval.pause();
+			resultsPendingInterval.pause();
+		};
+	});
 </script>
 
 <SeoHead
@@ -138,6 +390,8 @@
 				if (!open) {
 					resultsDialogPollId = null;
 					resultsDialogPollTitle = '';
+					resultsSnapshot = null;
+					resultsSnapshotError = null;
 				}
 			}}
 		>
@@ -153,23 +407,27 @@
 
 				{#key resultsDialogPollId}
 					<div class="space-y-4">
-						{#if resultsSnapshot.isLoading}
+						{#if resultsSnapshotLoading}
 							<p class="text-sm text-muted-foreground">Laddar resultat...</p>
-						{:else if !resultsSnapshot.data}
+						{:else if resultsSnapshotError}
+							<Alert.Root variant="destructive">
+								<Alert.Description>{resultsSnapshotError}</Alert.Description>
+							</Alert.Root>
+						{:else if !resultsSnapshot}
 							<Alert.Root variant="destructive">
 								<Alert.Description>Kunde inte läsa resultat.</Alert.Description>
 							</Alert.Root>
-						{:else if resultsSnapshot.data.kind === 'open'}
+						{:else if resultsSnapshot.kind === 'open'}
 							<Alert.Root variant="warning">
 								<Alert.Description>Omröstningen är fortfarande öppen.</Alert.Description>
 							</Alert.Root>
-						{:else if resultsSnapshot.data.kind === 'cancelled'}
+						{:else if resultsSnapshot.kind === 'cancelled'}
 							<Alert.Root variant="warning">
 								<Alert.Description>
 									Omröstningen avbröts utan att stängas – inga sparade resultat finns.
 								</Alert.Description>
 							</Alert.Root>
-						{:else if resultsSnapshot.data.kind === 'pending'}
+						{:else if resultsSnapshot.kind === 'pending'}
 							<Alert.Root variant="warning">
 								<Alert.Description>
 									Resultat beräknas. Uppdatera om ett ögonblick.
@@ -178,10 +436,10 @@
 						{:else}
 							<PollResultsDisplay
 								data={{
-									complete: resultsSnapshot.data.complete,
-									results: resultsSnapshot.data.results,
+									complete: resultsSnapshot.complete,
+									results: resultsSnapshot.results,
 								}}
-								showDetailedResults
+								resultVisibility="full"
 							/>
 						{/if}
 					</div>
@@ -190,14 +448,22 @@
 		</Dialog.Root>
 
 		<section class="rounded-md border p-4 sm:p-5">
-			<Heading size="md">Mina omröstningar</Heading>
+			<div class="flex items-center justify-between gap-3">
+				<Heading>Mina omröstningar</Heading>
+				{#if pollsRefreshing || refreshingMetrics}
+					<p class="text-sm text-muted-foreground">Uppdaterar...</p>
+				{/if}
+			</div>
 			<div class="flex flex-col gap-3">
-				{#if ownedPolls.isLoading}
-					<p class="text-sm text-muted-foreground">Laddar omröstningar...</p>
-				{:else if !ownedPolls.data?.length}
+				{#if pollsError}
+					<Alert.Root variant="destructive">
+						<Alert.Description>{pollsError}</Alert.Description>
+					</Alert.Root>
+				{/if}
+				{#if !polls.length}
 					<p class="text-sm text-muted-foreground">Du har inga fristående omröstningar ännu.</p>
 				{:else}
-					{#each ownedPolls.data as poll (poll._id)}
+					{#snippet pollRow(poll: DashboardPoll)}
 						<article class="rounded-md border p-3">
 							<div class="flex flex-wrap items-start justify-between gap-3">
 								<div class="min-w-0 flex-1 space-y-1">
@@ -211,8 +477,23 @@
 										>
 											{poll.code}
 										</Button>
+										{#if poll.infoPageEnabled}
+											·
+											<Button
+												variant="link"
+												class="inline-flex h-auto p-0 align-baseline text-inherit"
+												href={resolve(`/p/${poll.code}/info`)}
+											>
+												Infosida
+											</Button>
+										{/if}
 										{poll.isOpen ? ' — Öppen' : ' — Stängd'}
 									</p>
+									{#if poll.votesCount !== null && poll.votersCount !== null}
+										<p class="text-sm text-muted-foreground">
+											{poll.votesCount} röster från {poll.votersCount} röstande
+										</p>
+									{/if}
 								</div>
 								<div class="flex flex-wrap gap-2">
 									{#if poll.isOpen}
@@ -224,10 +505,7 @@
 												withPollAction(
 													poll._id,
 													'close',
-													() =>
-														convex.mutation(standaloneAdminApi.closePoll, {
-															pollId: poll._id,
-														}),
+													async () => await closePollRemote({ pollId: poll._id }),
 													'Omröstningen stängdes.',
 												)}
 										>
@@ -244,10 +522,7 @@
 												withPollAction(
 													poll._id,
 													'cancel',
-													() =>
-														convex.mutation(standaloneAdminApi.cancelPoll, {
-															pollId: poll._id,
-														}),
+													async () => await cancelPollRemote({ pollId: poll._id }),
 													'Omröstningen avbröts.',
 												)}
 										>
@@ -264,10 +539,7 @@
 												withPollAction(
 													poll._id,
 													'open',
-													() =>
-														convex.mutation(standaloneAdminApi.openPoll, {
-															pollId: poll._id,
-														}),
+													async () => await openPollRemote({ pollId: poll._id }),
 													'Omröstningen öppnades.',
 												)}
 										>
@@ -320,16 +592,27 @@
 													withPollAction(
 														poll._id,
 														'duplicate',
-														() =>
-															convex.mutation(standaloneAdminApi.duplicatePoll, {
-																pollId: poll._id,
-															}),
+														async () => await duplicatePollRemote({ pollId: poll._id }),
 														'En kopia skapades.',
 													)}
 											>
 												<CopyIcon class="size-4" />
 												Duplicera
 											</DropdownMenu.Item>
+											{#if poll.infoPageEnabled}
+												<DropdownMenu.Item
+													disabled={actionLoadingPollId === poll._id}
+													onclick={() =>
+														window.open(
+															participantPollInfoUrl(poll.code),
+															'_blank',
+															'noopener,noreferrer',
+														)}
+												>
+													<ExternalLinkIcon class="size-4" />
+													Öppna infosida
+												</DropdownMenu.Item>
+											{/if}
 											{#if !poll.isOpen}
 												<DropdownMenu.Separator />
 												<DropdownMenu.Item
@@ -339,10 +622,7 @@
 														withPollAction(
 															poll._id,
 															'remove',
-															() =>
-																convex.mutation(standaloneAdminApi.removePoll, {
-																	pollId: poll._id,
-																}),
+															async () => await removePollRemote({ pollId: poll._id }),
 															'Omröstningen togs bort.',
 														)}
 												>
@@ -355,14 +635,88 @@
 								</div>
 							</div>
 						</article>
-					{/each}
+					{/snippet}
+
+					<div class="space-y-2">
+						<div class="flex items-center justify-between gap-2">
+							<Heading>Öppna omröstningar</Heading>
+							{#if openPolls.length > openVisiblePolls.length}
+								<p class="text-sm text-muted-foreground">
+									Visar {openVisiblePolls.length} av {openPolls.length}
+								</p>
+							{/if}
+						</div>
+
+						{#if !openPolls.length}
+							<p class="text-sm text-muted-foreground">Du har inga öppna omröstningar.</p>
+						{:else}
+							<div class="space-y-3">
+								{#each openVisiblePolls as poll (poll._id)}
+									{@render pollRow(poll)}
+								{/each}
+							</div>
+							{#if openPolls.length > openVisiblePolls.length}
+								<div class="pt-1">
+									<Button
+										type="button"
+										variant="outline"
+										onclick={() => {
+											openVisibleCount = Math.min(
+												openVisibleCount + OPEN_PAGE_SIZE,
+												openPolls.length,
+											);
+										}}
+									>
+										Visa fler
+									</Button>
+								</div>
+							{/if}
+						{/if}
+					</div>
+
+					<div class="space-y-2 pt-3">
+						<div class="flex items-center justify-between gap-2">
+							<Heading>Stängda omröstningar</Heading>
+							{#if closedPolls.length > closedVisiblePolls.length}
+								<p class="text-sm text-muted-foreground">
+									Visar {closedVisiblePolls.length} av {closedPolls.length}
+								</p>
+							{/if}
+						</div>
+
+						{#if !closedPolls.length}
+							<p class="text-sm text-muted-foreground">Du har inga stängda omröstningar.</p>
+						{:else}
+							<div class="space-y-3">
+								{#each closedVisiblePolls as poll (poll._id)}
+									{@render pollRow(poll)}
+								{/each}
+							</div>
+							{#if closedPolls.length > closedVisiblePolls.length}
+								<div class="pt-1">
+									<Button
+										type="button"
+										variant="outline"
+										onclick={() => {
+											closedVisibleCount = Math.min(
+												closedVisibleCount + CLOSED_PAGE_SIZE,
+												closedPolls.length,
+											);
+										}}
+									>
+										Visa fler
+									</Button>
+								</div>
+							{/if}
+						{/if}
+					</div>
 				{/if}
 			</div>
 		</section>
 
 		<section class="space-y-4 rounded-md border p-4 sm:p-6">
-			<Heading size="md">Skapa omröstning</Heading>
-			<CreatePoll />
+			<Heading>Skapa omröstning</Heading>
+			<CreatePoll onCreated={handlePollCreated} />
 		</section>
 	{/if}
 </div>
