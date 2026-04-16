@@ -8,7 +8,7 @@ import type { LayoutServerLoad } from './$types';
 export const load = (async ({ route, locals, cookies, url }) => {
 	// TODO: preload actual needed data for simplified route
 
-	if (route.id === '/(no-realtime)/m/anslut') {
+	if (route.id === '/(no-realtime)/m/anslut' || route.id === '/(no-realtime)/m/notice') {
 		return {
 			meetingId: locals.meetingId,
 		};
