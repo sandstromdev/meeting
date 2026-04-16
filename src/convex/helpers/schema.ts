@@ -19,6 +19,13 @@ export type UserPollVisibilityMode = typeof userPollVisibilityMode.type;
 /** @deprecated Use `UserPollVisibilityMode` */
 export type StandaloneVisibilityMode = UserPollVisibilityMode;
 
+export const pollResultVisibility = v.union(
+	v.literal('none'),
+	v.literal('winner'),
+	v.literal('full'),
+);
+export type PollResultVisibility = typeof pollResultVisibility.type;
+
 /** `type` is source of truth; branch-specific fields are optional at rest (Zod enforces on write). */
 export const pollTypeConfigFields = {
 	type: pollType,
@@ -41,8 +48,13 @@ export const pollRowSharedFields = {
 	allowsAbstain: v.boolean(),
 	isOpen: v.boolean(),
 	maxVotesPerVoter: v.number(),
-	/** If true, everyone can see results when poll is closed; if false, only admins can. */
-	isResultPublic: v.boolean(),
+	/**
+	 * @deprecated Prefer `resultVisibility`. Legacy mirror of full public totals (`full` vs not). Omit on new writes when
+	 * `resultVisibility` is set; readers should use `effectiveResultVisibility` (treat omitted as false when `resultVisibility` absent).
+	 */
+	isResultPublic: v.optional(v.boolean()),
+	/** Preferred: how much non-privileged viewers see. Omit on older docs (derive from `isResultPublic`). */
+	resultVisibility: v.optional(pollResultVisibility),
 	openedAt: v.nullable(v.number()),
 	closedAt: v.nullable(v.number()),
 	updatedAt: v.number(),

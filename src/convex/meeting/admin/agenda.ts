@@ -24,7 +24,11 @@ import {
 	getMeetingPollOrThrow,
 } from '$convex/helpers/meetingPoll';
 import { optionsWithAbstainLastRows } from '$lib/pollOptions';
-import { FullPollSchema, PollDraftSchema, RefinePollDraftSchema } from '$lib/validation';
+import {
+	resolveResultVisibilityForWrite,
+	syncIsResultPublicFromVisibility,
+} from '$lib/pollResultVisibility';
+import { FullPollSchema, pollDraftObjectSchema, RefinePollDraftSchema } from '$lib/validation';
 import { zid } from 'convex-helpers/server/zod4';
 import { z } from 'zod';
 import type { Id } from '$convex/_generated/dataModel';
@@ -104,7 +108,7 @@ export const updateAgendaItem = admin
 		agendaItemId: z.string().min(1),
 		title: z.string().trim().min(1).optional(),
 		description: z.string().optional(),
-		polls: z.array(PollDraftSchema.extend({ id: zid('meetingPolls').optional() })),
+		polls: z.array(pollDraftObjectSchema.extend({ id: zid('meetingPolls').optional() })),
 	})
 	.public(async ({ ctx, args }) => {
 		const agendaNow = ctx.meeting.agenda;
@@ -142,11 +146,18 @@ export const updateAgendaItem = admin
 				const nextAllowsAbstain = poll.allowsAbstain;
 				const options = optionsWithAbstainLastRows(poll.options, nextAllowsAbstain);
 
+				const resolvedVisibility = resolveResultVisibilityForWrite({
+					stored: existing,
+					editsResultVisibility: poll.resultVisibility,
+					editsIsResultPublic: poll.isResultPublic,
+				});
+
 				const base = {
 					...existing,
 					title: poll.title,
 					options,
-					isResultPublic: poll.isResultPublic,
+					isResultPublic: syncIsResultPublicFromVisibility(resolvedVisibility),
+					resultVisibility: resolvedVisibility,
 					allowsAbstain: poll.allowsAbstain,
 					maxVotesPerVoter: poll.maxVotesPerVoter,
 					updatedAt: Date.now(),

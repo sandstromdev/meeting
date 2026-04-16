@@ -1,22 +1,21 @@
 import type { Doc, Id } from '$convex/_generated/dataModel';
 import type { PollOptionTotal } from '$convex/helpers/poll';
 import { draftOptionsFromStored } from './pollOptions';
-import { ABSTAIN_OPTION_LABEL } from './pollConstants';
-import type { PollDraft } from './validation';
+import {
+	ABSTAIN_OPTION_LABEL,
+	MAJORITY_RULES,
+	type MajorityRule,
+	POLL_TYPES,
+	type PollType,
+} from './pollConstants';
+import type { PollDraftInput, StandalonePollDraft } from './validation';
+import { normalizePollDraftVisibility } from './validation';
+import { effectiveResultVisibility } from './pollResultVisibility';
 
-export { ABSTAIN_OPTION_LABEL } from './pollConstants';
-
-export const POLL_TYPES = ['multi_winner', 'single_winner'] as const;
-export type PollType = (typeof POLL_TYPES)[number];
-
-export const MAJORITY_RULES = [
-	'simple',
-	'relative',
-	'two_thirds',
-	'three_quarters',
-	'unanimous',
-] as const;
-export type MajorityRule = (typeof MAJORITY_RULES)[number];
+export { ABSTAIN_OPTION_LABEL, MAJORITY_RULES, POLL_TYPES } from './pollConstants';
+export type { MajorityRule, PollType } from './pollConstants';
+export type { PollResultVisibility } from './pollResultVisibility';
+export { effectiveResultVisibility, POLL_RESULT_VISIBILITIES } from './pollResultVisibility';
 
 export const MAJORITY_LABELS = {
 	simple: 'Enkel majoritet (>50 %)',
@@ -62,7 +61,7 @@ export function minimumVotesForMajority(rule: MajorityRule, maxVotes: number) {
 	return rule === 'simple' ? Math.floor(maxVotes * threshold) + 1 : Math.ceil(maxVotes * threshold);
 }
 
-export function newPollDraft(): PollDraft {
+export function newPollDraft(): PollDraftInput {
 	return {
 		title: '',
 		options: [
@@ -72,11 +71,11 @@ export function newPollDraft(): PollDraft {
 		type: 'single_winner',
 		winningCount: 1,
 		majorityRule: 'simple',
-		isResultPublic: false,
+		resultVisibility: 'winner',
 		allowsAbstain: true,
 		maxVotesPerVoter: 1,
 		visibilityMode: 'public',
-	} satisfies PollDraft;
+	} satisfies PollDraftInput;
 }
 
 export const POLL_PRESETS = [
@@ -92,7 +91,7 @@ export const POLL_PRESETS = [
 				type: 'single_winner',
 				majorityRule: 'simple',
 				allowsAbstain: true,
-			}) satisfies PollDraft,
+			}) satisfies PollDraftInput,
 	},
 	{
 		name: 'Personvalsomröstning',
@@ -103,16 +102,16 @@ export const POLL_PRESETS = [
 				winningCount: 1,
 				majorityRule: 'relative',
 				allowsAbstain: true,
-			}) satisfies PollDraft,
+			}) satisfies PollDraftInput,
 	},
 ];
 
-export function trimmedPollOptionTitles(draft: Pick<PollDraft, 'options'>): string[] {
+export function trimmedPollOptionTitles(draft: Pick<PollDraftInput, 'options'>): string[] {
 	return draft.options.map((o) => o.title.trim()).filter(Boolean);
 }
 
 /** @deprecated Use `trimmedPollOptionTitles` */
-export function trimmedPollOptions(draft: Pick<PollDraft, 'options'>): string[] {
+export function trimmedPollOptions(draft: Pick<PollDraftInput, 'options'>): string[] {
 	return trimmedPollOptionTitles(draft);
 }
 
@@ -133,10 +132,20 @@ export function getVoteShare(votes: number, total: number) {
 export type PollTableNames = 'userPolls' | 'meetingPolls';
 
 /** Standalone `userPolls` UI and admin mutations. */
-export type UserPollDraft = PollDraft & { id?: Id<'userPolls'> };
+export type UserPollDraft = StandalonePollDraft & { id?: Id<'userPolls'> };
+
+/** Initial draft for creating a standalone `userPoll` (includes infosida flags). */
+export function newStandalonePollDraft(): UserPollDraft {
+	return normalizePollDraftVisibility({
+		...newPollDraft(),
+		infoPageEnabled: true,
+		infoPageShowLiveVoteCounts: true,
+		code: '',
+	}) as UserPollDraft;
+}
 
 /** Meeting agenda editor / mutations: ids are always `meetingPolls` when present. */
-export type MeetingPollDraft = PollDraft & { id?: Id<'meetingPolls'> };
+export type MeetingPollDraft = PollDraftInput & { id?: Id<'meetingPolls'> };
 
 /** Shared editor / either table. */
 export type EditablePollDraft = UserPollDraft | MeetingPollDraft;
@@ -145,6 +154,7 @@ export function hydratePollRowToDraft(p: Doc<'userPolls'>): UserPollDraft;
 export function hydratePollRowToDraft(p: Doc<'meetingPolls'>): MeetingPollDraft;
 export function hydratePollRowToDraft(p: Doc<PollTableNames>): UserPollDraft | MeetingPollDraft {
 	const options = draftOptionsFromStored(p.options, p.allowsAbstain);
+	const effective = effectiveResultVisibility(p);
 
 	const base: Record<string, unknown> = {
 		id: p._id,
@@ -153,13 +163,17 @@ export function hydratePollRowToDraft(p: Doc<PollTableNames>): UserPollDraft | M
 		type: p.type,
 		winningCount: p.type === 'multi_winner' ? (p.winningCount ?? 1) : 1,
 		majorityRule: p.type === 'single_winner' ? (p.majorityRule ?? 'simple') : 'simple',
-		isResultPublic: p.isResultPublic,
+		resultVisibility: effective,
+		isResultPublic: p.isResultPublic ?? effective === 'full',
 		allowsAbstain: p.allowsAbstain,
 		maxVotesPerVoter: p.maxVotesPerVoter,
 	};
 
 	if ('visibilityMode' in p) {
 		base.visibilityMode = p.visibilityMode;
+		base.infoPageEnabled = p.infoPageEnabled ?? false;
+		base.infoPageShowLiveVoteCounts = p.infoPageShowLiveVoteCounts ?? false;
+		base.code = p.code;
 	}
 
 	return base as UserPollDraft | MeetingPollDraft;

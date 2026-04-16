@@ -12,7 +12,9 @@ import {
 	getLatestMeetingPollResultSnapshot,
 	getMeetingPollOrThrow,
 } from '$convex/helpers/meetingPoll';
+import { buildTieredPollResultsPayload } from '$convex/helpers/pollResultPayload';
 import { normalizeStoredPollOptions } from '$lib/pollOptions';
+import { effectiveResultVisibility } from '$lib/pollResultVisibility';
 import { zid } from 'convex-helpers/server/zod4';
 import { z } from 'zod';
 
@@ -96,13 +98,16 @@ export const getCurrentPoll = withMe.query().public(async ({ ctx }) => {
 
 	const hasVoted = myVoteOptionIndexes.length > 0;
 
+	const effective = effectiveResultVisibility(poll);
+
 	return {
 		id: poll._id,
 		title: poll.title,
 		options: normalizeStoredPollOptions(poll.options),
 		isOpen: poll.isOpen,
 		maxVotesPerVoter: poll.maxVotesPerVoter,
-		isResultPublic: poll.isResultPublic,
+		isResultPublic: poll.isResultPublic ?? effective === 'full',
+		resultVisibility: effective,
 		type: poll.type,
 		hasVoted,
 		myVoteOptionIndexes,
@@ -151,27 +156,25 @@ export const getPollResultsById = withMe
 			return null;
 		}
 
-		const canSeeOptionTotals = poll.isResultPublic || ctx.me.role === 'admin';
+		const effective = effectiveResultVisibility(poll);
+		const isPrivileged = ctx.me.role === 'admin';
 
-		const winners = canSeeOptionTotals
-			? result.results.winners
-			: result.results.winners.map((winner) => ({
-					optionIndex: winner.optionIndex,
-					option: winner.option,
-					description: winner.description,
-					votes: undefined,
-				}));
-
-		return {
-			pollId: poll._id,
-			complete: result.complete,
+		const results = buildTieredPollResultsPayload({
 			results: {
-				optionTotals: canSeeOptionTotals ? result.results.optionTotals : undefined,
-				winners,
+				optionTotals: result.results.optionTotals,
+				winners: result.results.winners,
 				isTie: result.results.isTie,
 				majorityRule: result.results.majorityRule,
 				counts: result.results.counts,
 			},
+			effective,
+			isPrivileged,
+		});
+
+		return {
+			pollId: poll._id,
+			complete: result.complete,
+			results,
 		};
 	});
 

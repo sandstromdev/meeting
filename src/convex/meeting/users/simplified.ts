@@ -9,7 +9,9 @@ import {
 import { withMe } from '$convex/helpers/auth';
 import { getLatestMeetingPollResultSnapshot } from '$convex/helpers/meetingPoll';
 import { getMeetingRuntimeVersions } from '$convex/helpers/meetingRuntime';
+import { buildTieredPollResultsPayload } from '$convex/helpers/pollResultPayload';
 import { normalizeStoredPollOptions, type PollOptionRow } from '$lib/pollOptions';
+import { effectiveResultVisibility } from '$lib/pollResultVisibility';
 
 export type SimplifiedPollResultsPayload = Omit<
 	NonNullable<typeof api.meeting.users.meetingPoll.getPollResultsById._returnType>,
@@ -85,6 +87,7 @@ export type SimplifiedHotSnapshot = {
 		type: 'single_winner' | 'multi_winner';
 		isOpen: boolean;
 		isResultPublic: boolean;
+		resultVisibility: ReturnType<typeof effectiveResultVisibility>;
 		maxVotesPerVoter: number;
 		allowsAbstain: boolean;
 	} | null;
@@ -164,13 +167,16 @@ export const getHotSnapshot = withMe
 				return { poll, pollCounters, pollResults };
 			}
 
+			const pollEffective = effectiveResultVisibility(pollDoc);
+
 			poll = {
 				id: pollDoc._id,
 				title: pollDoc.title,
 				options: normalizeStoredPollOptions(pollDoc.options),
 				type: pollDoc.type,
 				isOpen: pollDoc.isOpen,
-				isResultPublic: pollDoc.isResultPublic,
+				isResultPublic: pollDoc.isResultPublic ?? pollEffective === 'full',
+				resultVisibility: pollEffective,
 				maxVotesPerVoter: pollDoc.maxVotesPerVoter,
 				allowsAbstain: pollDoc.allowsAbstain,
 			};
@@ -191,24 +197,20 @@ export const getHotSnapshot = withMe
 			if (!pollDoc.isOpen && pollDoc.closedAt != null) {
 				const result = await getLatestMeetingPollResultSnapshot(ctx.db, pollDoc._id);
 				if (result) {
-					const canSeeOptionTotals = pollDoc.isResultPublic || ctx.me.role === 'admin';
-					const winners = canSeeOptionTotals
-						? result.results.winners
-						: result.results.winners.map((winner) => ({
-								optionIndex: winner.optionIndex,
-								option: winner.option,
-								description: winner.description,
-								votes: undefined,
-							}));
+					const isPrivileged = ctx.me.role === 'admin';
 					pollResults = {
 						complete: result.complete,
-						results: {
-							optionTotals: canSeeOptionTotals ? result.results.optionTotals : undefined,
-							winners,
-							isTie: result.results.isTie,
-							majorityRule: result.results.majorityRule,
-							counts: result.results.counts,
-						},
+						results: buildTieredPollResultsPayload({
+							results: {
+								optionTotals: result.results.optionTotals,
+								winners: result.results.winners,
+								isTie: result.results.isTie,
+								majorityRule: result.results.majorityRule,
+								counts: result.results.counts,
+							},
+							effective: pollEffective,
+							isPrivileged,
+						}),
 					};
 				}
 			}

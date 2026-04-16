@@ -1,9 +1,13 @@
 import type { Doc, Id } from '$convex/_generated/dataModel';
 import type { MutationCtx } from '$convex/_generated/server';
 import { optionsWithAbstainLastRows, type PollOptionRow } from '$lib/pollOptions';
+import {
+	effectiveResultVisibility,
+	normalizedPollVisibilityFields,
+} from '$lib/pollResultVisibility';
 import { getEligibleVotes, type MajorityRule, type MeetingPollDraft } from '$lib/polls';
 import type { StripSystemFields } from '$lib/types';
-import type { PollDraft } from '$lib/validation';
+import type { PollDraftInput } from '$lib/validation';
 import { PollBaseSchema, PollTypeSchema, refinePollRowTypeConfig } from '$lib/validation';
 import { z } from 'zod';
 import { stripSystemFields } from '.';
@@ -89,7 +93,7 @@ export function optionsWithAbstainLast(
 export async function createMeetingPollHelper(
 	ctx: MutationCtx & { meeting: Doc<'meetings'> },
 	args: {
-		draft: PollDraft;
+		draft: PollDraftInput;
 		agendaItemId: string | null;
 		updateAgenda: boolean;
 	},
@@ -102,8 +106,10 @@ export async function createMeetingPollHelper(
 		AppError.assertNotNull(found, appErrors.agenda_item_not_found(args.agendaItemId));
 	}
 
+	const visibilityFields = normalizedPollVisibilityFields(args.draft);
 	const draft = {
 		...args.draft,
+		...visibilityFields,
 		meetingId: ctx.meeting._id,
 		agendaItemId: args.agendaItemId,
 		isOpen: false,
@@ -153,7 +159,7 @@ export function meetingPollDraftChanged(
 		orig.type !== draft.type ||
 		orig.winningCount !== draft.winningCount ||
 		orig.majorityRule !== draft.majorityRule ||
-		orig.isResultPublic !== draft.isResultPublic ||
+		effectiveResultVisibility(orig) !== effectiveResultVisibility(draft) ||
 		orig.allowsAbstain !== draft.allowsAbstain ||
 		orig.maxVotesPerVoter !== draft.maxVotesPerVoter
 	);

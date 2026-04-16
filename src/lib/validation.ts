@@ -1,7 +1,8 @@
 import { zid } from 'convex-helpers/server/zod4';
 import * as z from 'zod';
 import { type StoredPollOptions } from './pollOptions';
-import { ABSTAIN_OPTION_LABEL, MAJORITY_RULES, POLL_TYPES } from './polls';
+import { POLL_RESULT_VISIBILITIES, type PollResultVisibility } from './pollResultVisibility';
+import { ABSTAIN_OPTION_LABEL, MAJORITY_RULES, POLL_TYPES } from './pollConstants';
 import { ROLES } from './roles';
 import { sv } from 'zod/v4/locales';
 
@@ -36,6 +37,17 @@ export const AdminNotificationSchema = z.object({
 export const UserPollVisibilitySchema = z.enum(['public', 'account_required']);
 export type UserPollVisibility = z.infer<typeof UserPollVisibilitySchema>;
 
+/** URL path segment for `/p/[code]`: 4–24 chars, letters/digits/internal dashes; must start/end alphanumeric. Case-sensitive. */
+export const USER_POLL_CODE_REGEX = /^[A-Za-z0-9](?:[A-Za-z0-9-]{2,22})[A-Za-z0-9]$/;
+
+export const UserPollCodeSchema = z.string().trim().regex(USER_POLL_CODE_REGEX, {
+	message:
+		'Koden ska vara 4–24 tecken. Tillåtet: bokstäver, siffror och bindestreck. Får inte börja eller sluta med bindestreck.',
+});
+
+export const PollResultVisibilitySchema = z.enum(POLL_RESULT_VISIBILITIES);
+export type { PollResultVisibility } from './pollResultVisibility';
+
 export const PollDraftOptionSchema = z
 	.object({
 		title: z.string(),
@@ -55,17 +67,46 @@ export const PollDraftOptionSchema = z
 		description: o.description == null || o.description.trim() === '' ? null : o.description,
 	}));
 
-export const PollDraftSchema = z.object({
+/** Raw poll draft fields (no visibility normalization). Use with superforms `zod4()`, `.extend()` for agenda, and `RefinePollDraftObjectSchema`. */
+export const pollDraftObjectSchema = z.object({
 	title: z.string().min(1),
 	options: z.array(PollDraftOptionSchema).min(1),
 	type: z.enum(POLL_TYPES),
 	winningCount: z.number().min(1).optional(),
 	majorityRule: z.enum(MAJORITY_RULES).optional(),
-	isResultPublic: z.boolean().default(false),
+	resultVisibility: PollResultVisibilitySchema.optional(),
+	isResultPublic: z.boolean().optional(),
 	allowsAbstain: z.boolean().default(true),
 	maxVotesPerVoter: z.number().min(1),
 	visibilityMode: UserPollVisibilitySchema.optional(),
 });
+
+export type PollDraftInput = z.infer<typeof pollDraftObjectSchema>;
+
+/**
+ * Sync `resultVisibility` + `isResultPublic`. Superforms cannot derive a JSON shape from a top-level
+ * Zod `.transform()` — use `pollDraftObjectSchema` with `zod4()` and call this after validation (or use `RefinePollDraftSchema` server-side).
+ */
+export function normalizePollDraftVisibility<T extends PollDraftInput>(
+	data: T,
+): T & { resultVisibility: PollResultVisibility; isResultPublic: boolean } {
+	let visibility: PollResultVisibility | undefined = data.resultVisibility;
+	if (visibility === undefined) {
+		if (data.isResultPublic !== undefined) {
+			visibility = data.isResultPublic ? 'full' : 'none';
+		} else {
+			visibility = 'none';
+		}
+	}
+	return {
+		...data,
+		resultVisibility: visibility,
+		isResultPublic: visibility === 'full',
+	};
+}
+
+/** For partial poll edits (no visibility normalization). */
+export const PollDraftPartialSchema = pollDraftObjectSchema.partial();
 
 /** Flat poll type fields; use with `refinePollRowTypeConfig` when `options` is present (stored rows / inserts). */
 export const pollTypeConfigZod = z.object({
@@ -127,7 +168,11 @@ function refinePollTypeConfigCore(
 	}
 }
 
-export const RefinePollDraftSchema = PollDraftSchema.superRefine((data, ctx) => {
+/** Shape-safe refinement for superforms (`zod4`) and agenda `.extend()`. */
+function refinePollDraftObjectData(
+	data: PollDraftInput & Record<string, unknown>,
+	ctx: z.RefinementCtx,
+) {
 	const { options, allowsAbstain } = data;
 	const votableSlots = options.length + (allowsAbstain ? 1 : 0);
 
@@ -169,9 +214,84 @@ export const RefinePollDraftSchema = PollDraftSchema.superRefine((data, ctx) => 
 			message: 'Alternativ måste vara unika',
 		});
 	}
+}
+
+export const RefinePollDraftObjectSchema =
+	pollDraftObjectSchema.superRefine(refinePollDraftObjectData);
+
+function refineStandalonePollDraftCode(data: { code: string }, ctx: z.RefinementCtx) {
+	const trimmed = data.code.trim();
+	if (trimmed === '') {
+		return;
+	}
+	const parsed = UserPollCodeSchema.safeParse(trimmed);
+	if (!parsed.success) {
+		for (const issue of parsed.error.issues) {
+			ctx.addIssue({ ...issue, path: ['code'] });
+		}
+	}
+}
+
+/** Standalone `userPolls` draft: adds infosida flags (not used on meeting polls). */
+export const standalonePollDraftObjectSchema = pollDraftObjectSchema.extend({
+	infoPageEnabled: z.boolean().default(false),
+	infoPageShowLiveVoteCounts: z.boolean().default(false),
+	/** Empty → auto-generate on create. */
+	code: z.string().default(''),
 });
 
-export type PollDraft = z.infer<typeof PollDraftSchema>;
+export const RefineStandalonePollDraftObjectSchema = standalonePollDraftObjectSchema.superRefine(
+	(data, ctx) => {
+		refinePollDraftObjectData(data, ctx);
+		refineStandalonePollDraftCode(data, ctx);
+	},
+);
+
+/** Partial edits for standalone polls (includes infosida fields). */
+export const UserPollDraftPartialSchema = standalonePollDraftObjectSchema
+	.partial()
+	.superRefine((data, ctx) => {
+		if (data.code === undefined) {
+			return;
+		}
+		const trimmed = data.code.trim();
+		if (trimmed === '') {
+			return;
+		}
+		const parsed = UserPollCodeSchema.safeParse(trimmed);
+		if (!parsed.success) {
+			for (const issue of parsed.error.issues) {
+				ctx.addIssue({ ...issue, path: ['code'] });
+			}
+		}
+	});
+
+/** Full draft parse for Convex / server (includes visibility normalization). */
+export const RefinePollDraftSchema = RefinePollDraftObjectSchema.transform((d) =>
+	normalizePollDraftVisibility(d),
+);
+
+/** Standalone user poll create payload (includes visibility normalization + infosida flags). */
+export const RefineStandalonePollDraftSchema = RefineStandalonePollDraftObjectSchema.transform(
+	(d) => {
+		const normalized = normalizePollDraftVisibility(d);
+		const trimmedCode = d.code.trim();
+		if (trimmedCode === '') {
+			const { code: _omit, ...rest } = normalized;
+			return rest;
+		}
+		return { ...normalized, code: trimmedCode };
+	},
+);
+
+export type PollDraft = z.infer<typeof RefinePollDraftSchema>;
+
+type StandalonePollDraftConvex = z.infer<typeof RefineStandalonePollDraftSchema>;
+/** Convex create/update payload; `code` only when set (otherwise auto-generated). Editor may always include optional `code`. */
+export type StandalonePollDraft = Omit<StandalonePollDraftConvex, 'code'> & { code?: string };
+
+/** Shape used by standalone `EditPoll` superform (includes `code: string`). */
+export type StandalonePollDraftFormValues = z.infer<typeof standalonePollDraftObjectSchema>;
 
 /** Enforces branch invariants given `options` (same rules as draft refine; allows stored single_winner without winningCount). */
 export function refinePollRowTypeConfig(
@@ -198,7 +318,9 @@ const pollOptionRowZod = z
 export const pollRowSharedZod = z.object({
 	title: z.string().trim().min(1),
 	options: z.array(pollOptionRowZod).min(1),
-	isResultPublic: z.boolean(),
+	/** @deprecated Prefer `resultVisibility`. Omitted on new rows when only `resultVisibility` is stored. */
+	isResultPublic: z.boolean().optional(),
+	resultVisibility: PollResultVisibilitySchema.optional(),
 	allowsAbstain: z.boolean(),
 	maxVotesPerVoter: z.number().min(1),
 	isOpen: z.boolean(),
@@ -235,9 +357,11 @@ export const UserPollBaseSchema = z
 	.object({
 		_id: zid('userPolls'),
 		_creationTime: z.number(),
-		code: z.string().trim().min(4).max(12),
+		code: UserPollCodeSchema,
 		ownerUserId: z.string().trim().min(1),
 		visibilityMode: UserPollVisibilitySchema,
+		infoPageEnabled: z.boolean().optional(),
+		infoPageShowLiveVoteCounts: z.boolean().optional(),
 	})
 	.extend(pollRowSharedZod.shape);
 

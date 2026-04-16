@@ -189,6 +189,8 @@ export const appErrors = {
 		new AppError('user_poll_not_found', 404, { pollId }),
 	user_poll_code_not_found: (pollCode: string) =>
 		new AppError('user_poll_code_not_found', 404, { pollCode }),
+	user_poll_code_already_exists: (pollCode: string) =>
+		new AppError('user_poll_code_already_exists', 400, { pollCode }),
 	illegal_user_poll_action: (
 		action:
 			| 'edit_while_open'

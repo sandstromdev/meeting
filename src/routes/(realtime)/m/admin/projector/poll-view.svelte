@@ -23,12 +23,20 @@
 		poll && !poll.isOpen ? { pollId: poll.id } : 'skip',
 	);
 
-	const showPollDetailedResults = $derived(
-		poll?.isResultPublic ||
+	const pollResultsDisplayVisibility = $derived.by(() => {
+		if (!poll) {
+			return 'none';
+		}
+		if (
+			poll.resultVisibility === 'full' ||
 			(!ps.isProjector &&
 				meeting.isAdmin &&
-				(pollResults.data?.results.optionTotals?.length ?? 0) > 0),
-	);
+				(pollResults.data?.results.optionTotals?.length ?? 0) > 0)
+		) {
+			return 'full';
+		}
+		return poll.resultVisibility ?? 'none';
+	});
 
 	let open = $derived(!!poll && !meeting.isAbsent);
 </script>
@@ -53,7 +61,7 @@
 			</div>
 			<PollResultsDisplay
 				data={pollResults.data ?? null}
-				showDetailedResults={showPollDetailedResults}
+				resultVisibility={pollResultsDisplayVisibility}
 				size="lg"
 			/>
 		</div>

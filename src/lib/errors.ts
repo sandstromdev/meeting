@@ -35,6 +35,8 @@ export const ErrorMessages = {
 	// User-owned polls
 	user_poll_not_found: ({ pollId }) => `Omröstningen med id '${pollId}' hittades inte.`,
 	user_poll_code_not_found: ({ pollCode }) => `Omröstningen med kod '${pollCode}' hittades inte.`,
+	user_poll_code_already_exists: ({ pollCode }) =>
+		`Koden '${pollCode}' används redan. Välj en annan kod.`,
 	invalid_poll_option: ({ option }) => `'${option}' är inte ett möjligt alternativ i pollen.`,
 	invalid_poll_vote_limit: ({ maxVotesPerVoter, optionsCount }) =>
 		`Maxröster per deltagare (${maxVotesPerVoter}) måste vara mellan 1 och antal alternativ (${optionsCount}).`,

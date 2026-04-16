@@ -4,6 +4,7 @@
 	import PollResultsDisplay, {
 		type PollResultsDisplayData,
 	} from '$lib/components/poll-results-display.svelte';
+	import type { PollResultVisibility } from '$lib/pollResultVisibility';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
 	import { Button } from '$lib/components/ui/button';
 	import Checkbox from '$lib/components/ui/checkbox/checkbox.svelte';
@@ -23,7 +24,7 @@
 		poll,
 		counters,
 		pollResults,
-		showDetailedResults,
+		resultVisibility,
 		isProjector,
 		isAbsent,
 		isAdmin,
@@ -39,7 +40,7 @@
 		poll: CurrentPoll | null;
 		counters: PollCounters;
 		pollResults: PollResultsDisplayData | null;
-		showDetailedResults: boolean;
+		resultVisibility: PollResultVisibility;
 		isProjector: boolean;
 		isAbsent: boolean;
 		isAdmin: boolean;
@@ -305,7 +306,7 @@
 									</div>
 								{/if}
 							{:else}
-								<PollResultsDisplay data={pollResults} {showDetailedResults} />
+								<PollResultsDisplay data={pollResults} {resultVisibility} />
 							{/if}
 						</div>
 					</ScrollArea>

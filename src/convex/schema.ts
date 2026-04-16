@@ -10,5 +10,5 @@ export default defineSchema(
 		...meetingPollTables,
 		...userPollTables,
 	},
-	{ schemaValidation: true },
+	{ schemaValidation: false },
 );

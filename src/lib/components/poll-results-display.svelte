@@ -2,6 +2,7 @@
 	import type { PollOptionTotal } from '$convex/helpers/poll';
 	import Progress from '$lib/components/ui/progress/progress.svelte';
 	import Separator from '$lib/components/ui/separator/separator.svelte';
+	import type { PollResultVisibility } from '$lib/pollResultVisibility';
 	import { ABSTAIN_OPTION_LABEL, getVoteShare } from '$lib/polls';
 	import { cn } from '$lib/utils';
 
@@ -16,17 +17,17 @@
 				votes?: number;
 			}>;
 			optionTotals?: PollOptionTotal[] | undefined;
-			counts: { totalVotes: number; usableVotes: number; abstain: number };
+			counts?: { totalVotes: number; usableVotes: number; abstain: number };
 		};
 	};
 
 	let {
 		data = null,
-		showDetailedResults = false,
+		resultVisibility = 'none',
 		size = 'sm',
 	}: {
 		data: PollResultsDisplayData | null;
-		showDetailedResults?: boolean;
+		resultVisibility?: PollResultVisibility;
 		size?: 'sm' | 'lg';
 	} = $props();
 
@@ -35,8 +36,9 @@
 	const optionTotals = $derived(
 		(data?.results.optionTotals ?? []).filter((option) => option.option !== ABSTAIN_OPTION_LABEL),
 	);
-	const totalVotes = $derived(data?.results.counts.totalVotes ?? 0);
-	const usableVotes = $derived(data?.results.counts.usableVotes ?? 0);
+	const counts = $derived(data?.results.counts);
+	const totalVotes = $derived(counts?.totalVotes ?? 0);
+	const usableVotes = $derived(counts?.usableVotes ?? 0);
 
 	function isWinningOption(optionIndex: number) {
 		return winners.some((winner) => winner.optionIndex === optionIndex);
@@ -76,7 +78,7 @@
 			{/if}
 		</div>
 	</div>
-	{#if showDetailedResults}
+	{#if resultVisibility === 'full' && counts}
 		<div class="space-y-4">
 			<div
 				class={cn(
@@ -92,10 +94,7 @@
 
 				<span>Avstår</span>
 				<span>
-					{data.results.counts.abstain} st ({getVoteShare(
-						data.results.counts.abstain,
-						totalVotes,
-					)}%)
+					{counts.abstain} st ({getVoteShare(counts.abstain, totalVotes)}%)
 				</span>
 			</div>
 			<ul class="space-y-2">
@@ -132,14 +131,18 @@
 	>
 		<div class={cn('flex items-center justify-between gap-2', size === 'lg' && 'text-xl')}>
 			<span class="truncate font-bold">{option.option}</span>
-			<span>{option.votes ?? 0} röster</span>
+			{#if option.votes != null}
+				<span>{option.votes} röster</span>
+			{/if}
 		</div>
 		{#if option.description}
 			<p class="text-sm text-muted-foreground">{option.description}</p>
 		{/if}
-		<Progress value={option.votes ?? 0} max={usableVotes} class="text-current" />
-		<div class="ml-auto text-xs text-current/70">
-			{getVoteShare(option.votes ?? 0, usableVotes)}%
-		</div>
+		{#if option.votes != null && usableVotes > 0}
+			<Progress value={option.votes} max={usableVotes} class="text-current" />
+			<div class="ml-auto text-xs text-current/70">
+				{getVoteShare(option.votes, usableVotes)}%
+			</div>
+		{/if}
 	</li>
 {/snippet}

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { api } from '$convex/_generated/api';
 	import type { PollResultsDisplayData } from '$lib/components/poll-results-display.svelte';
+	import type { PollResultVisibility } from '$lib/pollResultVisibility';
 	import { getMeetingContext } from '$lib/context.svelte';
 	import { usePageState } from '$lib/page-state.svelte';
 	import PollDialog from './poll-dialog.svelte';
@@ -22,14 +23,20 @@
 		currentPollCounters.data ?? { votersCount: 0, eligibleVoters: 0, votesCount: 0 },
 	);
 
-	const showDetailedResults = $derived(
-		poll
-			? poll.isResultPublic ||
-					(!ps.isProjector &&
-						meeting.isAdmin &&
-						(pollResultsQuery.data?.results.optionTotals?.length ?? 0) > 0)
-			: false,
-	);
+	const resultVisibility = $derived.by((): PollResultVisibility => {
+		if (!poll) {
+			return 'none';
+		}
+		if (
+			poll.resultVisibility === 'full' ||
+			(!ps.isProjector &&
+				meeting.isAdmin &&
+				(pollResultsQuery.data?.results.optionTotals?.length ?? 0) > 0)
+		) {
+			return 'full';
+		}
+		return poll.resultVisibility ?? 'none';
+	});
 
 	const currentMeetingPollId = $derived(meeting.meeting.currentPollId);
 
@@ -43,7 +50,7 @@
 			results: {
 				winners: raw.results.winners,
 				optionTotals: raw.results.optionTotals,
-				counts: raw.results.counts,
+				...(raw.results.counts != null ? { counts: raw.results.counts } : {}),
 			},
 		};
 	});
@@ -97,7 +104,7 @@
 	{poll}
 	{counters}
 	pollResults={pollResultsDisplay}
-	{showDetailedResults}
+	{resultVisibility}
 	isProjector={ps.isProjector}
 	isAbsent={meeting.isAbsent}
 	isAdmin={meeting.isAdmin}

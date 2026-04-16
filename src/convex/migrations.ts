@@ -96,3 +96,30 @@ export const runMultiWinnerCount1ToSingleRelativeSeries = migrations.runner([
 	internal.migrations.migrateMeetingPollResultsEmbeddedPollMultiWinnerCount1,
 	internal.migrations.migrateUserPollResultsEmbeddedPollMultiWinnerCount1,
 ]);
+
+export const migrateIsResultPublicToResultVisibility = migrations.define({
+	table: 'userPolls',
+	migrateOne: async (ctx, doc) => {
+		if (doc.isResultPublic !== undefined) {
+			await ctx.db.patch(doc._id, {
+				resultVisibility: doc.isResultPublic ? 'full' : 'none',
+			});
+		}
+	},
+});
+
+export const migrateMeetingPollIsResultPublicToResultVisibility = migrations.define({
+	table: 'meetingPolls',
+	migrateOne: async (ctx, doc) => {
+		if (doc.isResultPublic !== undefined) {
+			await ctx.db.patch(doc._id, {
+				resultVisibility: doc.isResultPublic ? 'full' : 'none',
+			});
+		}
+	},
+});
+
+export const runIsResultPublicToResultVisibilitySeries = migrations.runner([
+	internal.migrations.migrateIsResultPublicToResultVisibility,
+	internal.migrations.migrateMeetingPollIsResultPublicToResultVisibility,
+]);
