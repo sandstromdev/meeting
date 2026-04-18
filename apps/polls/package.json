@@ -1,12 +1,12 @@
 {
-	"name": "@lsnd-mt/meetings",
+	"name": "@lsnd-mt/polls",
 	"private": true,
 	"version": "0.0.1",
 	"type": "module",
 	"scripts": {
-		"dev": "bun run env:load && vite dev --port 4000 --host localhost",
+		"dev": "bun run env:load && vite dev --port 4001 --host localhost",
 		"build": "bun run env:load && vite build",
-		"build:vercel": "cd ../convex && convex deploy --cmd-url-env-var-name PUBLIC_CONVEX_URL --cmd 'cd ../meetings && bun run build'",
+		"build:vercel": "cd ../convex && convex deploy --cmd-url-env-var-name PUBLIC_CONVEX_URL --cmd 'cd ../polls && bun run build'",
 		"preview": "bun run env:load && vite preview",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
