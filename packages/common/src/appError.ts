@@ -1,0 +1,245 @@
+import { z } from 'zod';
+import { ErrorMessages } from './errorMessages';
+
+export type AppErrorPayloads = {
+	// HTTP-shaped (401 / 403 / 500), no domain payload
+	bad_request: { args: Record<string, unknown> };
+	unauthorized: {};
+	forbidden: {};
+	internal_error: {};
+
+	// Email & account
+	email_exists: {};
+	invalid_credentials: {};
+	participant_banned: {};
+	meeting_access_denied: {};
+
+	// Meeting
+	meeting_not_found: { meetingId?: string; meetingCode?: string };
+	/** Meeting exists but is not joinable (participant / meeting-room flows). */
+	meeting_archived: { meetingId: string; meetingCode: string };
+	meeting_participant_not_found: { meetingId: string };
+	invalid_meeting_code: {};
+	meeting_code_already_exists: { meetingCode: string };
+
+	// Agenda & speaking
+	agenda_item_not_found: { agendaItemId: string };
+	cannot_delete_current_speaker: {};
+	cannot_leave_while_speaking: {};
+	illegal_while_absent: { action?: string };
+
+	// Meeting polls
+	meeting_poll_not_found: { pollId: string };
+	invalid_poll_option: { option: number };
+	invalid_poll_vote_limit: { maxVotesPerVoter: number; optionsCount: number };
+	invalid_poll_type_config:
+		| { kind: 'winningCount'; value: number; optionsCount: number }
+		| { kind: 'majorityRule_required' };
+	invalid_poll_draft: { error: unknown };
+	illegal_meeting_poll_action: {
+		action:
+			| 'edit_while_open'
+			| 'vote_while_closed'
+			| 'already_voted'
+			| 'agenda_has_poll'
+			| 'too_many_votes'
+			| 'duplicate_vote_option';
+	};
+
+	// User-owned polls
+	user_poll_not_found: { pollId: string };
+	user_poll_code_not_found: { pollCode: string };
+	user_poll_code_already_exists: { pollCode: string };
+	illegal_user_poll_action: {
+		action:
+			| 'edit_while_open'
+			| 'vote_while_closed'
+			| 'too_many_votes'
+			| 'duplicate_vote_option'
+			| 'missing_session_key'
+			| 'auth_required';
+	};
+
+	// Validation
+	zod_error: { issues: unknown };
+};
+
+export type AppErrorCode = keyof AppErrorPayloads;
+export type AppErrorPayloadFor<C extends AppErrorCode> = AppErrorPayloads[C];
+
+export type AppErrorMessages = {
+	[K in AppErrorCode]: (args: AppErrorPayloadFor<K>) => string;
+};
+
+export type AppErrorJson<C extends AppErrorCode = AppErrorCode> = {
+	error: { code: C; status: number; message: string } & AppErrorPayloadFor<C>;
+};
+
+export type AppResult<TOk = unknown, TErr extends AppError = AppError> =
+	| AppResultOk<TOk>
+	| AppResultErr<TErr>;
+
+export type AppResultOk<TOk = unknown> = { ok: true; data: TOk; error?: undefined };
+export type AppResultErr<TErr extends AppError = AppError> = {
+	ok: false;
+	error: TErr;
+	data?: undefined;
+};
+
+export function ok<TOk = unknown>(data: TOk) {
+	return { ok: true, data: data } as AppResult<TOk>;
+}
+
+export function err<TErr extends AppError>(error: TErr) {
+	return error.toResult();
+}
+
+const appErrorJsonSchema = z.object({
+	error: z
+		.object({
+			code: z.string(),
+			status: z.number(),
+			message: z.string(),
+		})
+		.loose(),
+});
+
+export class AppError<C extends AppErrorCode = AppErrorCode> extends Error {
+	readonly code: C;
+	readonly status: number;
+	readonly data: AppErrorPayloadFor<C>;
+
+	constructor(code: C, status: number, data?: AppErrorPayloadFor<C>) {
+		const normalized = (data ?? ({} as AppErrorPayloadFor<C>)) as AppErrorPayloadFor<C>;
+		super(ErrorMessages[code](normalized));
+		this.code = code;
+		this.status = status;
+		this.data = normalized;
+	}
+
+	is<T extends AppErrorCode>(code: T): this is AppError<T> {
+		return this.code === (code as unknown as C);
+	}
+
+	toJSON(): AppErrorJson<C> {
+		return {
+			error: {
+				code: this.code,
+				status: this.status,
+				...this.data,
+				message: this.message,
+			},
+		} as AppErrorJson<C>;
+	}
+
+	toJsonResponse() {
+		return Response.json(this.toJSON(), { status: this.status });
+	}
+
+	toResult() {
+		return { ok: false, error: this } as AppResultErr<this>;
+	}
+
+	static fromJSON(json: unknown) {
+		const result = appErrorJsonSchema.safeParse(json);
+		if (!result.success) {
+			throw new Error('Invalid app error JSON');
+		}
+
+		const { code, status, message: _serializedMessage, ...data } = result.data.error;
+		if (!isAppErrorCode(code)) {
+			throw new Error('Invalid app error JSON');
+		}
+
+		return new AppError(code, status, data as never);
+	}
+
+	static assert(pred: boolean, error: AppError): asserts pred is true {
+		if (!pred) {
+			throw error;
+		}
+	}
+
+	static assertNotNull<T>(value: T | null | undefined, error: AppError): asserts value is T {
+		if (value == null) {
+			throw error;
+		}
+	}
+
+	/** Narrows Zod `safeParse` / `SafeParseReturnType` to success; `toError` receives the `ZodError`. */
+	static assertZodSuccess<T>(
+		result: { success: true; data: T } | { success: false; error: z.ZodError },
+		toError: (error: z.ZodError) => AppError = (e) =>
+			appErrors.zod_error({ issues: z.treeifyError(e) }),
+	): asserts result is { success: true; data: T } {
+		if (!result.success) {
+			throw toError(result.error);
+		}
+	}
+}
+
+export const appErrors = {
+	// HTTP-shaped (401 / 403 / 500), no domain payload
+	bad_request: (args: Record<string, unknown>) => new AppError('bad_request', 400, { args }),
+	unauthorized: () => new AppError('unauthorized', 401, {}),
+	forbidden: () => new AppError('forbidden', 403, {}),
+	internal_error: () => new AppError('internal_error', 500, {}),
+
+	// Email & account
+	email_exists: () => new AppError('email_exists', 400, {}),
+	invalid_credentials: () => new AppError('invalid_credentials', 400, {}),
+	participant_banned: () => new AppError('participant_banned', 403, {}),
+	meeting_access_denied: () => new AppError('meeting_access_denied', 403, {}),
+
+	// Meeting
+	meeting_not_found: (args: AppErrorPayloadFor<'meeting_not_found'>) =>
+		new AppError('meeting_not_found', 404, args),
+	meeting_archived: (args: AppErrorPayloadFor<'meeting_archived'>) =>
+		new AppError('meeting_archived', 410, args),
+	meeting_participant_not_found: (meetingId: string) =>
+		new AppError('meeting_participant_not_found', 404, { meetingId }),
+	invalid_meeting_code: () => new AppError('invalid_meeting_code', 400, {}),
+	meeting_code_already_exists: (meetingCode: string) =>
+		new AppError('meeting_code_already_exists', 400, { meetingCode }),
+
+	// Agenda & speaking
+	agenda_item_not_found: (agendaItemId: string) =>
+		new AppError('agenda_item_not_found', 404, { agendaItemId }),
+	cannot_delete_current_speaker: () => new AppError('cannot_delete_current_speaker', 400, {}),
+	cannot_leave_while_speaking: () => new AppError('cannot_leave_while_speaking', 400, {}),
+	illegal_while_absent: (action?: string) =>
+		new AppError('illegal_while_absent', 400, action !== undefined ? { action } : {}),
+
+	// Meeting polls
+	meeting_poll_not_found: (pollId: string) =>
+		new AppError('meeting_poll_not_found', 404, { pollId }),
+	invalid_poll_option: (option: number) => new AppError('invalid_poll_option', 400, { option }),
+	invalid_poll_vote_limit: (args: AppErrorPayloadFor<'invalid_poll_vote_limit'>) =>
+		new AppError('invalid_poll_vote_limit', 400, args),
+	invalid_poll_type_config: (args: AppErrorPayloadFor<'invalid_poll_type_config'>) =>
+		new AppError('invalid_poll_type_config', 400, args),
+	invalid_poll_draft: (error: unknown) => new AppError('invalid_poll_draft', 400, { error }),
+	illegal_meeting_poll_action: (
+		action: AppErrorPayloadFor<'illegal_meeting_poll_action'>['action'],
+	) => new AppError('illegal_meeting_poll_action', 400, { action }),
+
+	// User-owned (link) polls
+	user_poll_not_found: (pollId: string) => new AppError('user_poll_not_found', 404, { pollId }),
+	user_poll_code_not_found: (pollCode: string) =>
+		new AppError('user_poll_code_not_found', 404, { pollCode }),
+	user_poll_code_already_exists: (pollCode: string) =>
+		new AppError('user_poll_code_already_exists', 400, { pollCode }),
+	illegal_user_poll_action: (action: AppErrorPayloadFor<'illegal_user_poll_action'>['action']) =>
+		new AppError('illegal_user_poll_action', 400, { action }),
+
+	// Validation
+	zod_error: (args: AppErrorPayloadFor<'zod_error'>) => new AppError('zod_error', 400, args),
+} as const;
+
+export type AppErrors = typeof appErrors;
+
+export const errorCodes = new Set<AppErrorCode>(Object.keys(ErrorMessages) as AppErrorCode[]);
+
+export function isAppErrorCode(code: string): code is AppErrorCode {
+	return errorCodes.has(code as AppErrorCode);
+}

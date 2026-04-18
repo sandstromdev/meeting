@@ -15,8 +15,9 @@ Thumbs.db
 .output
 .vercel
 .wrangler
-/.svelte-kit
-/build
+.svelte-kit
+.turbo
+build/
 
 # Vite
 vite.config.js.timestamp-*

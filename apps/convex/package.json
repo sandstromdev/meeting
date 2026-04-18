@@ -1,0 +1,37 @@
+{
+	"name": "@lsnd-mt/convex",
+	"private": true,
+	"version": "0.0.1",
+	"type": "module",
+	"exports": {
+		"./package.json": "./package.json",
+		"./_generated/*": "./src/_generated/*",
+		"./*": "./src/*"
+	},
+	"scripts": {
+		"dev": "convex dev",
+		"test": "vitest run",
+		"lint": "oxlint src",
+		"env:validate": "varlock load",
+		"env:convex": "bun run scripts/validate-convex-env.ts",
+		"env:convex:prod": "bun run scripts/validate-convex-env.ts --prod"
+	},
+	"dependencies": {
+		"@convex-dev/better-auth": "^0.11.4",
+		"@convex-dev/migrations": "^0.3.3",
+		"@lsnd-mt/common": "workspace:*",
+		"better-auth": "1.5.5",
+		"convex": "^1.35.1",
+		"convex-helpers": "^0.1.114",
+		"zod": "^4.3.6"
+	},
+	"devDependencies": {
+		"@edge-runtime/vm": "^5.0.0",
+		"convex-test": "^0.0.47",
+		"ora": "^9.3.0",
+		"oxlint": "^1.59.0",
+		"typescript": "^5.9.3",
+		"varlock": "^0.7.2",
+		"vitest": "^4.1.4"
+	}
+}
