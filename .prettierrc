@@ -12,5 +12,5 @@
 			}
 		}
 	],
-	"tailwindStylesheet": "./apps/web/src/routes/layout.css"
+	"tailwindStylesheet": "./apps/meetings/src/routes/layout.css"
 }
