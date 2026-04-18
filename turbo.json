@@ -19,6 +19,9 @@
 		"env:validate": {
 			"cache": false
 		},
+		"env:load": {
+			"cache": false
+		},
 		"prepare": {
 			"cache": false
 		}

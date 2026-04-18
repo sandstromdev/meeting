@@ -2,7 +2,7 @@ import ora from 'ora';
 import { parseArgs } from 'util';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { copyFile, mkdtemp, rm } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, rm } from 'node:fs/promises';
 
 const { values } = parseArgs({
 	args: Bun.argv,
@@ -21,14 +21,46 @@ const { values } = parseArgs({
 
 const noOutput = values['no-output'];
 
+const repoRoot = join(dirname(Bun.fileURLToPath(import.meta.url)), '..');
+const remoteSchemaPath = join(repoRoot, '.env.remote.schema');
+const commonSchemaSource = join(repoRoot, '..', '..', 'packages', 'common', '.env.schema');
+
+function subprocessEnv(overrides: Record<string, string> = {}): Record<string, string> {
+	const env: Record<string, string> = { ...overrides };
+	for (const key of ['PATH', 'HOME', 'TMPDIR', 'USER'] as const) {
+		const v = process.env[key];
+		if (v !== undefined && env[key] === undefined) {
+			env[key] = v;
+		}
+	}
+	return env;
+}
+
+const noop = () => {};
+
+const spinner = noOutput
+	? {
+			succeed: noop,
+			fail: noop,
+			text: '',
+		}
+	: ora('Creating temporary directory…').start();
+
+let tempRoot: string;
+try {
+	tempRoot = await mkdtemp(join(tmpdir(), 'meeting-tools-convex-env-'));
+} catch {
+	spinner.fail('Failed to create temporary directory');
+	process.exit(1);
+}
+
 async function runCommand<T extends 'inherit' | 'pipe' | Bun.BunFile>(options: {
 	command: string[];
 	stdout: T;
 	cwd?: string;
-	/** When set, the child’s environment is exactly this map (no `process.env` merge) */
 	env?: Record<string, string>;
 }) {
-	const { command, stdout, cwd = process.cwd(), env } = options;
+	const { command, stdout, cwd = process.cwd(), env = subprocessEnv() } = options;
 	spinner.text = `Running: ${command.join(' ')}`;
 
 	try {
@@ -51,70 +83,57 @@ async function runCommand<T extends 'inherit' | 'pipe' | Bun.BunFile>(options: {
 	}
 }
 
-const repoRoot = join(dirname(Bun.fileURLToPath(import.meta.url)), '..');
-
-const noop = () => {};
-
-const spinner = noOutput
-	? {
-			succeed: noop,
-			fail: noop,
-			text: '',
-		}
-	: ora('Creating temporary directory…').start();
-
-const tempDir = await mkdtemp(join(tmpdir(), 'meeting-tools-convex-env-')).catch(() => undefined);
-
-if (!tempDir) {
-	spinner.fail('Failed to create temporary directory');
-	throw new Error('Failed to create temporary directory');
-}
-
-const filePath = join(tempDir, '.env');
-const output = Bun.file(filePath);
-
 try {
-	spinner.succeed(`Created temporary directory at ${tempDir}`);
+	const workConvexDir = join(tempRoot, 'apps', 'convex');
+	const envFilePath = join(workConvexDir, '.env');
 
-	spinner.text = 'Copying .env.schema to temporary directory…';
-	const schemaFilePath = join(repoRoot, '.env.schema');
+	try {
+		spinner.succeed(`Created temporary directory at ${tempRoot}`);
 
-	await copyFile(schemaFilePath, join(tempDir, '.env.schema'));
+		spinner.text = 'Staging schema mirror…';
+		await mkdir(join(tempRoot, 'packages', 'common'), { recursive: true });
+		await mkdir(workConvexDir, { recursive: true });
+		await copyFile(commonSchemaSource, join(tempRoot, 'packages', 'common', '.env.schema'));
+		await copyFile(remoteSchemaPath, join(workConvexDir, '.env.schema'));
+		spinner.succeed('Staged schema mirror');
 
-	spinner.succeed('Copied .env.schema to temporary directory');
+		spinner.text = 'Fetching Convex environment variables…';
+		let listCommand = ['bunx', 'convex', 'env', 'list'];
+		if (values.prod) {
+			listCommand.push('--prod');
+		}
+		await runCommand({
+			command: listCommand,
+			stdout: Bun.file(envFilePath),
+			cwd: repoRoot,
+		});
+		spinner.succeed('Fetched Convex environment variables');
 
-	let command = ['bunx', 'convex', 'env', 'list'];
-	if (values.prod) {
-		command.push('--prod');
-	}
+		spinner.text = 'Validating with Varlock…';
 
-	await runCommand({ command, stdout: output });
+		const proc = await runCommand({
+			command: ['bunx', 'varlock', 'load'],
+			stdout: 'pipe',
+			cwd: workConvexDir,
+			env: subprocessEnv({ IS_CONVEX: 'true' }),
+		});
+		const loadOutput = await proc.stdout.text();
+		spinner.succeed('Validated Convex environment variables');
 
-	spinner.succeed('Fetched Convex environment variables');
-
-	const proc = await runCommand({
-		command: ['bunx', 'varlock', 'load'],
-		stdout: 'pipe',
-		cwd: tempDir,
-		env: {
-			PATH: process.env.PATH as string,
-			IS_CONVEX: 'true',
-		},
-	});
-
-	spinner.succeed('Validated Convex environment variables');
-
-	if (!values['no-output']) {
-		console.log(await proc.stdout.text());
+		if (!values['no-output']) {
+			console.log(loadOutput);
+		}
+	} catch (e) {
+		spinner.fail('Failed to validate Convex environment variables');
+		throw e;
+	} finally {
+		try {
+			await rm(tempRoot, { recursive: true });
+		} catch (e) {
+			console.error('Failed to delete temp directory', e);
+			process.exit(1);
+		}
 	}
 } catch {
-	spinner.fail('Failed to validate Convex environment variables');
 	process.exit(1);
-} finally {
-	try {
-		await rm(tempDir, { recursive: true });
-	} catch (e) {
-		console.error('Failed to delete temp directory', e);
-		process.exit(1);
-	}
 }

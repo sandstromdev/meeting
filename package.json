@@ -16,12 +16,15 @@
 		"lint": "turbo run lint",
 		"check": "turbo run check",
 		"env:validate": "turbo run env:validate",
+		"env:load": "turbo run env:load",
 		"clean": "rm -rf node_modules apps/*/node_modules packages/*/node_modules && bun install",
 		"prepare": "husky",
 		"format": "prettier --cache --write .",
 		"fix": "prettier --cache --write . && oxlint --fix ."
 	},
 	"devDependencies": {
+		"@types/bun": "^1.3.12",
+		"@types/node": "^25.6.0",
 		"husky": "^9.1.7",
 		"lint-staged": "^16.4.0",
 		"oxlint": "^1.59.0",

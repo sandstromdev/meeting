@@ -12,7 +12,8 @@
 		"dev": "convex dev",
 		"test": "vitest run",
 		"lint": "oxlint src",
-		"env:validate": "varlock load",
+		"env:load": "varlock load",
+		"env:validate": "bun ../../scripts/varlock-load-quiet.ts",
 		"env:convex": "bun run scripts/validate-convex-env.ts",
 		"env:convex:prod": "bun run scripts/validate-convex-env.ts --prod"
 	},

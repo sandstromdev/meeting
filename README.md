@@ -69,27 +69,7 @@ This installs all workspace packages (`apps/*`, `packages/*`) into a single lock
 
 ### 2) Environment
 
-- **Local secrets**: use **`apps/web/.env.local`** and **`apps/convex/.env.local`** (gitignored). Keep them in sync for shared keys, or duplicate a single root `.env.local` into both when setting up a new machine.
-- **Schema**:
-  - Canonical definitions: [`packages/common/.env.schema`](packages/common/.env.schema) ([Varlock](https://varlock.dev) / [@env-spec](https://varlock.dev/env-spec)).
-  - Each app composes that file via import: [`apps/web/.env.schema`](apps/web/.env.schema), [`apps/convex/.env.schema`](apps/convex/.env.schema).
-
-Those schema files are for documentation and Varlock—they are not loaded by SvelteKit or Convex at runtime. SvelteKit still reads `.env*` via Vite from **`apps/web`**; Convex uses dashboard env and `process.env`.
-
-Validate from the root (all packages that define `env:validate`):
-
-```sh
-bun run env:validate
-```
-
-Or per app:
-
-```sh
-cd apps/web && bun run env:validate
-cd apps/convex && bun run env:validate
-```
-
-Set the same variables in the [Convex dashboard](https://dashboard.convex.dev) so code under [`apps/convex/src`](apps/convex/src) (e.g. auth) sees matching `process.env`.
+From **`apps/convex`**, run **`bunx convex dev`** (or `bun run dev` in that package); when you link a deployment, the Convex CLI creates **`apps/convex/.env.local`** (gitignored). Fill in any remaining variables from the [`.env.schema`](packages/common/.env.schema) and add **`apps/web/.env.local`** for SvelteKit—see [Environment](#environment) under [Configuration](#configuration). Then run `bun run env:validate` (or the per-app / Convex dashboard checks described there) so Varlock confirms everything matches the spec.
 
 ### 3) Run the dev stack
 
@@ -123,6 +103,25 @@ bun run check    # Turbo: svelte-check (web)
 bun run test     # Turbo: Vitest (web + convex)
 bun run lint     # Turbo: Prettier + oxlint where configured
 ```
+
+## Configuration
+
+### Environment
+
+Environment variables are described with **[Varlock](https://varlock.dev)** using **[@env-spec](https://varlock.dev/env-spec)** schema files: a single canonical spec in [`packages/common/.env.schema`](packages/common/.env.schema), imported by [`apps/web/.env.schema`](apps/web/.env.schema), [`apps/convex/.env.schema`](apps/convex/.env.schema) (local Convex / CLI), and [`apps/convex/.env.remote.schema`](apps/convex/.env.remote.schema) (dashboard env checks). Those files drive docs and Varlock checks only—**SvelteKit** still loads `.env*` from **`apps/web`**, and **Convex** reads `process.env` from the [Convex dashboard](https://dashboard.convex.dev) (keep dashboard values aligned with local secrets where the backend needs them).
+
+**`apps/convex/.env.local`** is written when you run **`bunx convex dev`** from **`apps/convex`**; extend it with any other keys the schema requires. **`apps/web/.env.local`** is for the frontend only—create it yourself and keep shared values aligned with Convex where both apps need them.
+
+**Check env (Turbo runs every workspace that defines the scripts):**
+
+| Goal                                   | Command                |
+| -------------------------------------- | ---------------------- |
+| Validate quietly (non-zero on failure) | `bun run env:validate` |
+| Print Varlock’s resolved summary       | `bun run env:load`     |
+
+**Per app** (from repo root): `bun run env:validate -- --filter=@lsnd-mt/web` or `bun run env:validate -- --filter=@lsnd-mt/convex` (same for `env:load`), or `cd apps/web` / `cd apps/convex` and run the same scripts there.
+
+**Convex dashboard:** In `apps/convex`, `bun run env:convex` (dev) and `bun run env:convex:prod` run [`scripts/validate-convex-env.ts`](apps/convex/scripts/validate-convex-env.ts): they call `convex env list`, write a temporary `.env`, then run Varlock against [`.env.remote.schema`](apps/convex/.env.remote.schema) (imports the common spec, with `IS_CONVEX=true`) so hosted env matches the same @env-spec rules as the rest of the repo.
 
 ## Deployment (Vercel)
 
