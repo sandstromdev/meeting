@@ -131,7 +131,7 @@
 {#if isEditMode && agendaItemId && !item}
 	<p class="border-t p-4 text-sm text-muted-foreground">Punkt hittades inte.</p>
 {:else}
-	<div class="w-full space-y-4">
+	<div class="w-full space-y-4" data-agenda-item-editor={isEditMode ? '' : undefined}>
 		<div class="flex flex-col gap-3">
 			<div class="flex flex-wrap items-center gap-2">
 				<Input bind:value={newTitle} placeholder="Rubrik" class="min-w-[12rem]" />
