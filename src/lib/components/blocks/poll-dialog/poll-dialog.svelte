@@ -60,17 +60,7 @@
 
 	let selectedOptionIndexes = new SvelteSet<number>();
 	let isChangingVote = $state(false);
-	/** When in change mode, the option indexes the user had before retracting (for cancel and hasSelectionChanged). */
 	let previousVoteOptionIndexes = $state<number[]>([]);
-
-	$effect(() => {
-		if (poll?.hasVoted && poll.isOpen && isChangingVote) {
-			selectedOptionIndexes.clear();
-			for (const i of poll.myVoteOptionIndexes) {
-				selectedOptionIndexes.add(i);
-			}
-		}
-	});
 
 	const isMultiWinner = $derived(poll?.type === 'multi_winner');
 
@@ -85,43 +75,37 @@
 	);
 	const isDialogOpen = $derived(!isProjector && !!poll);
 
-	const hasSelectionChanged = $derived(
-		(() => {
-			const current = isChangingVote
-				? previousVoteOptionIndexes
-				: (poll?.myVoteOptionIndexes ?? []);
-			if (current.length === 0) {
-				return true;
-			}
-			const curr = [...current].toSorted();
-			const selected = [...effectiveSelection].toSorted();
-			return curr.length !== selected.length || curr.some((v, i) => v !== selected[i]);
-		})(),
-	);
-
 	const canVote = $derived(
 		!!poll &&
 			poll.isOpen &&
 			effectiveSelection.length > 0 &&
 			effectiveSelection.length <= poll.maxVotesPerVoter &&
-			(isChangingVote ? hasSelectionChanged : !poll.hasVoted),
+			(!poll.hasVoted || isChangingVote),
 	);
 
 	const canSelectMoreOptions = $derived(selectedOptionIndexes.size < (poll?.maxVotesPerVoter ?? 1));
 
 	function toggleOption(optionIndex: number, checked: boolean) {
 		const votingAllowed = !poll?.hasVoted || isChangingVote;
+		const isSingleChoice = poll != null && poll.maxVotesPerVoter === 1;
+		if (!poll || !votingAllowed || !poll.isOpen) {
+			return;
+		}
+		// Multi-select at cap: cannot add another option (unchecking still allowed below).
 		if (
-			!poll ||
-			!votingAllowed ||
-			!poll.isOpen ||
-			(!canSelectMoreOptions && !selectedOptionIndexes.has(optionIndex))
+			checked &&
+			!isSingleChoice &&
+			!canSelectMoreOptions &&
+			!selectedOptionIndexes.has(optionIndex)
 		) {
 			return;
 		}
 
 		if (!checked) {
 			selectedOptionIndexes.delete(optionIndex);
+		} else if (isSingleChoice) {
+			selectedOptionIndexes.clear();
+			selectedOptionIndexes.add(optionIndex);
 		} else if (selectedOptionIndexes.size < poll.maxVotesPerVoter) {
 			selectedOptionIndexes.add(optionIndex);
 		}
