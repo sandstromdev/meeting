@@ -126,6 +126,21 @@
 		return rows.filter((r) => !r.ok);
 	}
 
+	function failureToastDescription(rows: RowCommon[]) {
+		const failed = rows.filter((row) => !row.ok);
+		if (failed.length === 0) {
+			return undefined;
+		}
+		const visibleFailures = failed
+			.slice(0, 3)
+			.map((row) => `Rad ${row.rowNumber}: ${row.message}`)
+			.join(' · ');
+		const remaining = failed.length - 3;
+		return remaining > 0
+			? `${visibleFailures} · ${remaining} till finns i felrapporten.`
+			: `${visibleFailures} Ladda ner felrapporten för fullständig lista.`;
+	}
+
 	function parseRowsForImport(): BulkImportRawRow[] {
 		const text = csvText.trim();
 		return parseBulkMeetingUsersCsvToRawRows(text);
@@ -250,7 +265,9 @@
 			if (failed === 0) {
 				toast.success(`Import klar: ${succeeded} rader lyckades.`);
 			} else {
-				toast.warning(`Import klar: ${succeeded} lyckades, ${failed} misslyckades.`);
+				toast.warning(`Import klar: ${succeeded} lyckades, ${failed} misslyckades.`, {
+					description: failureToastDescription(result.rows),
+				});
 			}
 		} catch (e) {
 			console.error(e);
