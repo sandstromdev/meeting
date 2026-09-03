@@ -126,6 +126,18 @@
 		return rows.filter((r) => !r.ok);
 	}
 
+	function failureSummaryItems(rows: RowCommon[], limit = 3) {
+		const counts = new Map<string, number>();
+		for (const row of rows) {
+			const message = row.message.trim() || 'Okänt fel';
+			counts.set(message, (counts.get(message) ?? 0) + 1);
+		}
+		return Array.from(counts.entries())
+			.sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'sv'))
+			.slice(0, limit)
+			.map(([message, count]) => `${count}× ${message}`);
+	}
+
 	function parseRowsForImport(): BulkImportRawRow[] {
 		const text = csvText.trim();
 		return parseBulkMeetingUsersCsvToRawRows(text);
@@ -250,7 +262,10 @@
 			if (failed === 0) {
 				toast.success(`Import klar: ${succeeded} rader lyckades.`);
 			} else {
-				toast.warning(`Import klar: ${succeeded} lyckades, ${failed} misslyckades.`);
+				const details = failureSummaryItems(result.rows.filter((row) => !row.ok)).join(' · ');
+				toast.warning(
+					`Import klar: ${succeeded} lyckades, ${failed} misslyckades.${details ? ` ${details}` : ''}`,
+				);
 			}
 		} catch (e) {
 			console.error(e);
@@ -357,6 +372,10 @@
 					{commitResult.summary.createdUsers} nya konton · {commitResult.summary.participantAdds} nya
 					deltagare
 				</p>
+				{@const failedSummary = failureSummaryItems(failedRowsForReport())}
+				{#if failedSummary.length > 0}
+					<p class="mt-1 text-xs text-muted-foreground">Vanligaste fel: {failedSummary.join(' · ')}</p>
+				{/if}
 			</div>
 		{/if}
 
